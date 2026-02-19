@@ -10,12 +10,21 @@ describe("API client", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     setToken(null);
+    localStorage.clear();
   });
 
-  it("sets and gets auth token", () => {
+  it("sets and gets auth token from localStorage", () => {
     expect(getToken()).toBeNull();
     setToken("test-token");
     expect(getToken()).toBe("test-token");
+    expect(localStorage.getItem("rd_log_token")).toBe("test-token");
+  });
+
+  it("clears token from localStorage", () => {
+    setToken("test-token");
+    setToken(null);
+    expect(getToken()).toBeNull();
+    expect(localStorage.getItem("rd_log_token")).toBeNull();
   });
 
   it("makes GET request with correct path", async () => {

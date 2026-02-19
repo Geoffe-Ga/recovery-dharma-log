@@ -4,6 +4,10 @@ import { render, screen } from "@testing-library/react";
 import { App } from "../src/App";
 
 describe("App", () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
   it("renders login page when not authenticated", () => {
     render(<App />);
     expect(screen.getByRole("heading", { name: "Log In" })).toBeInTheDocument();

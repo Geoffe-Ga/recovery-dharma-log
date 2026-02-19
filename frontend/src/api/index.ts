@@ -1,12 +1,11 @@
 /** API functions for each backend endpoint. */
 
-import { api, setToken } from "./client";
+import { api, getToken, postForm, setToken } from "./client";
 import type {
   BookChapter,
   GroupSettings,
   GroupSettingsUpdate,
   MeetingLogEntry,
-  ReadingAssignment,
   ReadingPlanStatus,
   SpeakerSchedule,
   Token,
@@ -29,13 +28,21 @@ export async function login(
   username: string,
   password: string,
 ): Promise<Token> {
-  const token = await api.post<Token>("/auth/login", { username, password });
+  // Backend expects OAuth2 form data, not JSON
+  const token = await postForm<Token>("/auth/login", {
+    username,
+    password,
+  });
   setToken(token.access_token);
   return token;
 }
 
 export function logout(): void {
   setToken(null);
+}
+
+export function isLoggedIn(): boolean {
+  return getToken() !== null;
 }
 
 // --- Meetings ---
@@ -51,8 +58,8 @@ export async function getMeetingLog(): Promise<MeetingLogEntry[]> {
 export async function cancelMeeting(
   meetingDate: string,
   isCancelled: boolean,
-): Promise<void> {
-  await api.post("/meetings/cancel", {
+): Promise<MeetingLogEntry> {
+  return api.post<MeetingLogEntry>("/meetings/cancel", {
     meeting_date: meetingDate,
     is_cancelled: isCancelled,
   });
@@ -86,10 +93,6 @@ export async function getChapters(): Promise<BookChapter[]> {
   return api.get<BookChapter[]>("/book/chapters");
 }
 
-export async function getAssignments(): Promise<ReadingAssignment[]> {
-  return api.get<ReadingAssignment[]>("/book/assignments");
-}
-
 export async function getReadingPlan(): Promise<ReadingPlanStatus> {
   return api.get<ReadingPlanStatus>("/book/plan");
 }
@@ -98,8 +101,8 @@ export async function addChapterToPlan(): Promise<ReadingPlanStatus> {
   return api.post<ReadingPlanStatus>("/book/plan/add-chapter");
 }
 
-export async function finalizePlan(): Promise<void> {
-  await api.post("/book/plan/finalize");
+export async function finalizePlan(): Promise<ReadingPlanStatus> {
+  return api.post<ReadingPlanStatus>("/book/plan/finalize");
 }
 
 // --- Speakers ---
@@ -111,8 +114,8 @@ export async function getSpeakerSchedule(): Promise<SpeakerSchedule[]> {
 export async function scheduleSpeaker(
   meetingDate: string,
   speakerName: string,
-): Promise<void> {
-  await api.post("/speakers/schedule", {
+): Promise<SpeakerSchedule> {
+  return api.post<SpeakerSchedule>("/speakers/schedule", {
     meeting_date: meetingDate,
     speaker_name: speakerName,
   });

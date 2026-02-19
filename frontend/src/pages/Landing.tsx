@@ -1,40 +1,72 @@
 /** Landing page - shows the next upcoming meeting. */
 
 import { useCallback, useEffect, useState } from "react";
-import { drawTopic, getUpcomingMeeting } from "../api/index";
+import { drawTopic, getUpcomingMeeting, scheduleSpeaker } from "../api/index";
 import type { UpcomingMeeting } from "../types/index";
 
 export function Landing(): React.ReactElement {
   const [meeting, setMeeting] = useState<UpcomingMeeting | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [speakerInput, setSpeakerInput] = useState("");
+  const [showSpeakerForm, setShowSpeakerForm] = useState(false);
+
+  const refresh = useCallback(async () => {
+    try {
+      const updated = await getUpcomingMeeting();
+      setMeeting(updated);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to load");
+    }
+  }, []);
 
   useEffect(() => {
-    getUpcomingMeeting()
-      .then(setMeeting)
-      .catch((err: unknown) =>
-        setError(err instanceof Error ? err.message : "Failed to load"),
-      )
-      .finally(() => setLoading(false));
-  }, []);
+    refresh().finally(() => setLoading(false));
+  }, [refresh]);
 
   const handleDrawTopic = useCallback(async () => {
     try {
       await drawTopic();
-      const updated = await getUpcomingMeeting();
-      setMeeting(updated);
+      await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to draw topic");
     }
-  }, []);
+  }, [refresh]);
 
-  if (loading) return <p>Loading...</p>;
+  const handleScheduleSpeaker = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!meeting || !speakerInput.trim()) return;
+      try {
+        await scheduleSpeaker(meeting.meeting_date, speakerInput.trim());
+        setSpeakerInput("");
+        setShowSpeakerForm(false);
+        await refresh();
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error ? err.message : "Failed to schedule speaker",
+        );
+      }
+    },
+    [meeting, speakerInput, refresh],
+  );
+
+  if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
   if (!meeting) return <p>No upcoming meeting found.</p>;
 
   return (
     <main>
-      <h1>What&apos;s Next</h1>
+      {meeting.banners.length > 0 && (
+        <div role="alert">
+          {meeting.banners.map((banner) => (
+            <p key={banner}>
+              <strong>{banner}</strong>
+            </p>
+          ))}
+        </div>
+      )}
+
       <article>
         <header>
           <h2>{meeting.meeting_date}</h2>
@@ -46,7 +78,9 @@ export function Landing(): React.ReactElement {
         {meeting.format_type === "Topic" && (
           <section>
             {meeting.topic_name ? (
-              <p>{meeting.topic_name}</p>
+              <p>
+                <strong>{meeting.topic_name}</strong>
+              </p>
             ) : (
               <button type="button" onClick={handleDrawTopic}>
                 Draw Topic
@@ -61,16 +95,45 @@ export function Landing(): React.ReactElement {
         {meeting.format_type === "Speaker" && (
           <section>
             {meeting.speaker_name ? (
-              <p>{meeting.speaker_name}</p>
+              <p>
+                <strong>{meeting.speaker_name}</strong>
+              </p>
             ) : (
-              <p>No speaker scheduled</p>
+              <>
+                {showSpeakerForm ? (
+                  <form onSubmit={handleScheduleSpeaker}>
+                    <input
+                      type="text"
+                      placeholder="Speaker name"
+                      value={speakerInput}
+                      onChange={(e) => setSpeakerInput(e.target.value)}
+                    />
+                    <button type="submit">Schedule</button>
+                    <button
+                      type="button"
+                      onClick={() => setShowSpeakerForm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowSpeakerForm(true)}
+                  >
+                    Schedule Speaker
+                  </button>
+                )}
+              </>
             )}
           </section>
         )}
 
         {meeting.format_type === "Book Study" && meeting.book_chapter && (
           <section>
-            <p>{meeting.book_chapter}</p>
+            <p>
+              <strong>{meeting.book_chapter}</strong>
+            </p>
           </section>
         )}
       </article>

@@ -2,6 +2,7 @@
 
 import { useCallback, useState } from "react";
 import {
+  isLoggedIn,
   login as apiLogin,
   logout as apiLogout,
   register as apiRegister,
@@ -22,7 +23,9 @@ interface AuthActions {
 }
 
 export function useAuth(): AuthState & AuthActions {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<User | null>(
+    isLoggedIn() ? { id: 0, username: "", group_id: 0 } : null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 

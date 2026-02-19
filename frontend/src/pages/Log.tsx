@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import {
-  getMeetingLog,
   getCsvExportUrl,
+  getMeetingLog,
   getPrintableExportUrl,
 } from "../api/index";
 import type { MeetingLogEntry } from "../types/index";
@@ -22,7 +22,7 @@ export function Log(): React.ReactElement {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <p>Loading...</p>;
+  if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
 
   return (
@@ -31,37 +31,41 @@ export function Log(): React.ReactElement {
       <nav>
         <a href={getCsvExportUrl()}>Export CSV</a>
         {" | "}
-        <a href={getPrintableExportUrl()}>Printable View</a>
+        <a href={getPrintableExportUrl()} target="_blank" rel="noreferrer">
+          Printable View
+        </a>
       </nav>
 
       {entries.length === 0 ? (
         <p>No meetings recorded yet.</p>
       ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Format</th>
-              <th>Content</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {entries.map((entry) => (
-              <tr key={entry.meeting_date}>
-                <td>{entry.meeting_date}</td>
-                <td>{entry.format_type}</td>
-                <td>
-                  {entry.topic_name ??
-                    entry.speaker_name ??
-                    entry.book_chapter ??
-                    "—"}
-                </td>
-                <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
+        <div style={{ overflowX: "auto" }}>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Format</th>
+                <th>Content</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {entries.map((entry) => (
+                <tr key={entry.id}>
+                  <td>{entry.meeting_date}</td>
+                  <td>{entry.format_type}</td>
+                  <td>
+                    {entry.speaker_name ??
+                      entry.topic_name ??
+                      entry.content_summary ??
+                      "—"}
+                  </td>
+                  <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </main>
   );

@@ -23,6 +23,7 @@ export interface GroupSettingsUpdate {
   name?: string;
   meeting_day?: number;
   meeting_time?: string | null;
+  start_date?: string;
   format_rotation?: string[];
 }
 
@@ -34,54 +35,58 @@ export interface UpcomingMeeting {
   book_chapter: string | null;
   topics_remaining: number;
   topics_total: number;
+  banners: string[];
 }
 
 export interface MeetingLogEntry {
+  id: number;
   meeting_date: string;
   format_type: string;
-  topic_name: string | null;
+  content_summary: string | null;
   speaker_name: string | null;
-  book_chapter: string | null;
+  topic_name: string | null;
+  reading_assignment_summary: string | null;
   is_cancelled: boolean;
 }
 
 export interface Topic {
   id: number;
   name: string;
-  in_current_deck: boolean;
+  is_active: boolean;
+  is_drawn: boolean;
 }
 
 export interface TopicDrawResult {
-  topic: string;
+  topic: Topic;
   topics_remaining: number;
+  topics_total: number;
+  deck_cycle: number;
 }
 
 export interface BookChapter {
   id: number;
-  chapter_order: number;
+  order: number;
+  start_page: string;
+  end_page: string;
   title: string;
-  start_page: number;
-  end_page: number;
+  page_count: number;
 }
 
 export interface ReadingAssignment {
   id: number;
   assignment_order: number;
-  chapters: string;
-  page_start: number;
-  page_end: number;
-  is_finalized: boolean;
+  chapters: BookChapter[];
+  total_pages: number;
 }
 
 export interface ReadingPlanStatus {
-  current_assignment_chapters: string[];
-  current_page_start: number | null;
-  current_page_end: number | null;
+  current_assignment_chapters: BookChapter[];
+  current_assignment_total_pages: number;
   next_chapter: BookChapter | null;
-  total_assignments: number;
+  completed_assignments: ReadingAssignment[];
 }
 
 export interface SpeakerSchedule {
   meeting_date: string;
-  speaker_name: string;
+  speaker_name: string | null;
 }

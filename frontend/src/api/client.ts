@@ -1,15 +1,18 @@
 /** API client for communicating with the backend. */
 
 const API_BASE = "/api";
-
-let authToken: string | null = null;
+const TOKEN_KEY = "rd_log_token";
 
 export function setToken(token: string | null): void {
-  authToken = token;
+  if (token) {
+    localStorage.setItem(TOKEN_KEY, token);
+  } else {
+    localStorage.removeItem(TOKEN_KEY);
+  }
 }
 
 export function getToken(): string | null {
-  return authToken;
+  return localStorage.getItem(TOKEN_KEY);
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -18,13 +21,40 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(options.headers as Record<string, string>),
   };
 
-  if (authToken) {
-    headers["Authorization"] = `Bearer ${authToken}`;
+  const token = getToken();
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers,
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    const message =
+      errorBody?.detail ?? `Request failed with status ${response.status}`;
+    throw new Error(message);
+  }
+
+  return response.json() as Promise<T>;
+}
+
+export async function postForm<T>(
+  path: string,
+  data: Record<string, string>,
+): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers,
+    body: new URLSearchParams(data),
   });
 
   if (!response.ok) {
