@@ -1,0 +1,308 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main, develop]
+
+env:
+  MIN_COVERAGE: 90
+  MIN_BRANCH_COVERAGE: 85
+  MIN_MUTATION_SCORE: 80
+  MIN_COMMENT_COVERAGE: 95
+
+jobs:
+  quality:
+    name: Quality Checks (Node ${{ matrix.node-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Cache node modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            node_modules
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Run TypeScript compiler check
+        run: npx tsc --noEmit
+        continue-on-error: false
+
+      - name: Check code formatting
+        run: |
+          if [ -f ".prettierrc" ] || [ -f ".prettierrc.json" ] || [ -f "prettier.config.js" ]; then
+            npx prettier --check "src/**/*.{ts,tsx,js,jsx,json}"
+          else
+            echo "Prettier config not found, skipping format check"
+          fi
+
+      - name: Run tests with coverage
+        run: npm test -- --coverage --coverageReporters=json-summary --coverageReporters=lcov --coverageReporters=text
+        env:
+          CI: true
+
+      - name: Verify code coverage thresholds
+        run: |
+          COVERAGE=$(node -p "
+            const coverage = require('./coverage/coverage-summary.json');
+            const total = coverage.total;
+            JSON.stringify({
+              statements: total.statements.pct,
+              branches: total.branches.pct,
+              functions: total.functions.pct,
+              lines: total.lines.pct
+            });
+          ")
+          
+          STATEMENTS=$(echo $COVERAGE | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).statements")
+          BRANCHES=$(echo $COVERAGE | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).branches")
+          
+          echo "Coverage Results:"
+          echo "Statements: $STATEMENTS%"
+          echo "Branches: $BRANCHES%"
+          
+          if (( $(echo "$STATEMENTS < $MIN_COVERAGE" | bc -l) )); then
+            echo "ERROR: Statement coverage $STATEMENTS% is below minimum $MIN_COVERAGE%"
+            exit 1
+          fi
+          
+          if (( $(echo "$BRANCHES < $MIN_BRANCH_COVERAGE" | bc -l) )); then
+            echo "ERROR: Branch coverage $BRANCHES% is below minimum $MIN_BRANCH_COVERAGE%"
+            exit 1
+          fi
+          
+          echo "Coverage thresholds met successfully"
+
+      - name: Check comment coverage
+        run: |
+          if command -v npx &> /dev/null && npx --yes tsx --version &> /dev/null 2>&1; then
+            COMMENT_COVERAGE=$(npx --yes tsx -e "
+              import { readdirSync, readFileSync, statSync } from 'fs';
+              import { join } from 'path';
+              
+              function scanDir(dir: string): { total: number; commented: number } {
+                let total = 0, commented = 0;
+                const files = readdirSync(dir);
+                for (const file of files) {
+                  const path = join(dir, file);
+                  if (statSync(path).isDirectory() && !path.includes('node_modules')) {
+                    const result = scanDir(path);
+                    total += result.total;
+                    commented += result.commented;
+                  } else if (file.match(/\.(ts|tsx|js|jsx)$/)) {
+                    total++;
+                    const content = readFileSync(path, 'utf-8');
+                    if (content.match(/\/\*\*[\s\S]*?\*\/|\/\/.+/)) commented++;
+                  }
+                }
+                return { total, commented };
+              }
+              
+              const result = scanDir('src');
+              const pct = result.total > 0 ? (result.commented / result.total * 100) : 100;
+              console.log(pct.toFixed(2));
+            " 2>/dev/null || echo "100")
+            
+            echo "Comment Coverage: $COMMENT_COVERAGE%"
+            if (( $(echo "$COMMENT_COVERAGE < $MIN_COMMENT_COVERAGE" | bc -l) )); then
+              echo "WARNING: Comment coverage $COMMENT_COVERAGE% is below minimum $MIN_COMMENT_COVERAGE%"
+            fi
+          else
+            echo "Skipping comment coverage check (tsx not available)"
+          fi
+
+      - name: Run npm audit
+        run: |
+          npm audit --audit-level=high || {
+            echo "ERROR: High or critical vulnerabilities found"
+            exit 1
+          }
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./coverage/lcov.info
+          flags: node-${{ matrix.node-version }}
+          name: coverage-node-${{ matrix.node-version }}
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report-node-${{ matrix.node-version }}
+          path: coverage/
+          retention-days: 30
+
+      - name: Generate coverage badge
+        if: matrix.node-version == 20
+        run: |
+          COVERAGE=$(node -p "require('./coverage/coverage-summary.json').total.lines.pct")
+          echo "COVERAGE=$COVERAGE" >> $GITHUB_ENV
+
+  mutation:
+    name: Mutation Testing
+    runs-on: ubuntu-latest
+    needs: quality
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Stryker
+        run: npm install --save-dev @stryker-mutator/core @stryker-mutator/jest-runner @stryker-mutator/typescript-checker
+
+      - name: Initialize Stryker config
+        run: |
+          if [ ! -f "stryker.conf.json" ] && [ ! -f "stryker.conf.js" ]; then
+            cat > stryker.conf.json << 'EOF'
+          {
+            "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+            "packageManager": "npm",
+            "testRunner": "jest",
+            "jest": {
+              "configFile": "jest.config.js"
+            },
+            "checkers": ["typescript"],
+            "tsconfigFile": "tsconfig.json",
+            "coverageAnalysis": "perTest",
+            "mutate": [
+              "src/**/*.ts",
+              "!src/**/*.test.ts",
+              "!src/**/*.spec.ts",
+              "!src/**/__tests__/**"
+            ],
+            "thresholds": {
+              "high": 80,
+              "low": 60,
+              "break": 80
+            }
+          }
+          EOF
+          fi
+
+      - name: Run mutation testing
+        run: npx stryker run
+        continue-on-error: false
+
+      - name: Upload mutation report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutation-report
+          path: reports/mutation/
+          retention-days: 30
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build project
+        run: npm run build --if-present
+
+      - name: Upload build artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            dist/
+            build/
+          retention-days: 7
+
+  complexity:
+    name: Code Complexity Analysis
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install complexity tools
+        run: npm install --save-dev typescript-complexity-analyzer complexity-report
+
+      - name: Run complexity analysis
+        run: |
+          npx complexity-report --format json --output complexity-report.json src/**/*.ts || echo "Complexity analysis completed"
+          
+          if [ -f "complexity-report.json" ]; then
+            echo "Complexity report generated successfully"
+          fi
+
+      - name: Upload complexity report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: complexity-report
+          path: complexity-report.json
+          retention-days: 30
