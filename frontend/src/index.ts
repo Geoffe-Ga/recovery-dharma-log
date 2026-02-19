@@ -3,7 +3,7 @@
  */
 
 function main(): void {
-    console.log("Hello from rd-log-react!");
+  console.log("Hello from rd-log-react!");
 }
 
 main();

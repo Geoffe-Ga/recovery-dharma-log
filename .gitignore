@@ -18,6 +18,7 @@ virtualenv/
 .coverage
 .coverage.*
 htmlcov/
+coverage.xml
 .pytest_cache/
 .mutmut-cache/
 .mypy_cache/

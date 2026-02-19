@@ -124,7 +124,7 @@ Meetings can occasionally be cancelled. The app should allow marking a week as "
 Shows **only the next upcoming meeting** with:
 - Meeting date
 - Format (Speaker / Topic / Book Study)
-- Content: 
+- Content:
   - If **Topic** and not yet drawn → "Draw Topic" button
   - If **Topic** and already drawn → the topic name
   - If **Speaker** and scheduled → speaker name
@@ -139,7 +139,7 @@ All of the following are editable through a Settings screen:
 1. **Meeting schedule**: day of week, time, start date
 2. **Format rotation**: ordered list of formats per cycle (e.g., [Speaker, Topic, Book, Topic, Book]), editable length
 3. **Topic list**: add, remove, reorder topics. Show which topics remain in the current deck.
-4. **Book reading plan**: 
+4. **Book reading plan**:
    - Shows the ordered list of all available chapters from the TOC
    - Shows which chapters have been composed into "reading assignments" (groups of sequential chapters)
    - "Add Next Chapter" button appends the next unassigned chapter to the current reading assignment, showing: chapter title, page range, cumulative page count for this assignment

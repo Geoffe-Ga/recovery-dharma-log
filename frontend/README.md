@@ -39,6 +39,7 @@ npm start
 ```
 
 Expected output:
+
 ```
 Hello from rd-log-react!
 ```
@@ -124,4 +125,5 @@ MIT License
 ## Attribution
 
 Generated with [Start Green Stay Green](https://github.com/Geoffe-Ga/start_green_stay_green)
+
 - Maximum quality TypeScript projects from day one.

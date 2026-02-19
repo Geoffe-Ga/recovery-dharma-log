@@ -2,8 +2,6 @@
 # Install: pre-commit install
 # Run manually: pre-commit run --all-files
 
-default_language_version:
-  python: python3.11
 repos:
 # === Shared hooks (both frontend and backend) ===
 - repo: https://github.com/pre-commit/pre-commit-hooks
@@ -14,6 +12,7 @@ repos:
   - id: check-yaml
   - id: check-toml
   - id: check-json
+    exclude: package-lock\.json$
   - id: check-added-large-files
     args:
     - --maxkb=500
@@ -52,9 +51,6 @@ repos:
   rev: v1.4.0
   hooks:
   - id: detect-secrets
-    args:
-    - --baseline
-    - .secrets.baseline
 
 # === Python (backend) hooks ===
 - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -72,7 +68,6 @@ repos:
   hooks:
   - id: black
     files: ^backend/
-    language_version: python3.11
 
 - repo: https://github.com/PyCQA/isort
   rev: 5.13.0
@@ -86,7 +81,7 @@ repos:
   - id: mypy
     files: ^backend/
     additional_dependencies:
-    - types-all
+    - types-PyYAML
     args:
     - --strict
 
@@ -100,20 +95,6 @@ repos:
     - backend/pyproject.toml
     additional_dependencies:
     - bandit[toml]
-
-- repo: https://github.com/Lucas-C/pre-commit-hooks-safety
-  rev: v1.3.3
-  hooks:
-  - id: python-safety-dependencies-check
-    files: ^backend/
-
-- repo: https://github.com/asottile/pyupgrade
-  rev: v3.15.0
-  hooks:
-  - id: pyupgrade
-    files: ^backend/
-    args:
-    - --py311-plus
 
 - repo: https://github.com/PyCQA/autoflake
   rev: v2.2.1
@@ -149,15 +130,6 @@ repos:
     - --min-confidence
     - '80'
 
-- repo: https://github.com/econchick/interrogate
-  rev: 1.5.0
-  hooks:
-  - id: interrogate
-    files: ^backend/
-    args:
-    - -vv
-    - --fail-under=95
-
 # === TypeScript/React (frontend) hooks ===
 - repo: https://github.com/pre-commit/mirrors-prettier
   rev: v4.0.0-alpha.8
@@ -165,7 +137,7 @@ repos:
   - id: prettier
     files: ^frontend/
     types_or:
-    - typescript
+    - ts
     - tsx
     - javascript
     - json

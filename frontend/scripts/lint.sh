@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/lint.sh - Run linting checks with ESLint
 # Usage: ./scripts/lint.sh [--fix] [--check] [--verbose] [--help]
+# shellcheck disable=SC2034
 
 set -euo pipefail
 

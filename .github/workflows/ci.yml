@@ -20,7 +20,7 @@ jobs:
       matrix:
         node-version: [18, 20]
       fail-fast: false
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -80,24 +80,24 @@ jobs:
               lines: total.lines.pct
             });
           ")
-          
+
           STATEMENTS=$(echo $COVERAGE | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).statements")
           BRANCHES=$(echo $COVERAGE | node -p "JSON.parse(require('fs').readFileSync(0, 'utf-8')).branches")
-          
+
           echo "Coverage Results:"
           echo "Statements: $STATEMENTS%"
           echo "Branches: $BRANCHES%"
-          
+
           if (( $(echo "$STATEMENTS < $MIN_COVERAGE" | bc -l) )); then
             echo "ERROR: Statement coverage $STATEMENTS% is below minimum $MIN_COVERAGE%"
             exit 1
           fi
-          
+
           if (( $(echo "$BRANCHES < $MIN_BRANCH_COVERAGE" | bc -l) )); then
             echo "ERROR: Branch coverage $BRANCHES% is below minimum $MIN_BRANCH_COVERAGE%"
             exit 1
           fi
-          
+
           echo "Coverage thresholds met successfully"
 
       - name: Check comment coverage
@@ -106,7 +106,7 @@ jobs:
             COMMENT_COVERAGE=$(npx --yes tsx -e "
               import { readdirSync, readFileSync, statSync } from 'fs';
               import { join } from 'path';
-              
+
               function scanDir(dir: string): { total: number; commented: number } {
                 let total = 0, commented = 0;
                 const files = readdirSync(dir);
@@ -124,12 +124,12 @@ jobs:
                 }
                 return { total, commented };
               }
-              
+
               const result = scanDir('src');
               const pct = result.total > 0 ? (result.commented / result.total * 100) : 100;
               console.log(pct.toFixed(2));
             " 2>/dev/null || echo "100")
-            
+
             echo "Comment Coverage: $COMMENT_COVERAGE%"
             if (( $(echo "$COMMENT_COVERAGE < $MIN_COMMENT_COVERAGE" | bc -l) )); then
               echo "WARNING: Comment coverage $COMMENT_COVERAGE% is below minimum $MIN_COMMENT_COVERAGE%"
@@ -181,7 +181,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: quality
     if: github.ref == 'refs/heads/main'
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -243,7 +243,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     needs: quality
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -274,7 +274,7 @@ jobs:
     name: Code Complexity Analysis
     runs-on: ubuntu-latest
     needs: quality
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -294,7 +294,7 @@ jobs:
       - name: Run complexity analysis
         run: |
           npx complexity-report --format json --output complexity-report.json src/**/*.ts || echo "Complexity analysis completed"
-          
+
           if [ -f "complexity-report.json" ]; then
             echo "Complexity report generated successfully"
           fi

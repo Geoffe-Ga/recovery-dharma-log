@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # scripts/format.sh - Format code with Prettier
 # Usage: ./scripts/format.sh [--fix] [--check] [--verbose] [--help]
+# shellcheck disable=SC2034
 
 set -euo pipefail
 
