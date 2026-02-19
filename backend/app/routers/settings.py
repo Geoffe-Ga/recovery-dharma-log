@@ -1,11 +1,11 @@
 """Settings router: group configuration."""
 
-from datetime import date, time
-
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
-from app.models import User
+from app.database import get_db
+from app.models import FormatRotation, User
 from app.schemas import GroupSettings, GroupSettingsUpdate
 
 router = APIRouter(prefix="/settings", tags=["settings"])
@@ -13,33 +13,60 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 @router.get("/", response_model=GroupSettings)
 def get_settings(
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Get current group settings."""
-    # TODO: implement real query
+    group = current_user.group
+    rotations = (
+        db.query(FormatRotation)
+        .filter(FormatRotation.group_id == group.id)
+        .order_by(FormatRotation.position)
+        .all()
+    )
     return {
-        "id": 1,
-        "name": "My Meeting",
-        "meeting_day": 6,
-        "meeting_time": time(18, 0),
-        "start_date": date(2025, 1, 5),
-        "format_rotation": ["speaker", "topic", "book", "topic", "book"],
+        "name": group.name,
+        "meeting_day": group.meeting_day,
+        "start_date": group.start_date,
+        "meeting_time": group.meeting_time,
+        "format_rotation": [r.format_type for r in rotations],
     }
 
 
 @router.put("/", response_model=GroupSettings)
 def update_settings(
     settings_in: GroupSettingsUpdate,
-    _current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
 ) -> dict:
     """Update group settings."""
-    # TODO: implement real update
+    group = current_user.group
+    if settings_in.name is not None:
+        group.name = settings_in.name
+    if settings_in.meeting_day is not None:
+        group.meeting_day = settings_in.meeting_day
+    if settings_in.meeting_time is not None:
+        group.meeting_time = settings_in.meeting_time
+    if settings_in.format_rotation is not None:
+        # Replace rotation entries
+        db.query(FormatRotation).filter(
+            FormatRotation.group_id == group.id,
+        ).delete()
+        for i, fmt in enumerate(settings_in.format_rotation):
+            db.add(FormatRotation(group_id=group.id, position=i, format_type=fmt))
+    db.commit()
+    db.refresh(group)
+
+    rotations = (
+        db.query(FormatRotation)
+        .filter(FormatRotation.group_id == group.id)
+        .order_by(FormatRotation.position)
+        .all()
+    )
     return {
-        "id": 1,
-        "name": settings_in.name or "My Meeting",
-        "meeting_day": settings_in.meeting_day or 6,
-        "meeting_time": settings_in.meeting_time or time(18, 0),
-        "start_date": settings_in.start_date or date(2025, 1, 5),
-        "format_rotation": settings_in.format_rotation
-        or ["speaker", "topic", "book", "topic", "book"],
+        "name": group.name,
+        "meeting_day": group.meeting_day,
+        "start_date": group.start_date,
+        "meeting_time": group.meeting_time,
+        "format_rotation": [r.format_type for r in rotations],
     }

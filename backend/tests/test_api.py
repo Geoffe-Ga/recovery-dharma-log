@@ -222,6 +222,8 @@ class TestBookEndpoints:
         auth_headers: dict[str, str],
     ) -> None:
         """Finalize assignment returns valid response."""
+        # First add a chapter to the plan
+        client.post("/book/plan/add-chapter", headers=auth_headers)
         response = client.post("/book/plan/finalize", headers=auth_headers)
         assert response.status_code == 200
 
@@ -258,6 +260,12 @@ class TestSpeakersEndpoints:
         auth_headers: dict[str, str],
     ) -> None:
         """Unschedule speaker returns valid response."""
+        # First schedule a speaker
+        client.post(
+            "/speakers/schedule",
+            json={"meeting_date": "2025-03-02", "speaker_name": "Clare"},
+            headers=auth_headers,
+        )
         response = client.delete(
             "/speakers/schedule/2025-03-02",
             headers=auth_headers,

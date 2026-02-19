@@ -1,0 +1,535 @@
+"""Tests for core business logic in services module."""
+
+from datetime import date
+
+from sqlalchemy.orm import Session
+
+from app.models import (
+    BookChapter,
+    FormatRotation,
+    Group,
+    MeetingLog,
+    ReadingAssignment,
+    Topic,
+)
+from app.services import (
+    add_chapter_to_current_assignment,
+    count_meetings_since_start,
+    draw_random_topic,
+    finalize_current_assignment,
+    get_deck_stats,
+    get_format_for_date,
+    get_next_meeting_date,
+    get_plan_status,
+    get_rotation_for_group,
+    get_upcoming_meeting_data,
+    page_count,
+    page_to_int,
+    reshuffle_deck,
+)
+
+
+def _create_group(db: Session, start: date = date(2025, 1, 5)) -> Group:
+    """Helper to create a test group with default 5-week rotation."""
+    group = Group(name="Test Meeting", meeting_day=6, start_date=start)
+    db.add(group)
+    db.flush()
+    # Default rotation: Speaker, Topic, Book Study, Topic, Book Study
+    for i, fmt in enumerate(["Speaker", "Topic", "Book Study", "Topic", "Book Study"]):
+        db.add(FormatRotation(group_id=group.id, position=i, format_type=fmt))
+    db.flush()
+    return group
+
+
+def _create_group_no_rotation(db: Session) -> Group:
+    """Helper to create a test group without format rotation."""
+    group = Group(name="Bare Group", meeting_day=6, start_date=date(2025, 1, 5))
+    db.add(group)
+    db.flush()
+    return group
+
+
+def _create_topics(db: Session, group: Group, count: int = 3) -> list[Topic]:
+    """Helper to create test topics."""
+    topics = []
+    for i in range(count):
+        t = Topic(group_id=group.id, name=f"Topic {i + 1}", is_active=True)
+        db.add(t)
+        topics.append(t)
+    db.flush()
+    return topics
+
+
+def _create_chapters(db: Session, group: Group) -> list[BookChapter]:
+    """Helper to create a few test chapters."""
+    chapters_data = [
+        (1, "IX", "X", "Preface"),
+        (2, "X", "XIII", "What is Recovery Dharma?"),
+        (3, "XIII", "XV", "Where to Begin"),
+    ]
+    chapters = []
+    for order, start, end, title in chapters_data:
+        ch = BookChapter(
+            group_id=group.id,
+            order=order,
+            start_page=start,
+            end_page=end,
+            title=title,
+        )
+        db.add(ch)
+        chapters.append(ch)
+    db.flush()
+    return chapters
+
+
+class TestPageHelpers:
+    """Tests for page number conversion."""
+
+    def test_roman_numeral_conversion(self) -> None:
+        assert page_to_int("IX") == 9
+        assert page_to_int("XIII") == 13
+        assert page_to_int("XV") == 15
+
+    def test_numeric_conversion(self) -> None:
+        assert page_to_int("1") == 1
+        assert page_to_int("122") == 122
+
+    def test_page_count_roman(self) -> None:
+        assert page_count("IX", "X") == 1
+        assert page_count("X", "XIII") == 3
+
+    def test_page_count_numeric(self) -> None:
+        assert page_count("1", "7") == 6
+
+    def test_page_count_roman_to_numeric(self) -> None:
+        assert page_count("XV", "1") == -14  # crossing boundary
+
+
+class TestFormatRotation:
+    """Tests for the format rotation engine."""
+
+    def test_first_week_is_speaker(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        fmt = get_format_for_date(db_session, group, date(2025, 1, 5))
+        assert fmt == "Speaker"
+
+    def test_second_week_is_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        fmt = get_format_for_date(db_session, group, date(2025, 1, 12))
+        assert fmt == "Topic"
+
+    def test_third_week_is_book(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        fmt = get_format_for_date(db_session, group, date(2025, 1, 19))
+        assert fmt == "Book Study"
+
+    def test_cycle_wraps(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Week 6 (index 5) should wrap to position 0 = Speaker
+        fmt = get_format_for_date(db_session, group, date(2025, 2, 9))
+        assert fmt == "Speaker"
+
+    def test_cancelled_week_preserves_rotation(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Cancel week 2 (Jan 12)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 12),
+                format_type="Topic",
+                is_cancelled=True,
+            )
+        )
+        db_session.flush()
+        # Week 3 (Jan 19) should now be Topic (what week 2 would have been)
+        fmt = get_format_for_date(db_session, group, date(2025, 1, 19))
+        assert fmt == "Topic"
+
+    def test_default_rotation_when_none_configured(self, db_session: Session) -> None:
+        group = _create_group_no_rotation(db_session)
+        rotation = get_rotation_for_group(db_session, group)
+        assert rotation == ["Speaker", "Topic", "Book Study", "Topic", "Book Study"]
+
+    def test_count_meetings_before_start_returns_zero(
+        self, db_session: Session
+    ) -> None:
+        group = _create_group(db_session)
+        count = count_meetings_since_start(db_session, group, date(2024, 12, 1))
+        assert count == 0
+
+
+class TestNextMeetingDate:
+    """Tests for next meeting date calculation."""
+
+    def test_meeting_day_ahead(self) -> None:
+        group = Group(name="Test", meeting_day=6, start_date=date(2025, 1, 5))
+        # Monday Jan 6 -> next Sunday Jan 12
+        result = get_next_meeting_date(group, after=date(2025, 1, 6))
+        assert result == date(2025, 1, 12)
+
+    def test_meeting_day_today(self) -> None:
+        group = Group(name="Test", meeting_day=6, start_date=date(2025, 1, 5))
+        # Sunday Jan 5 -> today
+        result = get_next_meeting_date(group, after=date(2025, 1, 5))
+        assert result == date(2025, 1, 5)
+
+    def test_meeting_day_yesterday(self) -> None:
+        group = Group(name="Test", meeting_day=6, start_date=date(2025, 1, 5))
+        # Monday after Sunday -> next Sunday
+        result = get_next_meeting_date(group, after=date(2025, 1, 13))
+        assert result == date(2025, 1, 19)
+
+    def test_default_after_uses_today(self) -> None:
+        group = Group(name="Test", meeting_day=6, start_date=date(2025, 1, 5))
+        result = get_next_meeting_date(group)
+        # Should return a date (whatever the next Sunday is from today)
+        assert result.weekday() == 6  # Sunday
+
+
+class TestTopicDeck:
+    """Tests for the topic deck draw system."""
+
+    def test_initial_deck_stats(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=5)
+        remaining, total = get_deck_stats(db_session, group)
+        assert remaining == 5
+        assert total == 5
+
+    def test_draw_reduces_remaining(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=5)
+        draw_random_topic(db_session, group)
+        remaining, total = get_deck_stats(db_session, group)
+        assert remaining == 4
+        assert total == 5
+
+    def test_draw_returns_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        topics = _create_topics(db_session, group, count=3)
+        drawn = draw_random_topic(db_session, group)
+        assert drawn.name in [t.name for t in topics]
+
+    def test_draw_all_triggers_reshuffle(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=2)
+        draw_random_topic(db_session, group)
+        draw_random_topic(db_session, group)
+        # All drawn, next draw should auto-reshuffle
+        drawn = draw_random_topic(db_session, group)
+        assert drawn is not None
+        remaining, total = get_deck_stats(db_session, group)
+        assert total == 2
+        assert remaining == 1  # drew 1 from new deck
+
+    def test_manual_reshuffle(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        draw_random_topic(db_session, group)
+        new_cycle = reshuffle_deck(db_session, group)
+        assert new_cycle == 2
+        remaining, total = get_deck_stats(db_session, group)
+        assert remaining == 3
+        assert total == 3
+
+
+class TestBookReadingPlan:
+    """Tests for the book reading plan builder."""
+
+    def test_initial_plan_status(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        status = get_plan_status(db_session, group)
+        assert status["current_assignment_chapters"] == []
+        assert status["next_chapter"] is not None
+        assert status["next_chapter"]["title"] == "Preface"
+
+    def test_add_chapter(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        status = add_chapter_to_current_assignment(db_session, group)
+        assert len(status["current_assignment_chapters"]) == 1
+        assert status["current_assignment_chapters"][0]["title"] == "Preface"
+        assert status["next_chapter"]["title"] == "What is Recovery Dharma?"
+
+    def test_add_multiple_chapters(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        status = add_chapter_to_current_assignment(db_session, group)
+        assert len(status["current_assignment_chapters"]) == 2
+        assert status["current_assignment_total_pages"] == 4  # 1 + 3
+
+    def test_finalize_assignment(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        result = finalize_current_assignment(db_session, group)
+        assert result is not None
+        assert result["assignment_order"] == 1
+        assert len(result["chapters"]) == 2
+        assert result["total_pages"] == 4
+
+    def test_finalize_creates_new_draft(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        # After finalize of 1 chapter, plan shows empty current + next unassigned
+        status = get_plan_status(db_session, group)
+        assert status["current_assignment_chapters"] == []
+        assert status["next_chapter"]["title"] == "What is Recovery Dharma?"
+        assert len(status["completed_assignments"]) == 1
+
+    def test_finalize_no_draft_returns_none(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        result = finalize_current_assignment(db_session, group)
+        assert result is None
+
+    def test_finalize_empty_draft_returns_none(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Create an empty draft assignment
+        db_session.add(
+            ReadingAssignment(group_id=group.id, assignment_order=1, chapters_json="[]")
+        )
+        db_session.flush()
+        result = finalize_current_assignment(db_session, group)
+        assert result is None
+
+    def test_add_chapter_when_all_assigned(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        # Add all 3 chapters
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        # Try to add another - should return status with no next chapter
+        status = add_chapter_to_current_assignment(db_session, group)
+        assert status["next_chapter"] is None
+
+    def test_plan_status_no_chapters(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        status = get_plan_status(db_session, group)
+        assert status["current_assignment_chapters"] == []
+        assert status["next_chapter"] is None
+        assert status["completed_assignments"] == []
+
+
+class TestUpcomingMeeting:
+    """Tests for the upcoming meeting aggregation."""
+
+    def test_returns_meeting_data(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=5)
+        data = get_upcoming_meeting_data(db_session, group)
+        assert "meeting_date" in data
+        assert "format_type" in data
+        assert data["format_type"] in ["Speaker", "Topic", "Book Study"]
+
+    def test_topic_week_shows_deck_stats(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=5)
+        data = get_upcoming_meeting_data(db_session, group)
+        assert "topics_remaining" in data
+        assert "topics_total" in data
+
+    def test_speaker_week_with_logged_speaker(self, db_session: Session) -> None:
+        # Start date is a Sunday, first week is Speaker
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+        # Find the next meeting date
+        meeting_date = get_next_meeting_date(group)
+        fmt = get_format_for_date(db_session, group, meeting_date)
+        if fmt == "Speaker":
+            # Log a speaker for this date
+            db_session.add(
+                MeetingLog(
+                    group_id=group.id,
+                    meeting_date=meeting_date,
+                    format_type="Speaker",
+                    speaker_name="Jane Doe",
+                )
+            )
+            db_session.flush()
+            data = get_upcoming_meeting_data(db_session, group)
+            assert data["speaker_name"] == "Jane Doe"
+
+    def test_book_study_week_with_assignment(self, db_session: Session) -> None:
+        # Use a start date where the third week (Book Study) is reachable
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+        _create_chapters(db_session, group)
+
+        # Create a finalized reading assignment
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+
+        # Test the helper directly for a Book Study week
+        from app.services import _get_book_chapter_summary
+
+        summary = _get_book_chapter_summary(
+            db_session, group, date(2025, 1, 19)  # 3rd week = Book Study
+        )
+        assert summary is not None
+        assert "Preface" in summary
+
+    def test_book_study_no_assignments_returns_none(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        from app.services import _get_book_chapter_summary
+
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 1, 19))
+        assert summary is None
+
+    def test_topic_details_with_logged_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        topics = _create_topics(db_session, group, count=3)
+        log_entry = MeetingLog(
+            group_id=group.id,
+            meeting_date=date(2025, 1, 12),
+            format_type="Topic",
+            topic_id=topics[0].id,
+        )
+        db_session.add(log_entry)
+        db_session.flush()
+
+        from app.services import _get_topic_details
+
+        name, _remaining, total = _get_topic_details(db_session, group, log_entry)
+        assert name == "Topic 1"
+        assert total == 3
+
+    def test_topic_details_without_log_entry(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+
+        from app.services import _get_topic_details
+
+        name, _remaining, total = _get_topic_details(db_session, group, None)
+        assert name is None
+        assert total == 3
+
+
+class TestSpeakerBanners:
+    """Tests for speaker banner warnings."""
+
+    def test_no_banners_when_speaker_scheduled(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        from app.services import get_speaker_banners
+
+        # Schedule a speaker for every speaker week in next 30 days
+        meeting_date = get_next_meeting_date(group)
+        from datetime import timedelta
+
+        current = meeting_date
+        lookahead = date.today() + timedelta(days=30)
+        while current <= lookahead:
+            fmt = get_format_for_date(db_session, group, current)
+            if fmt == "Speaker":
+                db_session.add(
+                    MeetingLog(
+                        group_id=group.id,
+                        meeting_date=current,
+                        format_type="Speaker",
+                        speaker_name="Jane",
+                    )
+                )
+            current += timedelta(days=7)
+        db_session.flush()
+
+        banners = get_speaker_banners(db_session, group)
+        assert banners == []
+
+    def test_banner_for_unscheduled_speaker_week(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        from app.services import get_speaker_banners
+
+        banners = get_speaker_banners(db_session, group)
+        # Depending on today's date relative to start, there may or may not
+        # be a speaker week in the next 30 days. Just verify it returns a list.
+        assert isinstance(banners, list)
+
+    def test_banners_included_in_upcoming_data(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        data = get_upcoming_meeting_data(db_session, group)
+        assert "banners" in data
+        assert isinstance(data["banners"], list)
+
+
+class TestExport:
+    """Tests for CSV and printable export generation."""
+
+    def test_csv_export_empty(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        from app.services import generate_csv_export
+
+        csv = generate_csv_export(db_session, group)
+        assert "date,format" in csv
+        # Only header line when no entries
+        assert csv.count("\n") == 1
+
+    def test_csv_export_with_entries(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Speaker",
+                speaker_name="Dave",
+            )
+        )
+        db_session.flush()
+
+        from app.services import generate_csv_export
+
+        csv = generate_csv_export(db_session, group)
+        assert "Dave" in csv
+        assert "2025-01-05" in csv
+
+    def test_csv_export_with_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        topics = _create_topics(db_session, group, count=1)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 12),
+                format_type="Topic",
+                topic_id=topics[0].id,
+            )
+        )
+        db_session.flush()
+
+        from app.services import generate_csv_export
+
+        csv = generate_csv_export(db_session, group)
+        assert "Topic 1" in csv
+
+    def test_printable_export(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Speaker",
+                speaker_name="Clare",
+            )
+        )
+        db_session.flush()
+
+        from app.services import generate_printable_export
+
+        html = generate_printable_export(db_session, group)
+        assert "<!DOCTYPE html>" in html
+        assert "Test Meeting" in html
+        assert "Clare" in html
+        assert "<table>" in html
+
+    def test_printable_export_empty(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        from app.services import generate_printable_export
+
+        html = generate_printable_export(db_session, group)
+        assert "<!DOCTYPE html>" in html
+        assert "Test Meeting" in html

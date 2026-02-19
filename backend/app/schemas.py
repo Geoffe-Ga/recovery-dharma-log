@@ -37,14 +37,11 @@ class Token(BaseModel):
 class GroupSettings(BaseModel):
     """Response schema for group settings."""
 
-    id: int
     name: str
     meeting_day: int
-    meeting_time: time
+    meeting_time: time | None = None
     start_date: date
     format_rotation: list[str]
-
-    model_config = {"from_attributes": True}
 
 
 class GroupSettingsUpdate(BaseModel):
@@ -80,12 +77,11 @@ class UpcomingMeeting(BaseModel):
 
     meeting_date: date
     format_type: str
-    content_summary: str | None = None
-    speaker_name: str | None = None
     topic_name: str | None = None
-    reading_assignment_summary: str | None = None
-    topics_remaining: int | None = None
-    topics_total: int | None = None
+    speaker_name: str | None = None
+    book_chapter: str | None = None
+    topics_remaining: int = 0
+    topics_total: int = 0
     banners: list[str] = []
 
 

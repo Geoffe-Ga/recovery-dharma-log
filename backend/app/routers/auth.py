@@ -8,8 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.auth import create_access_token, hash_password, verify_password
 from app.database import get_db
-from app.models import Group, User
+from app.models import FormatRotation, Group, User
 from app.schemas import Token, UserCreate, UserResponse
+from app.seed import BOOK_CHAPTERS, DEFAULT_TOPICS
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -24,7 +25,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
             detail="Username already registered",
         )
 
-    # TODO: replace stub group with onboarding flow
+    # Create group with defaults
     group = Group(
         name="My Meeting",
         meeting_day=6,
@@ -32,6 +33,27 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
     )
     db.add(group)
     db.flush()
+
+    # Seed default format rotation
+    default_rotation = ["Speaker", "Topic", "Book Study", "Topic", "Book Study"]
+    for i, fmt in enumerate(default_rotation):
+        db.add(FormatRotation(group_id=group.id, position=i, format_type=fmt))
+
+    # Seed default topics and chapters
+    from app.models import BookChapter, Topic
+
+    for name in DEFAULT_TOPICS:
+        db.add(Topic(group_id=group.id, name=name, is_active=True))
+    for order, start_page, end_page, title in BOOK_CHAPTERS:
+        db.add(
+            BookChapter(
+                group_id=group.id,
+                order=order,
+                start_page=start_page,
+                end_page=end_page,
+                title=title,
+            )
+        )
 
     user = User(
         username=user_in.username,
