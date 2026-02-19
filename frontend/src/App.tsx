@@ -15,23 +15,37 @@ function AuthenticatedApp({
 }): React.ReactElement {
   return (
     <>
-      <nav>
-        <Link to="/">Home</Link>
-        {" | "}
-        <Link to="/log">Meeting Log</Link>
-        {" | "}
-        <Link to="/settings">Settings</Link>
-        {" | "}
-        <button type="button" onClick={onLogout}>
-          Log Out
-        </button>
+      <nav className="container">
+        <ul>
+          <li>
+            <strong>RD Log</strong>
+          </li>
+        </ul>
+        <ul>
+          <li>
+            <Link to="/">Home</Link>
+          </li>
+          <li>
+            <Link to="/log">Log</Link>
+          </li>
+          <li>
+            <Link to="/settings">Settings</Link>
+          </li>
+          <li>
+            <button type="button" className="outline" onClick={onLogout}>
+              Log Out
+            </button>
+          </li>
+        </ul>
       </nav>
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/log" element={<Log />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      <div className="container">
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/log" element={<Log />} />
+          <Route path="/settings" element={<Settings />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </div>
     </>
   );
 }
@@ -45,12 +59,14 @@ export function App(): React.ReactElement {
       {isAuthenticated ? (
         <AuthenticatedApp onLogout={logout} />
       ) : (
-        <Login
-          onLogin={login}
-          onRegister={register}
-          error={error}
-          loading={loading}
-        />
+        <div className="container">
+          <Login
+            onLogin={login}
+            onRegister={register}
+            error={error}
+            loading={loading}
+          />
+        </div>
       )}
     </BrowserRouter>
   );

@@ -65,6 +65,7 @@ export function Settings(): React.ReactElement {
   );
 
   const handleDeleteTopic = useCallback(async (topicId: number) => {
+    if (!window.confirm("Remove this topic from the deck?")) return;
     try {
       await deleteTopic(topicId);
       setTopics(await getTopics());
@@ -74,6 +75,7 @@ export function Settings(): React.ReactElement {
   }, []);
 
   const handleReshuffle = useCallback(async () => {
+    if (!window.confirm("Reshuffle the deck? All drawn topics return.")) return;
     try {
       await reshuffleTopics();
       setTopics(await getTopics());
