@@ -12,9 +12,9 @@ Usage:
 """
 
 import argparse
+from pathlib import Path
 import sqlite3
 import sys
-from pathlib import Path
 
 # Quality thresholds
 MINIMUM_MUTATION_SCORE = 80

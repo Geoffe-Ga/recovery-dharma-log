@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# scripts/format.sh - Format code with Black and isort
+# scripts/format.sh - Format code with Black and Ruff import sorting
 # Usage: ./scripts/format.sh [--fix] [--check] [--verbose] [--help]
 # shellcheck disable=SC2034
 
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
             cat << EOF
 Usage: $(basename "$0") [OPTIONS]
 
-Format code using Black and isort.
+Format code using Black and Ruff import sorting.
 
 OPTIONS:
     --fix       Apply formatting changes (default)
@@ -65,7 +65,7 @@ if $VERBOSE; then
     set -x
 fi
 
-echo "=== Formatting (Black + isort) ==="
+echo "=== Formatting (Black + Ruff imports) ==="
 
 # Determine mode
 if $CHECK; then
@@ -74,11 +74,15 @@ else
     MODE=""
 fi
 
-# Run isort
+# Run ruff import sorting (single source of truth for import order)
 if $VERBOSE; then
-    echo "Running isort..."
+    echo "Running ruff import sorting..."
 fi
-isort $MODE . || { echo "✗ isort failed" >&2; exit 1; }
+if $CHECK; then
+    ruff check --select I . || { echo "✗ Import sorting failed" >&2; exit 1; }
+else
+    ruff check --select I --fix . || { echo "✗ Import sorting failed" >&2; exit 1; }
+fi
 
 # Run Black
 if $VERBOSE; then

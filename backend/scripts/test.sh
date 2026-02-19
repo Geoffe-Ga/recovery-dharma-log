@@ -112,7 +112,7 @@ esac
 if $COVERAGE; then
     echo "Coverage enabled"
     PYTEST_ARGS+=(
-        --cov=rd_log_python
+        --cov=app
         --cov-branch
         --cov-report=term-missing
         --cov-report=html

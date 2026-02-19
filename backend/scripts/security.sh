@@ -64,7 +64,7 @@ echo "=== Security Checks (Bandit) ==="
 if $VERBOSE; then
     echo "Running Bandit security scanner..."
 fi
-bandit -r rd_log_python/ || { echo "✗ Bandit found issues" >&2; exit 1; }
+bandit -r app/ || { echo "✗ Bandit found issues" >&2; exit 1; }
 
 echo "=== Security Checks (pip-audit) ==="
 

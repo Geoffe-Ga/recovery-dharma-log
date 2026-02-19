@@ -69,7 +69,7 @@ echo "=== Coverage Report ==="
 # Build pytest arguments
 PYTEST_ARGS=(
     -v
-    --cov=rd_log_python
+    --cov=app
     --cov-branch
     --cov-report=term-missing
     --cov-fail-under=90
