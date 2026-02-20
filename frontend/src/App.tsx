@@ -1,7 +1,13 @@
 /** Root application component with routing. */
 
 import React from "react";
-import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
+import {
+  BrowserRouter,
+  NavLink,
+  Navigate,
+  Route,
+  Routes,
+} from "react-router-dom";
 import { useAuth } from "./hooks/useAuth";
 import { Landing } from "./pages/Landing";
 import { Log } from "./pages/Log";
@@ -23,13 +29,15 @@ function AuthenticatedApp({
         </ul>
         <ul>
           <li>
-            <Link to="/">Home</Link>
+            <NavLink to="/" end>
+              Home
+            </NavLink>
           </li>
           <li>
-            <Link to="/log">Log</Link>
+            <NavLink to="/log">Log</NavLink>
           </li>
           <li>
-            <Link to="/settings">Settings</Link>
+            <NavLink to="/settings">Settings</NavLink>
           </li>
           <li>
             <button type="button" className="outline" onClick={onLogout}>
