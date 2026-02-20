@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { drawTopic, getUpcomingMeeting, scheduleSpeaker } from "../api/index";
 import type { UpcomingMeeting } from "../types/index";
+import { formatMeetingDate } from "../utils/dates";
 
 export function Landing(): React.ReactElement {
   const [meeting, setMeeting] = useState<UpcomingMeeting | null>(null);
@@ -69,7 +70,7 @@ export function Landing(): React.ReactElement {
 
       <article>
         <header>
-          <h2>{meeting.meeting_date}</h2>
+          <h2>{formatMeetingDate(meeting.meeting_date)}</h2>
           <span className="rd-format-badge">{meeting.format_type}</span>
         </header>
 
