@@ -29,6 +29,7 @@ export interface GroupSettingsUpdate {
 
 export interface UpcomingMeeting {
   meeting_date: string;
+  meeting_time: string | null;
   format_type: string;
   topic_name: string | null;
   speaker_name: string | null;

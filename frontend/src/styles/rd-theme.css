@@ -633,6 +633,11 @@ p[role="alert"] {
   font-weight: 300;
 }
 
+.rd-landing .rd-meeting-time {
+  font-size: var(--rd-font-size-lg);
+  opacity: 0.85;
+}
+
 .rd-landing .rd-format-badge {
   display: inline-block;
   background: rgba(255, 255, 255, 0.2);

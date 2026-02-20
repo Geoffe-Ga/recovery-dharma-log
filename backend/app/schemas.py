@@ -76,6 +76,7 @@ class UpcomingMeeting(BaseModel):
     """Response schema for the next upcoming meeting."""
 
     meeting_date: date
+    meeting_time: time | None = None
     format_type: str
     topic_name: str | None = None
     speaker_name: str | None = None

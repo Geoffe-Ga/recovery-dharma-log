@@ -1,4 +1,4 @@
-/** Date formatting utilities for human-readable display. */
+/** Date and time formatting utilities for human-readable display. */
 
 /**
  * Format an ISO date string as "Sunday, February 22".
@@ -25,5 +25,19 @@ export function formatLogDate(isoDate: string): string {
     month: "short",
     day: "numeric",
     year: "numeric",
+  });
+}
+
+/**
+ * Format a time string (HH:MM or HH:MM:SS) as "6:00 PM".
+ * Returns null if the input is null or empty.
+ */
+export function formatMeetingTime(timeStr: string | null): string | null {
+  if (!timeStr) return null;
+  const [hours, minutes] = timeStr.split(":").map(Number);
+  const date = new Date(2000, 0, 1, hours, minutes);
+  return date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
