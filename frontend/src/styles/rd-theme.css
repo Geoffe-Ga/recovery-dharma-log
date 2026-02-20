@@ -1,0 +1,856 @@
+/*
+ * RD Log — Recovery Dharma Theme
+ *
+ * Color palette inspired by the 19th-century Tibetan painting
+ * "Tara Protecting From the Eight Fears" (Rubin Museum, NYC),
+ * which serves as the source for Recovery Dharma's brand colors.
+ *
+ * Typography: Lato — the official RD typeface.
+ */
+
+/* ===================================================================
+   1. Design Tokens
+   =================================================================== */
+
+:root {
+  /* --- Brand palette --- */
+  --rd-saffron: #c4922a;
+  --rd-saffron-light: #d4a94d;
+  --rd-saffron-glow: #f0d89a;
+  --rd-teal: #1b6b6d;
+  --rd-teal-light: #278587;
+  --rd-teal-pale: #d0e8e8;
+  --rd-clay: #8b4d3b;
+  --rd-clay-light: #a86854;
+  --rd-sage: #7a8b6f;
+  --rd-sage-light: #b3c2a8;
+
+  /* --- Neutral palette (warm undertone) --- */
+  --rd-cream: #faf6ef;
+  --rd-parchment: #f2ece0;
+  --rd-sand: #e5ddd0;
+  --rd-stone: #c8bfb0;
+  --rd-drift: #9b9285;
+  --rd-charcoal: #4a4440;
+  --rd-ink: #2d2926;
+
+  /* --- Semantic tokens --- */
+  --rd-text: var(--rd-ink);
+  --rd-text-muted: var(--rd-drift);
+  --rd-bg: var(--rd-cream);
+  --rd-bg-card: #ffffff;
+  --rd-bg-elevated: var(--rd-parchment);
+  --rd-border: var(--rd-sand);
+  --rd-border-subtle: #ece6da;
+  --rd-accent: var(--rd-teal);
+  --rd-accent-hover: var(--rd-teal-light);
+  --rd-highlight: var(--rd-saffron);
+  --rd-highlight-hover: var(--rd-saffron-light);
+  --rd-danger: #b5453a;
+  --rd-danger-hover: #cf5549;
+  --rd-success: var(--rd-sage);
+  --rd-focus-ring: rgba(27, 107, 109, 0.4);
+
+  /* --- Spacing --- */
+  --rd-space-xs: 0.25rem;
+  --rd-space-sm: 0.5rem;
+  --rd-space-md: 1rem;
+  --rd-space-lg: 1.5rem;
+  --rd-space-xl: 2.5rem;
+  --rd-space-2xl: 4rem;
+
+  /* --- Typography --- */
+  --rd-font: "Lato", -apple-system, BlinkMacSystemFont, sans-serif;
+  --rd-font-size-sm: 0.875rem;
+  --rd-font-size-base: 1rem;
+  --rd-font-size-lg: 1.125rem;
+  --rd-font-size-xl: 1.5rem;
+  --rd-font-size-2xl: 2rem;
+  --rd-line-height: 1.65;
+  --rd-letter-spacing: 0.01em;
+
+  /* --- Shape --- */
+  --rd-radius-sm: 6px;
+  --rd-radius: 10px;
+  --rd-radius-lg: 16px;
+  --rd-shadow-sm: 0 1px 3px rgba(45, 41, 38, 0.06);
+  --rd-shadow: 0 2px 8px rgba(45, 41, 38, 0.08);
+  --rd-shadow-lg: 0 8px 24px rgba(45, 41, 38, 0.1);
+
+  /* --- Transitions --- */
+  --rd-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --rd-duration: 200ms;
+}
+
+/* ===================================================================
+   2. Dark mode tokens
+   =================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --rd-text: #ece6da;
+    --rd-text-muted: #9b9285;
+    --rd-bg: #1c1917;
+    --rd-bg-card: #27231f;
+    --rd-bg-elevated: #322d28;
+    --rd-border: #3d3731;
+    --rd-border-subtle: #332e29;
+    --rd-accent: #3fb0b3;
+    --rd-accent-hover: #52c5c8;
+    --rd-highlight: #d4a94d;
+    --rd-highlight-hover: #e0bc6a;
+    --rd-danger: #e06b5f;
+    --rd-danger-hover: #e8847a;
+    --rd-success: #a4b897;
+    --rd-focus-ring: rgba(63, 176, 179, 0.4);
+    --rd-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --rd-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    --rd-shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* ===================================================================
+   3. Pico CSS overrides (via custom properties)
+   =================================================================== */
+
+:root {
+  --pico-font-family: var(--rd-font);
+  --pico-font-size: var(--rd-font-size-base);
+  --pico-line-height: var(--rd-line-height);
+  --pico-border-radius: var(--rd-radius);
+  --pico-spacing: var(--rd-space-md);
+  --pico-typography-spacing-vertical: var(--rd-space-lg);
+}
+
+/* ===================================================================
+   4. Base element styles
+   =================================================================== */
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--rd-font);
+  background-color: var(--rd-bg);
+  color: var(--rd-text);
+  letter-spacing: var(--rd-letter-spacing);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Subtle parchment texture */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg width='40' height='40' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.02'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: -1;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  color: var(--rd-text);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+h1 {
+  font-size: var(--rd-font-size-2xl);
+  margin-bottom: var(--rd-space-lg);
+}
+
+h2 {
+  font-size: var(--rd-font-size-xl);
+  color: var(--rd-accent);
+  margin-top: var(--rd-space-xl);
+  margin-bottom: var(--rd-space-md);
+  padding-bottom: var(--rd-space-sm);
+  border-bottom: 2px solid var(--rd-border-subtle);
+}
+
+h3 {
+  font-size: var(--rd-font-size-lg);
+  color: var(--rd-text);
+  margin-top: var(--rd-space-lg);
+  margin-bottom: var(--rd-space-sm);
+}
+
+p {
+  color: var(--rd-text);
+  line-height: var(--rd-line-height);
+}
+
+a {
+  color: var(--rd-accent);
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  transition:
+    color var(--rd-duration) var(--rd-ease),
+    text-decoration-color var(--rd-duration) var(--rd-ease);
+}
+
+a:hover {
+  color: var(--rd-accent-hover);
+  text-decoration-color: currentColor;
+}
+
+a:focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* ===================================================================
+   5. Navigation
+   =================================================================== */
+
+nav.container {
+  background: var(--rd-bg-card);
+  border-bottom: 1px solid var(--rd-border-subtle);
+  box-shadow: var(--rd-shadow-sm);
+  padding-top: var(--rd-space-sm);
+  padding-bottom: var(--rd-space-sm);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+nav.container ul {
+  margin: 0;
+}
+
+/* Brand mark */
+nav.container li > strong {
+  color: var(--rd-highlight);
+  font-size: var(--rd-font-size-lg);
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+nav.container a {
+  color: var(--rd-text-muted);
+  font-weight: 600;
+  font-size: var(--rd-font-size-sm);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  border-radius: var(--rd-radius-sm);
+  transition:
+    color var(--rd-duration) var(--rd-ease),
+    background-color var(--rd-duration) var(--rd-ease);
+}
+
+nav.container a:hover {
+  color: var(--rd-accent);
+  background-color: var(--rd-bg-elevated);
+  text-decoration: none;
+}
+
+nav.container button.outline {
+  font-size: var(--rd-font-size-sm);
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  border-color: var(--rd-border);
+  color: var(--rd-text-muted);
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+nav.container button.outline:hover {
+  border-color: var(--rd-danger);
+  color: var(--rd-danger);
+  background-color: transparent;
+}
+
+/* ===================================================================
+   6. Buttons
+   =================================================================== */
+
+button,
+[type="submit"],
+[type="button"],
+[role="button"] {
+  font-family: var(--rd-font);
+  font-weight: 700;
+  font-size: var(--rd-font-size-sm);
+  letter-spacing: 0.02em;
+  border-radius: var(--rd-radius);
+  transition: all var(--rd-duration) var(--rd-ease);
+  cursor: pointer;
+}
+
+/* Primary buttons — teal */
+button:not(.outline):not(.secondary):not(.rd-danger):not(.rd-ghost),
+[type="submit"]:not(.outline) {
+  background-color: var(--rd-accent);
+  border-color: var(--rd-accent);
+  color: #fff;
+}
+
+button:not(.outline):not(.secondary):not(.rd-danger):not(.rd-ghost):hover,
+[type="submit"]:not(.outline):hover {
+  background-color: var(--rd-accent-hover);
+  border-color: var(--rd-accent-hover);
+  box-shadow: var(--rd-shadow-sm);
+}
+
+button:not(.outline):not(.secondary):not(.rd-danger):not(
+    .rd-ghost
+  ):focus-visible,
+[type="submit"]:not(.outline):focus-visible {
+  outline: 2px solid var(--rd-focus-ring);
+  outline-offset: 2px;
+}
+
+/* Outline / secondary */
+button.outline,
+button.secondary {
+  background-color: transparent;
+  border-color: var(--rd-border);
+  color: var(--rd-text-muted);
+}
+
+button.outline:hover,
+button.secondary:hover {
+  border-color: var(--rd-accent);
+  color: var(--rd-accent);
+  background-color: transparent;
+}
+
+/* Danger variant */
+button.rd-danger {
+  background-color: var(--rd-danger);
+  border-color: var(--rd-danger);
+  color: #fff;
+}
+
+button.rd-danger:hover {
+  background-color: var(--rd-danger-hover);
+  border-color: var(--rd-danger-hover);
+}
+
+/* Ghost variant */
+button.rd-ghost {
+  background: none;
+  border: none;
+  color: var(--rd-text-muted);
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+button.rd-ghost:hover {
+  color: var(--rd-accent);
+  background: var(--rd-bg-elevated);
+}
+
+/* Disabled state */
+button:disabled,
+[type="submit"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===================================================================
+   7. Form inputs
+   =================================================================== */
+
+input:not([type="checkbox"]):not([type="radio"]),
+select,
+textarea {
+  font-family: var(--rd-font);
+  background-color: var(--rd-bg-card);
+  border: 1.5px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  color: var(--rd-text);
+  transition:
+    border-color var(--rd-duration) var(--rd-ease),
+    box-shadow var(--rd-duration) var(--rd-ease);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--rd-accent);
+  box-shadow: 0 0 0 3px var(--rd-focus-ring);
+  outline: none;
+}
+
+input::placeholder {
+  color: var(--rd-stone);
+}
+
+label {
+  font-weight: 600;
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+  letter-spacing: 0.02em;
+}
+
+/* Checkbox styling */
+input[type="checkbox"] {
+  accent-color: var(--rd-accent);
+}
+
+/* ===================================================================
+   8. Cards & Articles
+   =================================================================== */
+
+article {
+  background: var(--rd-bg-card);
+  border: 1px solid var(--rd-border-subtle);
+  border-radius: var(--rd-radius-lg);
+  box-shadow: var(--rd-shadow);
+  overflow: hidden;
+  transition: box-shadow var(--rd-duration) var(--rd-ease);
+}
+
+article > header {
+  background: linear-gradient(
+    135deg,
+    var(--rd-accent) 0%,
+    var(--rd-teal-light) 100%
+  );
+  color: #fff;
+  padding: var(--rd-space-lg) var(--rd-space-xl);
+  border-bottom: none;
+}
+
+article > header h2,
+article > header p,
+article > header strong {
+  color: #fff;
+}
+
+article > header h2 {
+  border: none;
+  margin: 0 0 var(--rd-space-xs);
+  padding: 0;
+  font-size: var(--rd-font-size-xl);
+}
+
+article > header p {
+  opacity: 0.9;
+  margin: 0;
+}
+
+article > section {
+  padding: var(--rd-space-lg) var(--rd-space-xl);
+}
+
+/* ===================================================================
+   9. Tables
+   =================================================================== */
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+  background: var(--rd-bg-card);
+  border-radius: var(--rd-radius);
+  overflow: hidden;
+  box-shadow: var(--rd-shadow-sm);
+  border: 1px solid var(--rd-border-subtle);
+}
+
+thead th {
+  background: var(--rd-bg-elevated);
+  color: var(--rd-text-muted);
+  font-size: var(--rd-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-bottom: 2px solid var(--rd-border);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+}
+
+tbody td {
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border-subtle);
+  font-size: var(--rd-font-size-sm);
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background-color: var(--rd-bg-elevated);
+}
+
+/* ===================================================================
+   10. Sections (Settings page cards)
+   =================================================================== */
+
+main > section {
+  background: var(--rd-bg-card);
+  border: 1px solid var(--rd-border-subtle);
+  border-radius: var(--rd-radius-lg);
+  padding: var(--rd-space-lg) var(--rd-space-xl);
+  margin-bottom: var(--rd-space-lg);
+  box-shadow: var(--rd-shadow-sm);
+}
+
+main > section > h2 {
+  margin-top: 0;
+}
+
+/* ===================================================================
+   11. Lists
+   =================================================================== */
+
+ul,
+ol {
+  padding-left: var(--rd-space-lg);
+}
+
+li {
+  padding: var(--rd-space-xs) 0;
+}
+
+li button {
+  margin-left: var(--rd-space-sm);
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* ===================================================================
+   12. Alerts & Banners
+   =================================================================== */
+
+[role="alert"] {
+  background: linear-gradient(
+    135deg,
+    rgba(196, 146, 42, 0.1) 0%,
+    rgba(196, 146, 42, 0.05) 100%
+  );
+  border: 1px solid var(--rd-saffron-glow);
+  border-left: 4px solid var(--rd-highlight);
+  border-radius: var(--rd-radius);
+  padding: var(--rd-space-md) var(--rd-space-lg);
+  margin-bottom: var(--rd-space-lg);
+  color: var(--rd-text);
+}
+
+[role="alert"] p {
+  margin: var(--rd-space-xs) 0;
+}
+
+/* Error alerts */
+p[role="alert"] {
+  background: linear-gradient(
+    135deg,
+    rgba(181, 69, 58, 0.1) 0%,
+    rgba(181, 69, 58, 0.05) 100%
+  );
+  border: 1px solid var(--rd-danger);
+  border-left: 4px solid var(--rd-danger);
+  padding: var(--rd-space-md) var(--rd-space-lg);
+  border-radius: var(--rd-radius);
+  color: var(--rd-danger);
+  font-weight: 600;
+}
+
+/* ===================================================================
+   13. Loading state
+   =================================================================== */
+
+[aria-busy="true"] {
+  color: var(--rd-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: var(--rd-space-2xl);
+}
+
+/* ===================================================================
+   14. Login page
+   =================================================================== */
+
+.rd-login {
+  max-width: 400px;
+  margin: var(--rd-space-2xl) auto;
+  text-align: center;
+}
+
+.rd-login h1 {
+  color: var(--rd-accent);
+  margin-bottom: var(--rd-space-xs);
+}
+
+.rd-login .rd-login__brand {
+  display: block;
+  color: var(--rd-highlight);
+  font-weight: 900;
+  font-size: var(--rd-font-size-sm);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  margin-bottom: var(--rd-space-xl);
+}
+
+.rd-login form {
+  background: var(--rd-bg-card);
+  border: 1px solid var(--rd-border-subtle);
+  border-radius: var(--rd-radius-lg);
+  padding: var(--rd-space-xl);
+  box-shadow: var(--rd-shadow);
+  text-align: left;
+}
+
+.rd-login .rd-login__toggle {
+  margin-top: var(--rd-space-md);
+}
+
+.rd-login .rd-login__toggle button {
+  background: none;
+  border: none;
+  color: var(--rd-accent);
+  font-weight: 600;
+  padding: var(--rd-space-xs);
+  cursor: pointer;
+}
+
+.rd-login .rd-login__toggle button:hover {
+  text-decoration: underline;
+}
+
+/* ===================================================================
+   15. Landing page — meeting card
+   =================================================================== */
+
+.rd-landing article > header h2 {
+  font-size: var(--rd-font-size-2xl);
+  font-weight: 300;
+}
+
+.rd-landing .rd-format-badge {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.2);
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  border-radius: 999px;
+  font-size: var(--rd-font-size-sm);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-top: var(--rd-space-sm);
+}
+
+.rd-landing .rd-deck-status {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+  margin-top: var(--rd-space-sm);
+}
+
+/* ===================================================================
+   16. Log page
+   =================================================================== */
+
+.rd-log nav {
+  display: flex;
+  gap: var(--rd-space-md);
+  margin-bottom: var(--rd-space-lg);
+}
+
+.rd-log nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-xs);
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-accent);
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  border: 1px solid var(--rd-border);
+  border-radius: var(--rd-radius);
+  text-decoration: none;
+  transition: all var(--rd-duration) var(--rd-ease);
+}
+
+.rd-log nav a:hover {
+  border-color: var(--rd-accent);
+  background: var(--rd-bg-elevated);
+}
+
+/* ===================================================================
+   17. Settings page specifics
+   =================================================================== */
+
+.rd-settings .rd-button-row {
+  display: flex;
+  gap: var(--rd-space-sm);
+  flex-wrap: wrap;
+  margin-top: var(--rd-space-md);
+}
+
+.rd-settings .rd-button-row button {
+  flex: none;
+}
+
+.rd-settings .rd-inline-form {
+  display: flex;
+  gap: var(--rd-space-sm);
+  align-items: flex-end;
+}
+
+.rd-settings .rd-inline-form input {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.rd-settings .rd-inline-form button {
+  flex: none;
+  white-space: nowrap;
+  margin-bottom: 0;
+}
+
+.rd-settings .rd-meta {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+}
+
+/* Format rotation chips */
+.rd-settings .rd-rotation-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--rd-space-sm);
+  list-style: none;
+  padding: 0;
+}
+
+.rd-settings .rd-rotation-list li {
+  background: var(--rd-bg-elevated);
+  border: 1px solid var(--rd-border-subtle);
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  border-radius: 999px;
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-text-muted);
+}
+
+.rd-settings .rd-rotation-list li::before {
+  content: counter(list-item) ". ";
+  counter-increment: list-item;
+  color: var(--rd-stone);
+  font-weight: 400;
+}
+
+/* Topic deck items */
+.rd-settings .rd-topic-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border-subtle);
+}
+
+.rd-settings .rd-topic-item:last-child {
+  border-bottom: none;
+}
+
+.rd-settings .rd-topic-list {
+  list-style: none;
+  padding: 0;
+  background: var(--rd-bg-elevated);
+  border-radius: var(--rd-radius);
+  overflow: hidden;
+  margin-bottom: var(--rd-space-md);
+}
+
+/* Deck stats */
+.rd-settings .rd-deck-counter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+  background: var(--rd-bg-elevated);
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  border-radius: 999px;
+  font-size: var(--rd-font-size-sm);
+  font-weight: 700;
+  color: var(--rd-accent);
+  margin-bottom: var(--rd-space-md);
+}
+
+/* Completed assignment items */
+.rd-settings .rd-assignment-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-sm);
+  padding: var(--rd-space-sm) 0;
+  border-bottom: 1px solid var(--rd-border-subtle);
+}
+
+.rd-settings .rd-assignment-item:last-child {
+  border-bottom: none;
+}
+
+.rd-settings .rd-assignment-item__actions {
+  display: flex;
+  gap: var(--rd-space-xs);
+  flex-shrink: 0;
+}
+
+.rd-settings .rd-assignment-item__actions button {
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* ===================================================================
+   18. Utility classes
+   =================================================================== */
+
+.rd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ===================================================================
+   19. Page entrance animation
+   =================================================================== */
+
+@keyframes rd-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+main {
+  animation: rd-fade-up 0.3s var(--rd-ease) both;
+}
+
+/* ===================================================================
+   20. Print styles
+   =================================================================== */
+
+@media print {
+  nav.container,
+  button,
+  [type="submit"] {
+    display: none !important;
+  }
+
+  body::before {
+    display: none;
+  }
+
+  article {
+    box-shadow: none;
+    border: 1px solid #ccc;
+  }
+}

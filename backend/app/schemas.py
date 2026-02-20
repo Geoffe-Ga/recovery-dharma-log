@@ -148,6 +148,12 @@ class ReadingAssignmentResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+class AssignmentUpdate(BaseModel):
+    """Request schema for updating an assignment's chapters."""
+
+    chapter_ids: list[int]
+
+
 class ReadingPlanStatus(BaseModel):
     """Response schema for reading plan builder state."""
 

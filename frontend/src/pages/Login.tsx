@@ -29,8 +29,9 @@ export function Login({
   };
 
   return (
-    <main>
+    <main className="rd-login">
       <h1>{isRegister ? "Create Account" : "Log In"}</h1>
+      <span className="rd-login__brand">Recovery Dharma Secretary Log</span>
       {error && <p role="alert">{error}</p>}
       <form onSubmit={handleSubmit}>
         <label>
@@ -61,7 +62,7 @@ export function Login({
               : "Log In"}
         </button>
       </form>
-      <p>
+      <p className="rd-login__toggle">
         <button type="button" onClick={() => setIsRegister(!isRegister)}>
           {isRegister
             ? "Already have an account? Log in"

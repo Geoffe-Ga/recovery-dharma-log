@@ -18,7 +18,7 @@ from app.models import (
 
 # --- Page number helpers ---
 
-ROMAN_MAP = {"IX": 9, "X": 10, "XI": 11, "XII": 12, "XIII": 13, "XIV": 14, "XV": 15}
+ROMAN_MAP = {"IX": -6, "X": -5, "XI": -4, "XII": -3, "XIII": -2, "XIV": -1, "XV": 0}
 
 
 def page_to_int(page: str) -> int:
@@ -358,6 +358,82 @@ def finalize_current_assignment(db: Session, group: Group) -> dict | None:
     }
 
 
+def update_assignment_chapters(
+    db: Session,
+    group: Group,
+    assignment_id: int,
+    chapter_ids: list[int],
+) -> dict:
+    """Replace the chapters in an existing assignment (finalized or draft)."""
+    assignment = (
+        db.query(ReadingAssignment)
+        .filter(
+            ReadingAssignment.id == assignment_id,
+            ReadingAssignment.group_id == group.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise ValueError("Assignment not found")
+
+    # Validate that all chapter_ids belong to this group
+    if chapter_ids:
+        valid_count = (
+            db.query(BookChapter)
+            .filter(
+                BookChapter.id.in_(chapter_ids),
+                BookChapter.group_id == group.id,
+            )
+            .count()
+        )
+        if valid_count != len(chapter_ids):
+            raise ValueError("Invalid chapter IDs")
+
+    assignment.chapters_json = json.dumps(chapter_ids)
+    db.flush()
+
+    chapter_dicts = _chapters_for_ids(db, chapter_ids)
+    total = sum(int(c["page_count"]) for c in chapter_dicts)
+    return {
+        "id": assignment.id,
+        "assignment_order": assignment.assignment_order,
+        "chapters": chapter_dicts,
+        "total_pages": total,
+    }
+
+
+def delete_assignment(db: Session, group: Group, assignment_id: int) -> None:
+    """Delete an assignment and renumber remaining ones."""
+    assignment = (
+        db.query(ReadingAssignment)
+        .filter(
+            ReadingAssignment.id == assignment_id,
+            ReadingAssignment.group_id == group.id,
+        )
+        .first()
+    )
+    if assignment is None:
+        raise ValueError("Assignment not found")
+
+    deleted_order = assignment.assignment_order
+    db.delete(assignment)
+    db.flush()
+
+    # Renumber remaining assignments
+    remaining = (
+        db.query(ReadingAssignment)
+        .filter(
+            ReadingAssignment.group_id == group.id,
+            ReadingAssignment.assignment_order > deleted_order,
+        )
+        .order_by(ReadingAssignment.assignment_order)
+        .all()
+    )
+    for a in remaining:
+        a.assignment_order -= 1
+    db.flush()
+
+
 # --- Upcoming Meeting ---
 
 
@@ -409,7 +485,11 @@ def _get_book_chapter_summary(
         .order_by(BookChapter.order)
         .all()
     )
-    return ", ".join(ch.title for ch in chapters)
+    titles = " + ".join(ch.title for ch in chapters)
+    start_page = chapters[0].start_page
+    end_page = chapters[-1].end_page
+    total_pages = page_count(start_page, end_page)
+    return f"{titles} (pp. {start_page}\u2013{end_page}, {total_pages} pages)"
 
 
 def get_speaker_banners(db: Session, group: Group) -> list[str]:

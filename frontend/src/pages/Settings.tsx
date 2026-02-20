@@ -4,31 +4,45 @@ import { useCallback, useEffect, useState } from "react";
 import {
   addChapterToPlan,
   createTopic,
+  deleteAssignment,
   deleteTopic,
   finalizePlan,
+  getChapters,
   getReadingPlan,
   getSettings,
   getTopics,
   reshuffleTopics,
+  updateAssignment,
   updateSettings,
 } from "../api/index";
-import type { GroupSettings, ReadingPlanStatus, Topic } from "../types/index";
+import type {
+  BookChapter,
+  GroupSettings,
+  ReadingPlanStatus,
+  Topic,
+} from "../types/index";
 
 export function Settings(): React.ReactElement {
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [topics, setTopics] = useState<Topic[]>([]);
   const [plan, setPlan] = useState<ReadingPlanStatus | null>(null);
+  const [allChapters, setAllChapters] = useState<BookChapter[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newTopic, setNewTopic] = useState("");
+  const [editingAssignmentId, setEditingAssignmentId] = useState<number | null>(
+    null,
+  );
+  const [editChapterIds, setEditChapterIds] = useState<number[]>([]);
 
   useEffect(() => {
-    Promise.all([getSettings(), getTopics(), getReadingPlan()])
-      .then(([s, t, p]) => {
+    Promise.all([getSettings(), getTopics(), getReadingPlan(), getChapters()])
+      .then(([s, t, p, c]) => {
         setSettings(s);
         setTopics(t);
         setPlan(p);
+        setAllChapters(c);
       })
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
@@ -101,6 +115,51 @@ export function Settings(): React.ReactElement {
     }
   }, []);
 
+  const handleEditAssignment = useCallback(
+    (assignmentId: number, currentChapterIds: number[]) => {
+      setEditingAssignmentId(assignmentId);
+      setEditChapterIds(currentChapterIds);
+    },
+    [],
+  );
+
+  const handleSaveAssignment = useCallback(async () => {
+    if (editingAssignmentId === null) return;
+    try {
+      await updateAssignment(editingAssignmentId, {
+        chapter_ids: editChapterIds,
+      });
+      setPlan(await getReadingPlan());
+      setEditingAssignmentId(null);
+      setEditChapterIds([]);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update");
+    }
+  }, [editingAssignmentId, editChapterIds]);
+
+  const handleCancelEdit = useCallback(() => {
+    setEditingAssignmentId(null);
+    setEditChapterIds([]);
+  }, []);
+
+  const handleDeleteAssignment = useCallback(async (assignmentId: number) => {
+    if (!window.confirm("Delete this assignment?")) return;
+    try {
+      await deleteAssignment(assignmentId);
+      setPlan(await getReadingPlan());
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to delete");
+    }
+  }, []);
+
+  const toggleEditChapter = useCallback((chapterId: number) => {
+    setEditChapterIds((prev) =>
+      prev.includes(chapterId)
+        ? prev.filter((id) => id !== chapterId)
+        : [...prev, chapterId],
+    );
+  }, []);
+
   if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
   if (!settings) return <p>No settings found.</p>;
@@ -109,7 +168,7 @@ export function Settings(): React.ReactElement {
   const drawn = topics.filter((t) => t.is_drawn);
 
   return (
-    <main>
+    <main className="rd-settings">
       <h1>Settings</h1>
 
       <section>
@@ -122,7 +181,7 @@ export function Settings(): React.ReactElement {
             onChange={(e) => setSettings({ ...settings, name: e.target.value })}
           />
         </label>
-        <p>
+        <p className="rd-meta">
           Meeting Day:{" "}
           {
             ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][
@@ -130,7 +189,7 @@ export function Settings(): React.ReactElement {
             ]
           }
         </p>
-        <p>Start Date: {settings.start_date}</p>
+        <p className="rd-meta">Start Date: {settings.start_date}</p>
         <button type="button" onClick={handleSave} disabled={saving}>
           {saving ? "Saving..." : "Save Changes"}
         </button>
@@ -138,7 +197,7 @@ export function Settings(): React.ReactElement {
 
       <section>
         <h2>Format Rotation</h2>
-        <ol>
+        <ol className="rd-rotation-list">
           {settings.format_rotation.map((format, i) => (
             <li key={i}>{format}</li>
           ))}
@@ -147,16 +206,20 @@ export function Settings(): React.ReactElement {
 
       <section>
         <h2>Topic Deck</h2>
-        <p>
+        <div className="rd-deck-counter">
           {inDeck.length} of {topics.length} remaining
-        </p>
+        </div>
 
         <h3>In Deck</h3>
-        <ul>
+        <ul className="rd-topic-list">
           {inDeck.map((t) => (
-            <li key={t.id}>
-              {t.name}{" "}
-              <button type="button" onClick={() => handleDeleteTopic(t.id)}>
+            <li key={t.id} className="rd-topic-item">
+              <span>{t.name}</span>
+              <button
+                type="button"
+                className="rd-ghost"
+                onClick={() => handleDeleteTopic(t.id)}
+              >
                 Remove
               </button>
             </li>
@@ -166,15 +229,17 @@ export function Settings(): React.ReactElement {
         {drawn.length > 0 && (
           <>
             <h3>Drawn This Cycle</h3>
-            <ul>
+            <ul className="rd-topic-list">
               {drawn.map((t) => (
-                <li key={t.id}>{t.name}</li>
+                <li key={t.id} className="rd-topic-item">
+                  <span>{t.name}</span>
+                </li>
               ))}
             </ul>
           </>
         )}
 
-        <form onSubmit={handleAddTopic}>
+        <form onSubmit={handleAddTopic} className="rd-inline-form">
           <input
             type="text"
             placeholder="New topic name"
@@ -184,7 +249,7 @@ export function Settings(): React.ReactElement {
           <button type="submit">Add Topic</button>
         </form>
 
-        <button type="button" onClick={handleReshuffle}>
+        <button type="button" className="outline" onClick={handleReshuffle}>
           Reshuffle Deck
         </button>
       </section>
@@ -204,7 +269,9 @@ export function Settings(): React.ReactElement {
                   </li>
                 ))}
               </ul>
-              <p>Total: {plan.current_assignment_total_pages} pages</p>
+              <p className="rd-meta">
+                Total: {plan.current_assignment_total_pages} pages
+              </p>
             </div>
           )}
 
@@ -216,7 +283,7 @@ export function Settings(): React.ReactElement {
             </p>
           )}
 
-          <div>
+          <div className="rd-button-row">
             <button
               type="button"
               onClick={handleAddChapter}
@@ -226,6 +293,7 @@ export function Settings(): React.ReactElement {
             </button>
             <button
               type="button"
+              className="outline"
               onClick={handleFinalize}
               disabled={plan.current_assignment_chapters.length === 0}
             >
@@ -239,8 +307,66 @@ export function Settings(): React.ReactElement {
               <ol>
                 {plan.completed_assignments.map((a) => (
                   <li key={a.id}>
-                    {a.chapters.map((c) => c.title).join(", ")} ({a.total_pages}{" "}
-                    pages)
+                    {editingAssignmentId === a.id ? (
+                      <div>
+                        <p>Select chapters:</p>
+                        <ul>
+                          {allChapters.map((ch) => (
+                            <li key={ch.id}>
+                              <label>
+                                <input
+                                  type="checkbox"
+                                  checked={editChapterIds.includes(ch.id)}
+                                  onChange={() => toggleEditChapter(ch.id)}
+                                />
+                                {ch.title} (pp. {ch.start_page}&ndash;
+                                {ch.end_page})
+                              </label>
+                            </li>
+                          ))}
+                        </ul>
+                        <div className="rd-button-row">
+                          <button type="button" onClick={handleSaveAssignment}>
+                            Save
+                          </button>
+                          <button
+                            type="button"
+                            className="outline"
+                            onClick={handleCancelEdit}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="rd-assignment-item">
+                        <span>
+                          {a.chapters.map((c) => c.title).join(", ")} (
+                          {a.total_pages} pages)
+                        </span>
+                        <span className="rd-assignment-item__actions">
+                          <button
+                            type="button"
+                            className="rd-ghost"
+                            onClick={() =>
+                              handleEditAssignment(
+                                a.id,
+                                a.chapters.map((c) => c.id),
+                              )
+                            }
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="rd-ghost"
+                            onClick={() => handleDeleteAssignment(a.id)}
+                          >
+                            Delete
+                          </button>
+                        </span>
+                      </div>
+                    )}
                   </li>
                 ))}
               </ol>

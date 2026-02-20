@@ -26,11 +26,10 @@ export function Log(): React.ReactElement {
   if (error) return <p role="alert">{error}</p>;
 
   return (
-    <main>
+    <main className="rd-log">
       <h1>Meeting Log</h1>
       <nav>
         <a href={getCsvExportUrl()}>Export CSV</a>
-        {" | "}
         <a href={getPrintableExportUrl()} target="_blank" rel="noreferrer">
           Printable View
         </a>

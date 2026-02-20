@@ -9,15 +9,18 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import BookChapter, ReadingAssignment, User
 from app.schemas import (
+    AssignmentUpdate,
     BookChapterResponse,
     ReadingAssignmentResponse,
     ReadingPlanStatus,
 )
 from app.services import (
     add_chapter_to_current_assignment,
+    delete_assignment,
     finalize_current_assignment,
     get_plan_status,
     page_count,
+    update_assignment_chapters,
 )
 
 router = APIRouter(prefix="/book", tags=["book"])
@@ -128,3 +131,44 @@ def finalize_assignment(
         )
     db.commit()
     return result
+
+
+@router.put(
+    "/assignments/{assignment_id}",
+    response_model=ReadingAssignmentResponse,
+)
+def update_assignment(
+    assignment_id: int,
+    body: AssignmentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Update the chapters in an existing assignment."""
+    try:
+        result = update_assignment_chapters(
+            db, current_user.group, assignment_id, body.chapter_ids
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    db.commit()
+    return result
+
+
+@router.delete("/assignments/{assignment_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_assignment(
+    assignment_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> None:
+    """Delete an assignment and renumber remaining ones."""
+    try:
+        delete_assignment(db, current_user.group, assignment_id)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    db.commit()

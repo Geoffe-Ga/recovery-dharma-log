@@ -2,10 +2,12 @@
 
 import { api, getToken, postForm, setToken } from "./client";
 import type {
+  AssignmentUpdate,
   BookChapter,
   GroupSettings,
   GroupSettingsUpdate,
   MeetingLogEntry,
+  ReadingAssignment,
   ReadingPlanStatus,
   SpeakerSchedule,
   Token,
@@ -103,6 +105,17 @@ export async function addChapterToPlan(): Promise<ReadingPlanStatus> {
 
 export async function finalizePlan(): Promise<ReadingPlanStatus> {
   return api.post<ReadingPlanStatus>("/book/plan/finalize");
+}
+
+export async function updateAssignment(
+  assignmentId: number,
+  data: AssignmentUpdate,
+): Promise<ReadingAssignment> {
+  return api.put<ReadingAssignment>(`/book/assignments/${assignmentId}`, data);
+}
+
+export async function deleteAssignment(assignmentId: number): Promise<void> {
+  await api.delete(`/book/assignments/${assignmentId}`);
 }
 
 // --- Speakers ---

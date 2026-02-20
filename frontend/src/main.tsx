@@ -1,6 +1,7 @@
 /** Application entry point. */
 
 import "@picocss/pico/css/pico.min.css";
+import "./styles/rd-theme.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";

@@ -2,6 +2,7 @@
 
 from datetime import date
 
+import pytest
 from sqlalchemy.orm import Session
 
 from app.models import (
@@ -15,6 +16,7 @@ from app.models import (
 from app.services import (
     add_chapter_to_current_assignment,
     count_meetings_since_start,
+    delete_assignment,
     draw_random_topic,
     finalize_current_assignment,
     get_deck_stats,
@@ -26,6 +28,7 @@ from app.services import (
     page_count,
     page_to_int,
     reshuffle_deck,
+    update_assignment_chapters,
 )
 
 
@@ -86,9 +89,9 @@ class TestPageHelpers:
     """Tests for page number conversion."""
 
     def test_roman_numeral_conversion(self) -> None:
-        assert page_to_int("IX") == 9
-        assert page_to_int("XIII") == 13
-        assert page_to_int("XV") == 15
+        assert page_to_int("IX") == -6
+        assert page_to_int("XIII") == -2
+        assert page_to_int("XV") == 0
 
     def test_numeric_conversion(self) -> None:
         assert page_to_int("1") == 1
@@ -102,7 +105,7 @@ class TestPageHelpers:
         assert page_count("1", "7") == 6
 
     def test_page_count_roman_to_numeric(self) -> None:
-        assert page_count("XV", "1") == -14  # crossing boundary
+        assert page_count("XV", "1") == 1  # crossing boundary
 
 
 class TestFormatRotation:
@@ -316,6 +319,64 @@ class TestBookReadingPlan:
         assert status["completed_assignments"] == []
 
 
+class TestAssignmentEditing:
+    """Tests for editing and deleting finalized assignments."""
+
+    def test_update_assignment_chapters(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        chapters = _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        result = finalize_current_assignment(db_session, group)
+        assert result is not None
+
+        # Update to only have the first chapter
+        updated = update_assignment_chapters(
+            db_session, group, result["id"], [chapters[0].id]
+        )
+        assert len(updated["chapters"]) == 1
+        assert updated["chapters"][0]["title"] == "Preface"
+
+    def test_update_assignment_not_found(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        with pytest.raises(ValueError, match="Assignment not found"):
+            update_assignment_chapters(db_session, group, 9999, [])
+
+    def test_update_assignment_invalid_chapter_ids(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        result = finalize_current_assignment(db_session, group)
+        assert result is not None
+
+        with pytest.raises(ValueError, match="Invalid chapter IDs"):
+            update_assignment_chapters(db_session, group, result["id"], [9999])
+
+    def test_delete_assignment(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        # Create two finalized assignments
+        add_chapter_to_current_assignment(db_session, group)
+        result1 = finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        result2 = finalize_current_assignment(db_session, group)
+        assert result1 is not None
+        assert result2 is not None
+
+        # Delete the first assignment
+        delete_assignment(db_session, group, result1["id"])
+
+        # Second assignment should be renumbered to order 1
+        status = get_plan_status(db_session, group)
+        assert len(status["completed_assignments"]) == 1
+        assert status["completed_assignments"][0]["assignment_order"] == 1
+
+    def test_delete_assignment_not_found(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        with pytest.raises(ValueError, match="Assignment not found"):
+            delete_assignment(db_session, group, 9999)
+
+
 class TestUpcomingMeeting:
     """Tests for the upcoming meeting aggregation."""
 
@@ -374,6 +435,8 @@ class TestUpcomingMeeting:
         )
         assert summary is not None
         assert "Preface" in summary
+        assert "pp." in summary
+        assert "pages" in summary
 
     def test_book_study_no_assignments_returns_none(self, db_session: Session) -> None:
         group = _create_group(db_session, start=date(2025, 1, 5))

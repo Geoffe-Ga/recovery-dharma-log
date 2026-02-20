@@ -56,7 +56,7 @@ export function Landing(): React.ReactElement {
   if (!meeting) return <p>No upcoming meeting found.</p>;
 
   return (
-    <main>
+    <main className="rd-landing">
       {meeting.banners.length > 0 && (
         <div role="alert">
           {meeting.banners.map((banner) => (
@@ -70,9 +70,7 @@ export function Landing(): React.ReactElement {
       <article>
         <header>
           <h2>{meeting.meeting_date}</h2>
-          <p>
-            Format: <strong>{meeting.format_type}</strong>
-          </p>
+          <span className="rd-format-badge">{meeting.format_type}</span>
         </header>
 
         {meeting.format_type === "Topic" && (
@@ -86,8 +84,9 @@ export function Landing(): React.ReactElement {
                 Draw Topic
               </button>
             )}
-            <p>
+            <p className="rd-deck-status">
               {meeting.topics_remaining} of {meeting.topics_total} topics remain
+              in deck
             </p>
           </section>
         )}
@@ -111,6 +110,7 @@ export function Landing(): React.ReactElement {
                     <button type="submit">Schedule</button>
                     <button
                       type="button"
+                      className="outline"
                       onClick={() => setShowSpeakerForm(false)}
                     >
                       Cancel

@@ -79,6 +79,10 @@ export interface ReadingAssignment {
   total_pages: number;
 }
 
+export interface AssignmentUpdate {
+  chapter_ids: number[];
+}
+
 export interface ReadingPlanStatus {
   current_assignment_chapters: BookChapter[];
   current_assignment_total_pages: number;
