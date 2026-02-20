@@ -54,7 +54,10 @@ export function Settings(): React.ReactElement {
     if (!settings) return;
     setSaving(true);
     try {
-      const updated = await updateSettings({ name: settings.name });
+      const updated = await updateSettings({
+        name: settings.name,
+        format_rotation: settings.format_rotation,
+      });
       setSettings(updated);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to save");
@@ -62,6 +65,35 @@ export function Settings(): React.ReactElement {
       setSaving(false);
     }
   }, [settings]);
+
+  const FORMAT_OPTIONS = ["Speaker", "Topic", "Book Study"];
+
+  const handleRotationChange = useCallback(
+    (index: number, value: string) => {
+      if (!settings) return;
+      const updated = [...settings.format_rotation];
+      updated[index] = value;
+      setSettings({ ...settings, format_rotation: updated });
+    },
+    [settings],
+  );
+
+  const handleAddRotationSlot = useCallback(() => {
+    if (!settings) return;
+    setSettings({
+      ...settings,
+      format_rotation: [...settings.format_rotation, "Topic"],
+    });
+  }, [settings]);
+
+  const handleRemoveRotationSlot = useCallback(
+    (index: number) => {
+      if (!settings || settings.format_rotation.length <= 1) return;
+      const updated = settings.format_rotation.filter((_, i) => i !== index);
+      setSettings({ ...settings, format_rotation: updated });
+    },
+    [settings],
+  );
 
   const handleAddTopic = useCallback(
     async (e: React.FormEvent) => {
@@ -197,11 +229,39 @@ export function Settings(): React.ReactElement {
 
       <section>
         <h2>Format Rotation</h2>
-        <ol className="rd-rotation-list">
+        <div className="rd-rotation-list">
           {settings.format_rotation.map((format, i) => (
-            <li key={i}>{format}</li>
+            <div key={i} className="rd-rotation-slot">
+              <span className="rd-rotation-slot__label">{i + 1}.</span>
+              <select
+                value={format}
+                onChange={(e) => handleRotationChange(i, e.target.value)}
+              >
+                {FORMAT_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
+              {settings.format_rotation.length > 1 && (
+                <button
+                  type="button"
+                  className="rd-ghost"
+                  onClick={() => handleRemoveRotationSlot(i)}
+                >
+                  Remove
+                </button>
+              )}
+            </div>
           ))}
-        </ol>
+        </div>
+        <button
+          type="button"
+          className="outline"
+          onClick={handleAddRotationSlot}
+        >
+          + Add Position
+        </button>
       </section>
 
       <section>

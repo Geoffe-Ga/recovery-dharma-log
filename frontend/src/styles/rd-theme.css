@@ -697,7 +697,8 @@ p[role="alert"] {
 }
 
 .rd-settings .rd-inline-form input {
-  flex: 1;
+  flex: 3;
+  min-width: 0;
   margin-bottom: 0;
 }
 
@@ -705,6 +706,7 @@ p[role="alert"] {
   flex: none;
   white-space: nowrap;
   margin-bottom: 0;
+  padding-inline: var(--rd-space-md);
 }
 
 .rd-settings .rd-meta {
@@ -712,30 +714,33 @@ p[role="alert"] {
   color: var(--rd-text-muted);
 }
 
-/* Format rotation chips */
+/* Format rotation slots */
 .rd-settings .rd-rotation-list {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: var(--rd-space-sm);
-  list-style: none;
   padding: 0;
+  margin-bottom: var(--rd-space-md);
 }
 
-.rd-settings .rd-rotation-list li {
-  background: var(--rd-bg-elevated);
-  border: 1px solid var(--rd-border-subtle);
-  padding: var(--rd-space-xs) var(--rd-space-md);
-  border-radius: 999px;
+.rd-settings .rd-rotation-slot {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+}
+
+.rd-settings .rd-rotation-slot__label {
+  min-width: 1.5em;
   font-size: var(--rd-font-size-sm);
   font-weight: 600;
-  color: var(--rd-text-muted);
+  color: var(--rd-stone);
+  text-align: right;
 }
 
-.rd-settings .rd-rotation-list li::before {
-  content: counter(list-item) ". ";
-  counter-increment: list-item;
-  color: var(--rd-stone);
-  font-weight: 400;
+.rd-settings .rd-rotation-slot select {
+  flex: 1;
+  max-width: 200px;
+  margin-bottom: 0;
 }
 
 /* Topic deck items */

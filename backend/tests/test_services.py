@@ -109,32 +109,41 @@ class TestPageHelpers:
 
 
 class TestFormatRotation:
-    """Tests for the format rotation engine."""
+    """Tests for the format rotation engine (week-of-month based)."""
 
-    def test_first_week_is_speaker(self, db_session: Session) -> None:
+    def test_first_sunday_is_speaker(self, db_session: Session) -> None:
         group = _create_group(db_session)
+        # Jan 5, 2025 is the 1st Sunday → position 0 = Speaker
         fmt = get_format_for_date(db_session, group, date(2025, 1, 5))
         assert fmt == "Speaker"
 
-    def test_second_week_is_topic(self, db_session: Session) -> None:
+    def test_second_sunday_is_topic(self, db_session: Session) -> None:
         group = _create_group(db_session)
+        # Jan 12 is the 2nd Sunday → position 1 = Topic
         fmt = get_format_for_date(db_session, group, date(2025, 1, 12))
         assert fmt == "Topic"
 
-    def test_third_week_is_book(self, db_session: Session) -> None:
+    def test_third_sunday_is_book_study(self, db_session: Session) -> None:
         group = _create_group(db_session)
+        # Jan 19 is the 3rd Sunday → position 2 = Book Study
         fmt = get_format_for_date(db_session, group, date(2025, 1, 19))
         assert fmt == "Book Study"
 
-    def test_cycle_wraps(self, db_session: Session) -> None:
+    def test_fourth_sunday_is_topic(self, db_session: Session) -> None:
         group = _create_group(db_session)
-        # Week 6 (index 5) should wrap to position 0 = Speaker
-        fmt = get_format_for_date(db_session, group, date(2025, 2, 9))
+        # Jan 26 is the 4th Sunday → position 3 = Topic
+        fmt = get_format_for_date(db_session, group, date(2025, 1, 26))
+        assert fmt == "Topic"
+
+    def test_rotation_resets_each_month(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Feb 2 is the 1st Sunday of February → position 0 = Speaker (resets!)
+        fmt = get_format_for_date(db_session, group, date(2025, 2, 2))
         assert fmt == "Speaker"
 
-    def test_cancelled_week_preserves_rotation(self, db_session: Session) -> None:
+    def test_cancellation_does_not_shift_rotation(self, db_session: Session) -> None:
         group = _create_group(db_session)
-        # Cancel week 2 (Jan 12)
+        # Cancel the 2nd Sunday (Jan 12)
         db_session.add(
             MeetingLog(
                 group_id=group.id,
@@ -144,9 +153,9 @@ class TestFormatRotation:
             )
         )
         db_session.flush()
-        # Week 3 (Jan 19) should now be Topic (what week 2 would have been)
+        # 3rd Sunday (Jan 19) is still Book Study, not shifted
         fmt = get_format_for_date(db_session, group, date(2025, 1, 19))
-        assert fmt == "Topic"
+        assert fmt == "Book Study"
 
     def test_default_rotation_when_none_configured(self, db_session: Session) -> None:
         group = _create_group_no_rotation(db_session)

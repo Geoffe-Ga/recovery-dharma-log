@@ -101,12 +101,16 @@ def get_format_for_date(
     group: Group,
     meeting_date: date,
 ) -> str:
-    """Determine the format type for a given meeting date."""
+    """Determine the format type for a given meeting date.
+
+    Uses week-of-month position: the nth occurrence of the meeting weekday
+    within the month (0-indexed) selects the rotation slot.
+    """
     rotation = get_rotation_for_group(db, group)
     if not rotation:
         return "Topic"
-    week_index = count_meetings_since_start(db, group, meeting_date)
-    return rotation[week_index % len(rotation)]
+    week_of_month = (meeting_date.day - 1) // 7
+    return rotation[week_of_month % len(rotation)]
 
 
 # --- Topic Deck Engine ---
