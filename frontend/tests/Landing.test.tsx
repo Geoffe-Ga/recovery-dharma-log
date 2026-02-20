@@ -265,9 +265,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
-        screen.getByRole("button", { name: "Restore Meeting" }),
-      );
+      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
 
       await waitFor(() => {
         expect(cancelMeeting).toHaveBeenCalledWith("2026-02-22", false);

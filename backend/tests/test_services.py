@@ -397,6 +397,25 @@ class TestUpcomingMeeting:
         assert "meeting_date" in data
         assert "format_type" in data
         assert data["format_type"] in ["Speaker", "Topic", "Book Study"]
+        assert data["is_cancelled"] is False
+
+    def test_cancelled_meeting_returns_is_cancelled_true(
+        self, db_session: Session
+    ) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+        next_date = get_next_meeting_date(group)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=next_date,
+                format_type="Topic",
+                is_cancelled=True,
+            )
+        )
+        db_session.flush()
+        data = get_upcoming_meeting_data(db_session, group)
+        assert data["is_cancelled"] is True
 
     def test_includes_meeting_time(self, db_session: Session) -> None:
         group = _create_group(db_session, start=date(2025, 1, 5))

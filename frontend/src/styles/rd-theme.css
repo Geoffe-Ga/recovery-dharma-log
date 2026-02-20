@@ -37,6 +37,7 @@
   /* --- Semantic tokens --- */
   --rd-text: var(--rd-ink);
   --rd-text-muted: var(--rd-drift);
+  --rd-text-inverse: #fff;
   --rd-bg: var(--rd-cream);
   --rd-bg-card: #ffffff;
   --rd-bg-elevated: var(--rd-parchment);
@@ -296,7 +297,7 @@ button:not(.outline):not(.secondary):not(.rd-danger):not(.rd-ghost),
 [type="submit"]:not(.outline) {
   background-color: var(--rd-accent);
   border-color: var(--rd-accent);
-  color: #fff;
+  color: var(--rd-text-inverse);
 }
 
 button:not(.outline):not(.secondary):not(.rd-danger):not(.rd-ghost):hover,
@@ -333,7 +334,7 @@ button.secondary:hover {
 button.rd-danger {
   background-color: var(--rd-danger);
   border-color: var(--rd-danger);
-  color: #fff;
+  color: var(--rd-text-inverse);
 }
 
 button.rd-danger:hover {
@@ -422,7 +423,7 @@ article > header {
     var(--rd-accent) 0%,
     var(--rd-teal-light) 100%
   );
-  color: #fff;
+  color: var(--rd-text-inverse);
   padding: var(--rd-space-lg) var(--rd-space-xl);
   border-bottom: none;
 }
@@ -430,7 +431,7 @@ article > header {
 article > header h2,
 article > header p,
 article > header strong {
-  color: #fff;
+  color: var(--rd-text-inverse);
 }
 
 article > header h2 {
@@ -674,7 +675,7 @@ button.rd-danger-outline {
 button.rd-danger-outline:hover {
   background-color: var(--rd-danger);
   border-color: var(--rd-danger);
-  color: #fff;
+  color: var(--rd-text-inverse);
 }
 
 /* ===================================================================
