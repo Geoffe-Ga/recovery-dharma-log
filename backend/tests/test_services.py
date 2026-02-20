@@ -578,6 +578,30 @@ class TestExport:
         csv = generate_csv_export(db_session, group)
         assert "Topic 1" in csv
 
+    def test_csv_export_with_book_study(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        # Create a finalized reading assignment with 2 chapters
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        # Log a Book Study meeting
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 19),
+                format_type="Book Study",
+            )
+        )
+        db_session.flush()
+
+        from app.services import generate_csv_export
+
+        csv = generate_csv_export(db_session, group)
+        assert "Book Study" in csv
+        assert "Preface" in csv
+        assert "pp." in csv
+
     def test_printable_export(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(

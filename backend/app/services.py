@@ -589,11 +589,16 @@ def generate_csv_export(db: Session, group: Group) -> str:
         if entry.topic_id:
             topic = db.query(Topic).filter(Topic.id == entry.topic_id).first()
             topic_name = topic.name if topic else ""
+        book_section = ""
+        if entry.format_type == "Book Study" and not entry.is_cancelled:
+            summary = _get_book_chapter_summary(db, group, entry.meeting_date)
+            if summary:
+                book_section = summary
         cancelled = "Yes" if entry.is_cancelled else ""
         speaker = entry.speaker_name or ""
         line = (
             f"{entry.meeting_date},{entry.format_type},"
-            f'"{speaker}","{topic_name}",,{cancelled}'
+            f'"{speaker}","{topic_name}","{book_section}",{cancelled}'
         )
         lines.append(line)
     return "\n".join(lines) + "\n"
