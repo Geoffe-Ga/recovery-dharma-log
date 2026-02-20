@@ -253,6 +253,11 @@ nav.container a:hover {
   text-decoration: none;
 }
 
+nav.container a.active {
+  color: var(--rd-accent);
+  border-bottom: 2px solid var(--rd-accent);
+}
+
 nav.container button.outline {
   font-size: var(--rd-font-size-sm);
   padding: var(--rd-space-xs) var(--rd-space-md);
