@@ -31,6 +31,7 @@ export interface UpcomingMeeting {
   meeting_date: string;
   meeting_time: string | null;
   format_type: string;
+  is_cancelled: boolean;
   topic_name: string | null;
   speaker_name: string | null;
   book_chapter: string | null;

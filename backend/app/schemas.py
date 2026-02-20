@@ -78,6 +78,7 @@ class UpcomingMeeting(BaseModel):
     meeting_date: date
     meeting_time: time | None = None
     format_type: str
+    is_cancelled: bool = False
     topic_name: str | None = None
     speaker_name: str | None = None
     book_chapter: str | None = None

@@ -656,6 +656,27 @@ p[role="alert"] {
   margin-top: var(--rd-space-sm);
 }
 
+.rd-landing article.rd-cancelled > header {
+  background: linear-gradient(135deg, var(--rd-drift) 0%, var(--rd-stone) 100%);
+}
+
+.rd-landing .rd-cancel-section {
+  border-top: 1px solid var(--rd-border-subtle);
+  padding-top: var(--rd-space-md);
+}
+
+button.rd-danger-outline {
+  border-color: var(--rd-danger);
+  color: var(--rd-danger);
+  background: transparent;
+}
+
+button.rd-danger-outline:hover {
+  background-color: var(--rd-danger);
+  border-color: var(--rd-danger);
+  color: #fff;
+}
+
 /* ===================================================================
    16. Log page
    =================================================================== */

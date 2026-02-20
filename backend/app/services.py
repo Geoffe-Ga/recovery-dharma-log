@@ -559,11 +559,13 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
         book_chapter = _get_book_chapter_summary(db, group, meeting_date)
 
     banners = get_speaker_banners(db, group)
+    is_cancelled = bool(log_entry and log_entry.is_cancelled)
 
     return {
         "meeting_date": meeting_date,
         "meeting_time": group.meeting_time,
         "format_type": format_type,
+        "is_cancelled": is_cancelled,
         "topic_name": topic_name,
         "speaker_name": speaker_name,
         "book_chapter": book_chapter,
