@@ -19,6 +19,7 @@ from app.services import (
     delete_assignment,
     draw_random_topic,
     finalize_current_assignment,
+    generate_csv_export,
     get_deck_stats,
     get_format_for_date,
     get_next_meeting_date,
@@ -535,7 +536,6 @@ class TestExport:
 
     def test_csv_export_empty(self, db_session: Session) -> None:
         group = _create_group(db_session)
-        from app.services import generate_csv_export
 
         csv = generate_csv_export(db_session, group)
         assert "date,format" in csv
@@ -554,8 +554,6 @@ class TestExport:
         )
         db_session.flush()
 
-        from app.services import generate_csv_export
-
         csv = generate_csv_export(db_session, group)
         assert "Dave" in csv
         assert "2025-01-05" in csv
@@ -572,8 +570,6 @@ class TestExport:
             )
         )
         db_session.flush()
-
-        from app.services import generate_csv_export
 
         csv = generate_csv_export(db_session, group)
         assert "Topic 1" in csv
@@ -594,8 +590,6 @@ class TestExport:
             )
         )
         db_session.flush()
-
-        from app.services import generate_csv_export
 
         csv = generate_csv_export(db_session, group)
         assert "Book Study" in csv
