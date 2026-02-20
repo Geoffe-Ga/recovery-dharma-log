@@ -7,6 +7,7 @@ import {
   getPrintableExportUrl,
 } from "../api/index";
 import type { MeetingLogEntry } from "../types/index";
+import { formatLogDate } from "../utils/dates";
 
 export function Log(): React.ReactElement {
   const [entries, setEntries] = useState<MeetingLogEntry[]>([]);
@@ -51,7 +52,7 @@ export function Log(): React.ReactElement {
             <tbody>
               {entries.map((entry) => (
                 <tr key={entry.id}>
-                  <td>{entry.meeting_date}</td>
+                  <td>{formatLogDate(entry.meeting_date)}</td>
                   <td>{entry.format_type}</td>
                   <td>
                     {entry.speaker_name ??
