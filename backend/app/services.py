@@ -562,6 +562,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
 
     return {
         "meeting_date": meeting_date,
+        "meeting_time": group.meeting_time,
         "format_type": format_type,
         "topic_name": topic_name,
         "speaker_name": speaker_name,

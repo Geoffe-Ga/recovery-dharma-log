@@ -1,4 +1,8 @@
-import { formatMeetingDate, formatLogDate } from "../src/utils/dates";
+import {
+  formatMeetingDate,
+  formatLogDate,
+  formatMeetingTime,
+} from "../src/utils/dates";
 
 describe("formatMeetingDate", () => {
   it("formats a Sunday date with weekday and full month", () => {
@@ -25,5 +29,27 @@ describe("formatLogDate", () => {
 
   it("formats a December date", () => {
     expect(formatLogDate("2025-12-31")).toBe("Dec 31, 2025");
+  });
+});
+
+describe("formatMeetingTime", () => {
+  it("formats 18:00 as 6:00 PM", () => {
+    expect(formatMeetingTime("18:00:00")).toBe("6:00 PM");
+  });
+
+  it("formats 9:30 as 9:30 AM", () => {
+    expect(formatMeetingTime("09:30")).toBe("9:30 AM");
+  });
+
+  it("formats noon as 12:00 PM", () => {
+    expect(formatMeetingTime("12:00:00")).toBe("12:00 PM");
+  });
+
+  it("returns null for null input", () => {
+    expect(formatMeetingTime(null)).toBeNull();
+  });
+
+  it("returns null for empty string", () => {
+    expect(formatMeetingTime("")).toBeNull();
   });
 });

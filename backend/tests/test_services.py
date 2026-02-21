@@ -398,6 +398,13 @@ class TestUpcomingMeeting:
         assert "format_type" in data
         assert data["format_type"] in ["Speaker", "Topic", "Book Study"]
 
+    def test_includes_meeting_time(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+        data = get_upcoming_meeting_data(db_session, group)
+        assert "meeting_time" in data
+        assert data["meeting_time"] == group.meeting_time
+
     def test_topic_week_shows_deck_stats(self, db_session: Session) -> None:
         group = _create_group(db_session, start=date(2025, 1, 5))
         _create_topics(db_session, group, count=5)
