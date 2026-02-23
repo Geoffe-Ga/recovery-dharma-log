@@ -741,7 +741,7 @@ button.rd-danger-outline:hover {
   padding-inline: var(--rd-space-md);
 }
 
-.rd-settings .rd-meta {
+.rd-meta {
   font-size: var(--rd-font-size-sm);
   color: var(--rd-text-muted);
 }
