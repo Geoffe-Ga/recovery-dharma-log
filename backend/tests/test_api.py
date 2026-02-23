@@ -82,6 +82,7 @@ class TestMeetingsEndpoints:
         data = response.json()
         assert "meeting_date" in data
         assert "format_type" in data
+        assert "is_cancelled" in data
 
     def test_log_returns_200(
         self,
