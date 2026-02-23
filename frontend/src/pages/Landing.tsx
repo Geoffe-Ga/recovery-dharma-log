@@ -16,6 +16,7 @@ export function Landing(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [speakerInput, setSpeakerInput] = useState("");
   const [showSpeakerForm, setShowSpeakerForm] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -58,16 +59,19 @@ export function Landing(): React.ReactElement {
   );
 
   const handleToggleCancel = useCallback(async () => {
-    if (!meeting) return;
+    if (!meeting || isCancelling) return;
     const newCancelled = !meeting.is_cancelled;
     try {
+      setIsCancelling(true);
       setShowSpeakerForm(false);
       await cancelMeeting(meeting.meeting_date, newCancelled);
       await refresh();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to update meeting");
+    } finally {
+      setIsCancelling(false);
     }
-  }, [meeting, refresh]);
+  }, [meeting, isCancelling, refresh]);
 
   if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
@@ -106,6 +110,7 @@ export function Landing(): React.ReactElement {
             <button
               type="button"
               className="outline"
+              disabled={isCancelling}
               onClick={handleToggleCancel}
             >
               Restore Meeting
@@ -181,6 +186,7 @@ export function Landing(): React.ReactElement {
               <button
                 type="button"
                 className="outline rd-danger-outline"
+                disabled={isCancelling}
                 onClick={handleToggleCancel}
               >
                 Cancel Meeting
