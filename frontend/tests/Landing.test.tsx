@@ -296,5 +296,23 @@ describe("Landing", () => {
         expect(screen.getByRole("alert")).toHaveTextContent("Cancel failed");
       });
     });
+
+    it("shows error when restore fails", async () => {
+      getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
+      cancelMeeting.mockRejectedValue(new Error("Restore failed"));
+      render(<Landing />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Restore Meeting" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
+
+      await waitFor(() => {
+        expect(screen.getByRole("alert")).toHaveTextContent("Restore failed");
+      });
+    });
   });
 });
