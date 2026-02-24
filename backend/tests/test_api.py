@@ -137,6 +137,80 @@ class TestMeetingsEndpoints:
         assert response.status_code == 200
         assert len(response.json()) == 4
 
+    def test_update_log_speaker_name(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /meetings/log/{id} updates speaker_name."""
+        # Create an entry via cancel
+        resp = client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-04-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        entry_id = resp.json()["id"]
+        response = client.put(
+            f"/meetings/log/{entry_id}",
+            json={"speaker_name": "Alice"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["speaker_name"] == "Alice"
+
+    def test_update_log_content_summary(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /meetings/log/{id} updates content_summary."""
+        resp = client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-04-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        entry_id = resp.json()["id"]
+        response = client.put(
+            f"/meetings/log/{entry_id}",
+            json={"content_summary": "Great discussion"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["content_summary"] == "Great discussion"
+
+    def test_update_log_is_cancelled(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /meetings/log/{id} updates is_cancelled."""
+        resp = client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-04-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        entry_id = resp.json()["id"]
+        response = client.put(
+            f"/meetings/log/{entry_id}",
+            json={"is_cancelled": True},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["is_cancelled"] is True
+
+    def test_update_log_not_found(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /meetings/log/{id} returns 404 for nonexistent entry."""
+        response = client.put(
+            "/meetings/log/99999",
+            json={"speaker_name": "Nobody"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 404
+
     def test_endpoints_require_auth(self, client: TestClient) -> None:
         """Meeting endpoints return 401 without auth."""
         assert client.get("/meetings/upcoming").status_code == 401

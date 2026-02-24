@@ -851,6 +851,37 @@ button.rd-danger-outline:hover {
   align-self: flex-end;
 }
 
+/* Log inline edit form */
+.rd-log-edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-sm);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-elevated);
+  border-radius: var(--rd-radius);
+}
+
+.rd-log-edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-xs);
+}
+
+.rd-log-edit-form__checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--rd-space-sm) !important;
+}
+
+.rd-log-edit-form__actions {
+  display: flex;
+  gap: var(--rd-space-sm);
+}
+
+.rd-log-edit-form__actions button {
+  margin-bottom: 0;
+}
+
 /* ===================================================================
    17. Settings page specifics
    =================================================================== */

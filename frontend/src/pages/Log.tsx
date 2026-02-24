@@ -1,13 +1,15 @@
 /** Meeting log page - shows history of past meetings. */
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   getCsvExportUrl,
   getMeetingLog,
   getPrintableExportUrl,
+  updateMeetingLogEntry,
 } from "../api/index";
+import { useShowToast } from "../contexts/ToastContext";
 import { useLogFilters } from "../hooks/useLogFilters";
-import type { MeetingLogEntry } from "../types/index";
+import type { MeetingLogEntry, MeetingLogUpdate } from "../types/index";
 import { formatLogDate } from "../utils/dates";
 
 const FORMAT_OPTIONS = ["", "Speaker", "Topic", "Book Study"];
@@ -16,6 +18,9 @@ export function Log(): React.ReactElement {
   const [entries, setEntries] = useState<MeetingLogEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editForm, setEditForm] = useState<MeetingLogUpdate>({});
+  const showToast = useShowToast();
 
   useEffect(() => {
     getMeetingLog()
@@ -33,6 +38,33 @@ export function Log(): React.ReactElement {
     filteredEntries,
     hasActiveFilters,
   } = useLogFilters(entries);
+
+  function startEditing(entry: MeetingLogEntry): void {
+    setEditingId(entry.id);
+    setEditForm({
+      speaker_name: entry.speaker_name ?? "",
+      content_summary: entry.content_summary ?? "",
+      is_cancelled: entry.is_cancelled,
+    });
+  }
+
+  function cancelEditing(): void {
+    setEditingId(null);
+    setEditForm({});
+  }
+
+  async function saveEdit(entryId: number): Promise<void> {
+    try {
+      const updated = await updateMeetingLogEntry(entryId, editForm);
+      setEntries((prev) => prev.map((e) => (e.id === entryId ? updated : e)));
+      setEditingId(null);
+      setEditForm({});
+      showToast("success", "Entry updated");
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : "Failed to save";
+      showToast("error", message);
+    }
+  }
 
   if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
@@ -108,21 +140,96 @@ export function Log(): React.ReactElement {
                 <th>Format</th>
                 <th>Content</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredEntries.map((entry) => (
-                <tr key={entry.id}>
-                  <td>{formatLogDate(entry.meeting_date)}</td>
-                  <td>{entry.format_type}</td>
-                  <td>
-                    {entry.speaker_name ??
-                      entry.topic_name ??
-                      entry.content_summary ??
-                      "\u2014"}
-                  </td>
-                  <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
-                </tr>
+                <React.Fragment key={entry.id}>
+                  <tr>
+                    <td>{formatLogDate(entry.meeting_date)}</td>
+                    <td>{entry.format_type}</td>
+                    <td>
+                      {entry.speaker_name ??
+                        entry.topic_name ??
+                        entry.content_summary ??
+                        "\u2014"}
+                    </td>
+                    <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
+                    <td>
+                      {editingId !== entry.id && (
+                        <button
+                          type="button"
+                          className="outline"
+                          onClick={() => startEditing(entry)}
+                        >
+                          Edit
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                  {editingId === entry.id && (
+                    <tr>
+                      <td colSpan={5}>
+                        <div className="rd-log-edit-form">
+                          <label>
+                            Speaker Name
+                            <input
+                              type="text"
+                              value={editForm.speaker_name ?? ""}
+                              onChange={(e) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  speaker_name: e.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label>
+                            Notes
+                            <textarea
+                              value={editForm.content_summary ?? ""}
+                              onChange={(e) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  content_summary: e.target.value,
+                                }))
+                              }
+                            />
+                          </label>
+                          <label className="rd-log-edit-form__checkbox">
+                            <input
+                              type="checkbox"
+                              checked={editForm.is_cancelled ?? false}
+                              onChange={(e) =>
+                                setEditForm((prev) => ({
+                                  ...prev,
+                                  is_cancelled: e.target.checked,
+                                }))
+                              }
+                            />
+                            Cancelled
+                          </label>
+                          <div className="rd-log-edit-form__actions">
+                            <button
+                              type="button"
+                              onClick={() => void saveEdit(entry.id)}
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              className="outline"
+                              onClick={cancelEditing}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))}
             </tbody>
           </table>

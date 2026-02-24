@@ -58,6 +58,12 @@ export interface MeetingLogEntry {
   is_cancelled: boolean;
 }
 
+export interface MeetingLogUpdate {
+  speaker_name?: string | null;
+  content_summary?: string | null;
+  is_cancelled?: boolean;
+}
+
 export interface Topic {
   id: number;
   name: string;

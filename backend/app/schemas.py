@@ -96,6 +96,14 @@ class UpcomingMeetingBrief(BaseModel):
     is_cancelled: bool = False
 
 
+class MeetingLogUpdate(BaseModel):
+    """Request schema for updating a meeting log entry."""
+
+    speaker_name: str | None = None
+    content_summary: str | None = None
+    is_cancelled: bool | None = None
+
+
 class MeetingCancel(BaseModel):
     """Request schema for cancelling a meeting."""
 
