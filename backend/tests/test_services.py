@@ -748,6 +748,33 @@ class TestExport:
         assert "Preface" in csv
         assert "pp." in csv
 
+    def test_csv_export_includes_attendance(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Speaker",
+                speaker_name="Dave",
+                attendance_count=15,
+            )
+        )
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 12),
+                format_type="Topic",
+                attendance_count=None,
+            )
+        )
+        db_session.flush()
+
+        csv = generate_csv_export(db_session, group)
+        assert "attendance" in csv.split("\n")[0]
+        assert "15" in csv
+        # Null attendance renders as empty, not "None"
+        assert "None" not in csv
+
     def test_printable_export(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(

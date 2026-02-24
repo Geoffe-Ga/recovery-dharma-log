@@ -615,6 +615,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
 
     banners = get_speaker_banners(db, group)
     is_cancelled = bool(log_entry and log_entry.is_cancelled)
+    attendance_count = log_entry.attendance_count if log_entry else None
 
     return {
         "meeting_date": meeting_date,
@@ -627,6 +628,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
         "topics_remaining": topics_remaining,
         "topics_total": topics_total,
         "banners": banners,
+        "attendance_count": attendance_count,
     }
 
 
@@ -676,7 +678,7 @@ def generate_csv_export(db: Session, group: Group) -> str:
         .order_by(MeetingLog.meeting_date)
         .all()
     )
-    lines = ["date,format,speaker,topic,book_section,cancelled"]
+    lines = ["date,format,speaker,topic,book_section,cancelled,attendance"]
     for entry in entries:
         topic_name = ""
         if entry.topic_id:
@@ -689,9 +691,12 @@ def generate_csv_export(db: Session, group: Group) -> str:
                 book_section = summary
         cancelled = "Yes" if entry.is_cancelled else ""
         speaker = entry.speaker_name or ""
+        attendance = (
+            str(entry.attendance_count) if entry.attendance_count is not None else ""
+        )
         line = (
             f"{entry.meeting_date},{entry.format_type},"
-            f'"{speaker}","{topic_name}","{book_section}",{cancelled}'
+            f'"{speaker}","{topic_name}","{book_section}",{cancelled},{attendance}'
         )
         lines.append(line)
     return "\n".join(lines) + "\n"

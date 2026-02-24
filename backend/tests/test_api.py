@@ -211,6 +211,67 @@ class TestMeetingsEndpoints:
         )
         assert response.status_code == 404
 
+    def test_attendance_sets_count(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT attendance sets attendance count on a meeting."""
+        response = client.put(
+            "/meetings/2025-03-01/attendance",
+            json={"attendance_count": 15},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["attendance_count"] == 15
+
+    def test_attendance_null_clears_count(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT attendance with null clears attendance count."""
+        # First set a count
+        client.put(
+            "/meetings/2025-03-01/attendance",
+            json={"attendance_count": 15},
+            headers=auth_headers,
+        )
+        # Then clear it
+        response = client.put(
+            "/meetings/2025-03-01/attendance",
+            json={"attendance_count": None},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["attendance_count"] is None
+
+    def test_attendance_rejects_negative(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT attendance with negative count returns 422."""
+        response = client.put(
+            "/meetings/2025-03-01/attendance",
+            json={"attendance_count": -1},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_upcoming_includes_attendance(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Upcoming meeting response includes attendance_count field."""
+        response = client.get("/meetings/upcoming", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "attendance_count" in data
+
     def test_endpoints_require_auth(self, client: TestClient) -> None:
         """Meeting endpoints return 401 without auth."""
         assert client.get("/meetings/upcoming").status_code == 401

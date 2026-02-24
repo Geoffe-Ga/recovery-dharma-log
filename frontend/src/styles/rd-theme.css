@@ -661,6 +661,39 @@ p[role="alert"] {
   background: linear-gradient(135deg, var(--rd-drift) 0%, var(--rd-stone) 100%);
 }
 
+/* Attendance tracking */
+.rd-attendance {
+  border-top: 1px solid var(--rd-border-subtle);
+  padding-top: var(--rd-space-md);
+}
+
+.rd-attendance__display {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+}
+
+.rd-attendance__display span {
+  font-weight: 600;
+  font-size: var(--rd-font-size-sm);
+}
+
+.rd-attendance__form {
+  display: flex;
+  gap: var(--rd-space-sm);
+  align-items: flex-end;
+}
+
+.rd-attendance__form input {
+  max-width: 120px;
+  margin-bottom: 0;
+}
+
+.rd-attendance__form button {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
 .rd-landing .rd-cancel-section {
   border-top: 1px solid var(--rd-border-subtle);
   padding-top: var(--rd-space-md);
