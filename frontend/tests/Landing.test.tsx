@@ -261,6 +261,41 @@ describe("Landing", () => {
         expect(getUpcomingMeeting).toHaveBeenCalledTimes(2);
       });
     });
+
+    it("disables Cancel Meeting button during API call", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      let resolveCancel!: (value: unknown) => void;
+      cancelMeeting.mockReturnValue(
+        new Promise((r) => {
+          resolveCancel = r;
+        }),
+      );
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Cancel Meeting" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Cancel Meeting" }));
+
+      expect(
+        screen.getByRole("button", { name: "Cancel Meeting" }),
+      ).toBeDisabled();
+
+      resolveCancel({});
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Cancel Meeting" }),
+        ).not.toBeDisabled();
+      });
+
+      await waitFor(() => {
+        expect(getUpcomingMeeting).toHaveBeenCalledTimes(2);
+      });
+    });
   });
 
   describe("cancelled meeting", () => {
@@ -341,6 +376,41 @@ describe("Landing", () => {
       });
 
       // Verify refresh() was called after restore (initial load + post-restore)
+      await waitFor(() => {
+        expect(getUpcomingMeeting).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("disables Restore Meeting button during API call", async () => {
+      getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
+      let resolveRestore!: (value: unknown) => void;
+      cancelMeeting.mockReturnValue(
+        new Promise((r) => {
+          resolveRestore = r;
+        }),
+      );
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Restore Meeting" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
+
+      expect(
+        screen.getByRole("button", { name: "Restore Meeting" }),
+      ).toBeDisabled();
+
+      resolveRestore({});
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Restore Meeting" }),
+        ).not.toBeDisabled();
+      });
+
       await waitFor(() => {
         expect(getUpcomingMeeting).toHaveBeenCalledTimes(2);
       });
