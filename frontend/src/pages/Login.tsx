@@ -1,6 +1,8 @@
 /** Login page - authentication form. */
 
-import React, { type FormEvent, useState } from "react";
+import React, { type FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { useShowToast } from "../contexts/ToastContext";
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
@@ -18,6 +20,14 @@ export function Login({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
+  const [searchParams] = useSearchParams();
+  const showToast = useShowToast();
+
+  useEffect(() => {
+    if (searchParams.get("expired") === "1") {
+      showToast("info", "Your session has expired. Please log in again.");
+    }
+  }, [searchParams, showToast]);
 
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();

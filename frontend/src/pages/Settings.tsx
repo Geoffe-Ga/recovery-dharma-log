@@ -1,6 +1,7 @@
 /** Settings page - group configuration. */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { RotationCalendar } from "../components/RotationCalendar";
 import {
   addChapterToPlan,
   createTopic,
@@ -15,6 +16,7 @@ import {
   updateAssignment,
   updateSettings,
 } from "../api/index";
+import { useShowToast } from "../contexts/ToastContext";
 import type {
   BookChapter,
   GroupSettings,
@@ -24,6 +26,9 @@ import type {
 
 export function Settings(): React.ReactElement {
   const [settings, setSettings] = useState<GroupSettings | null>(null);
+  const [savedSettings, setSavedSettings] = useState<GroupSettings | null>(
+    null,
+  );
   const [topics, setTopics] = useState<Topic[]>([]);
   const [plan, setPlan] = useState<ReadingPlanStatus | null>(null);
   const [allChapters, setAllChapters] = useState<BookChapter[]>([]);
@@ -35,11 +40,18 @@ export function Settings(): React.ReactElement {
     null,
   );
   const [editChapterIds, setEditChapterIds] = useState<number[]>([]);
+  const showToast = useShowToast();
+
+  const isDirty = useMemo(() => {
+    if (!settings || !savedSettings) return false;
+    return JSON.stringify(settings) !== JSON.stringify(savedSettings);
+  }, [settings, savedSettings]);
 
   useEffect(() => {
     Promise.all([getSettings(), getTopics(), getReadingPlan(), getChapters()])
       .then(([s, t, p, c]) => {
         setSettings(s);
+        setSavedSettings(s);
         setTopics(t);
         setPlan(p);
         setAllChapters(c);
@@ -50,6 +62,16 @@ export function Settings(): React.ReactElement {
       .finally(() => setLoading(false));
   }, []);
 
+  // Warn on navigation away with unsaved changes
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent): void => {
+      e.preventDefault();
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
   const handleSave = useCallback(async () => {
     if (!settings) return;
     setSaving(true);
@@ -59,12 +81,20 @@ export function Settings(): React.ReactElement {
         format_rotation: settings.format_rotation,
       });
       setSettings(updated);
+      setSavedSettings(updated);
+      showToast("success", "Settings saved");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to save");
+      showToast("error", err instanceof Error ? err.message : "Failed to save");
     } finally {
       setSaving(false);
     }
-  }, [settings]);
+  }, [settings, showToast]);
+
+  const handleDiscard = useCallback(() => {
+    if (savedSettings) {
+      setSettings(savedSettings);
+    }
+  }, [savedSettings]);
 
   const FORMAT_OPTIONS = ["Speaker", "Topic", "Book Study"];
 
@@ -222,9 +252,6 @@ export function Settings(): React.ReactElement {
           }
         </p>
         <p className="rd-meta">Start Date: {settings.start_date}</p>
-        <button type="button" onClick={handleSave} disabled={saving}>
-          {saving ? "Saving..." : "Save Changes"}
-        </button>
       </section>
 
       <section>
@@ -262,6 +289,11 @@ export function Settings(): React.ReactElement {
         >
           + Add Position
         </button>
+        <RotationCalendar
+          meetingDay={settings.meeting_day}
+          startDate={settings.start_date}
+          formatRotation={settings.format_rotation}
+        />
       </section>
 
       <section>
@@ -433,6 +465,25 @@ export function Settings(): React.ReactElement {
             </>
           )}
         </section>
+      )}
+
+      {isDirty && (
+        <div className="rd-sticky-bar" role="status">
+          <span>You have unsaved changes</span>
+          <div className="rd-button-row">
+            <button type="button" onClick={handleSave} disabled={saving}>
+              {saving ? "Saving..." : "Save Changes"}
+            </button>
+            <button
+              type="button"
+              className="outline"
+              onClick={handleDiscard}
+              disabled={saving}
+            >
+              Discard
+            </button>
+          </div>
+        </div>
       )}
     </main>
   );

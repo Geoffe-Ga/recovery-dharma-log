@@ -8,6 +8,7 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
+import { ToastProvider } from "./contexts/ToastContext";
 import { useAuth } from "./hooks/useAuth";
 import { Landing } from "./pages/Landing";
 import { Log } from "./pages/Log";
@@ -64,18 +65,20 @@ export function App(): React.ReactElement {
 
   return (
     <BrowserRouter>
-      {isAuthenticated ? (
-        <AuthenticatedApp onLogout={logout} />
-      ) : (
-        <div className="container">
-          <Login
-            onLogin={login}
-            onRegister={register}
-            error={error}
-            loading={loading}
-          />
-        </div>
-      )}
+      <ToastProvider>
+        {isAuthenticated ? (
+          <AuthenticatedApp onLogout={logout} />
+        ) : (
+          <div className="container">
+            <Login
+              onLogin={login}
+              onRegister={register}
+              error={error}
+              loading={loading}
+            />
+          </div>
+        )}
+      </ToastProvider>
     </BrowserRouter>
   );
 }

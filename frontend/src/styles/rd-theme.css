@@ -666,6 +666,93 @@ p[role="alert"] {
   padding-top: var(--rd-space-md);
 }
 
+/* Topic undo/re-draw actions */
+.rd-topic-actions {
+  display: flex;
+  gap: var(--rd-space-xs);
+  margin-top: var(--rd-space-xs);
+}
+
+.rd-topic-actions button {
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* Speaker display with edit/remove actions */
+.rd-speaker-display {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+  flex-wrap: wrap;
+}
+
+.rd-speaker-display p {
+  margin: 0;
+}
+
+.rd-speaker-actions {
+  display: flex;
+  gap: var(--rd-space-xs);
+}
+
+.rd-icon-btn {
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  font-size: var(--rd-font-size-sm);
+}
+
+/* Lookahead list */
+.rd-lookahead {
+  margin-top: var(--rd-space-lg);
+}
+
+.rd-lookahead h3 {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--rd-space-sm);
+}
+
+.rd-lookahead__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rd-lookahead__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border-subtle);
+}
+
+.rd-lookahead__item:last-child {
+  border-bottom: none;
+}
+
+.rd-lookahead__date {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text);
+}
+
+.rd-lookahead__badge {
+  display: inline-block;
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--rd-bg-elevated);
+  color: var(--rd-accent);
+}
+
+.rd-lookahead__badge--cancelled {
+  color: var(--rd-text-muted);
+  background: var(--rd-bg-elevated);
+}
+
 button.rd-danger-outline {
   border-color: var(--rd-danger);
   color: var(--rd-danger);
@@ -705,6 +792,38 @@ button.rd-danger-outline:hover {
 .rd-log nav a:hover {
   border-color: var(--rd-accent);
   background: var(--rd-bg-elevated);
+}
+
+/* Filter bar */
+.rd-filter-bar {
+  display: flex;
+  gap: var(--rd-space-sm);
+  align-items: flex-end;
+  flex-wrap: wrap;
+  margin-bottom: var(--rd-space-lg);
+  padding: var(--rd-space-md);
+  background: var(--rd-bg-card);
+  border: 1px solid var(--rd-border-subtle);
+  border-radius: var(--rd-radius);
+}
+
+.rd-filter-bar label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-xs);
+  flex: 1;
+  min-width: 120px;
+}
+
+.rd-filter-bar input,
+.rd-filter-bar select {
+  margin-bottom: 0;
+}
+
+.rd-filter-bar button {
+  white-space: nowrap;
+  margin-bottom: 0;
+  align-self: flex-end;
 }
 
 /* ===================================================================
@@ -775,6 +894,43 @@ button.rd-danger-outline:hover {
   margin-bottom: 0;
 }
 
+/* Rotation preview calendar */
+.rd-rotation-calendar {
+  margin-top: var(--rd-space-md);
+  background: var(--rd-bg-elevated);
+  border-radius: var(--rd-radius);
+  overflow: hidden;
+}
+
+.rd-rotation-calendar__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border-subtle);
+}
+
+.rd-rotation-calendar__row:last-child {
+  border-bottom: none;
+}
+
+.rd-rotation-calendar__date {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text);
+}
+
+.rd-rotation-calendar__badge {
+  display: inline-block;
+  padding: var(--rd-space-xs) var(--rd-space-sm);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  background: var(--rd-bg-card);
+  color: var(--rd-accent);
+}
+
 /* Topic deck items */
 .rd-settings .rd-topic-item {
   display: flex;
@@ -836,6 +992,37 @@ button.rd-danger-outline:hover {
   font-size: var(--rd-font-size-sm);
 }
 
+/* Sticky save bar */
+.rd-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--rd-space-md);
+  padding: var(--rd-space-md) var(--rd-space-xl);
+  background: var(--rd-bg-card);
+  backdrop-filter: blur(8px);
+  border-top: 1px solid var(--rd-border);
+  box-shadow: 0 -2px 8px rgba(45, 41, 38, 0.08);
+  border-radius: 0 0 var(--rd-radius-lg) var(--rd-radius-lg);
+  z-index: 50;
+}
+
+.rd-sticky-bar span {
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-highlight);
+}
+
+.rd-sticky-bar .rd-button-row {
+  margin-top: 0;
+}
+
+.rd-sticky-bar button {
+  margin-bottom: 0;
+}
+
 /* ===================================================================
    18. Utility classes
    =================================================================== */
@@ -853,7 +1040,98 @@ button.rd-danger-outline:hover {
 }
 
 /* ===================================================================
-   19. Page entrance animation
+   19. Toast notifications
+   =================================================================== */
+
+.rd-toast-container {
+  position: fixed;
+  bottom: var(--rd-space-lg);
+  right: var(--rd-space-lg);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: var(--rd-space-sm);
+  max-width: 400px;
+}
+
+.rd-toast {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-radius: var(--rd-radius);
+  box-shadow: var(--rd-shadow-lg);
+  animation: rd-toast-in 0.3s var(--rd-ease) both;
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+}
+
+.rd-toast--success {
+  background: var(--rd-sage-light);
+  color: var(--rd-ink);
+  border-left: 4px solid var(--rd-sage);
+}
+
+.rd-toast--error {
+  background: #f8d7da;
+  color: var(--rd-danger);
+  border-left: 4px solid var(--rd-danger);
+}
+
+.rd-toast--info {
+  background: var(--rd-teal-pale);
+  color: var(--rd-teal);
+  border-left: 4px solid var(--rd-teal);
+}
+
+.rd-toast__message {
+  flex: 1;
+}
+
+.rd-toast__close {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: var(--rd-font-size-lg);
+  padding: 0 var(--rd-space-xs);
+  cursor: pointer;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.rd-toast__close:hover {
+  opacity: 1;
+  background: none;
+}
+
+@keyframes rd-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  .rd-toast--success {
+    background: rgba(122, 139, 111, 0.3);
+    color: var(--rd-sage-light);
+  }
+  .rd-toast--error {
+    background: rgba(181, 69, 58, 0.2);
+    color: var(--rd-danger);
+  }
+  .rd-toast--info {
+    background: rgba(27, 107, 109, 0.2);
+    color: var(--rd-teal-pale);
+  }
+}
+
+/* ===================================================================
+   20. Page entrance animation
    =================================================================== */
 
 @keyframes rd-fade-up {

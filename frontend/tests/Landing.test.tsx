@@ -2,18 +2,62 @@
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as api from "../src/api/index";
+import { ToastProvider } from "../src/contexts/ToastContext";
 import { Landing } from "../src/pages/Landing";
 import type { UpcomingMeeting } from "../src/types/index";
 
 jest.mock("../src/api/index", () => ({
   getUpcomingMeeting: jest.fn(),
+  getUpcomingMeetings: jest.fn(),
   drawTopic: jest.fn(),
+  undoTopicDraw: jest.fn(),
   scheduleSpeaker: jest.fn(),
+  unscheduleSpeaker: jest.fn(),
   cancelMeeting: jest.fn(),
 }));
 
+function renderLanding(): void {
+  render(
+    <ToastProvider>
+      <Landing />
+    </ToastProvider>,
+  );
+}
+
 const getUpcomingMeeting = api.getUpcomingMeeting as jest.Mock;
+const getUpcomingMeetings = api.getUpcomingMeetings as jest.Mock;
+const drawTopic = api.drawTopic as jest.Mock;
+const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
+const scheduleSpeaker = api.scheduleSpeaker as jest.Mock;
+const unscheduleSpeaker = api.unscheduleSpeaker as jest.Mock;
+
+const lookaheadMeetings = [
+  {
+    meeting_date: "2026-02-22",
+    meeting_time: "18:00:00",
+    format_type: "Topic",
+    is_cancelled: false,
+  },
+  {
+    meeting_date: "2026-03-01",
+    meeting_time: "18:00:00",
+    format_type: "Speaker",
+    is_cancelled: false,
+  },
+  {
+    meeting_date: "2026-03-08",
+    meeting_time: "18:00:00",
+    format_type: "Book Study",
+    is_cancelled: false,
+  },
+  {
+    meeting_date: "2026-03-15",
+    meeting_time: "18:00:00",
+    format_type: "Topic",
+    is_cancelled: false,
+  },
+];
 
 const baseMeeting: UpcomingMeeting = {
   meeting_date: "2026-02-22",
@@ -33,14 +77,29 @@ const cancelledMeeting: UpcomingMeeting = {
   is_cancelled: true,
 };
 
+const speakerMeeting: UpcomingMeeting = {
+  ...baseMeeting,
+  format_type: "Speaker",
+  topic_name: null,
+  speaker_name: "Jane Doe",
+  topics_remaining: 0,
+  topics_total: 0,
+};
+
+const speakerMeetingNoSpeaker: UpcomingMeeting = {
+  ...speakerMeeting,
+  speaker_name: null,
+};
+
 describe("Landing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    getUpcomingMeetings.mockResolvedValue(lookaheadMeetings);
   });
 
   it("renders formatted meeting date", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 2 })).toHaveTextContent(
@@ -51,7 +110,7 @@ describe("Landing", () => {
 
   it("renders meeting time when present", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByText(/at 6:00 PM/)).toBeInTheDocument();
@@ -63,7 +122,7 @@ describe("Landing", () => {
       ...baseMeeting,
       meeting_time: null,
     });
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByRole("heading", { level: 2 })).toBeInTheDocument();
@@ -73,7 +132,7 @@ describe("Landing", () => {
 
   it("renders topic name when format is Topic", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByText("Meditation Practices")).toBeInTheDocument();
@@ -82,13 +141,13 @@ describe("Landing", () => {
 
   it("shows loading state initially", () => {
     getUpcomingMeeting.mockReturnValue(new Promise(() => {}));
-    render(<Landing />);
+    renderLanding();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("shows error message on API failure", async () => {
     getUpcomingMeeting.mockRejectedValue(new Error("Network error"));
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Network error");
@@ -97,7 +156,7 @@ describe("Landing", () => {
 
   it("shows no meeting message when null", async () => {
     getUpcomingMeeting.mockResolvedValue(null);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(
@@ -108,16 +167,19 @@ describe("Landing", () => {
 
   it("renders format badge", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
-      expect(screen.getByText("Topic")).toBeInTheDocument();
+      const badge = screen.getByText("Topic", {
+        selector: ".rd-format-badge",
+      });
+      expect(badge).toBeInTheDocument();
     });
   });
 
   it("renders deck status for topic format", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(
@@ -131,7 +193,7 @@ describe("Landing", () => {
       ...baseMeeting,
       banners: ["Deck reshuffled!"],
     });
-    render(<Landing />);
+    renderLanding();
 
     await waitFor(() => {
       expect(screen.getByText("Deck reshuffled!")).toBeInTheDocument();
@@ -141,17 +203,20 @@ describe("Landing", () => {
   describe("active meeting", () => {
     it("renders format badge and topic content", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
-        expect(screen.getByText("Topic")).toBeInTheDocument();
+        const badge = screen.getByText("Topic", {
+          selector: ".rd-format-badge",
+        });
+        expect(badge).toBeInTheDocument();
         expect(screen.getByText("Meditation Practices")).toBeInTheDocument();
       });
     });
 
     it("renders Cancel Meeting button", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -162,10 +227,12 @@ describe("Landing", () => {
 
     it("does not show Restore Meeting button", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
-        expect(screen.getByText("Topic")).toBeInTheDocument();
+        expect(
+          screen.getByText("Topic", { selector: ".rd-format-badge" }),
+        ).toBeInTheDocument();
       });
       expect(
         screen.queryByRole("button", { name: "Restore Meeting" }),
@@ -175,7 +242,7 @@ describe("Landing", () => {
     it("calls cancelMeeting with is_cancelled=true when Cancel clicked", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       cancelMeeting.mockResolvedValue({});
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -199,17 +266,19 @@ describe("Landing", () => {
   describe("cancelled meeting", () => {
     it("shows Cancelled badge instead of format type", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(screen.getByText("Cancelled")).toBeInTheDocument();
       });
-      expect(screen.queryByText("Topic")).not.toBeInTheDocument();
+      expect(
+        screen.queryByText("Topic", { selector: ".rd-format-badge" }),
+      ).not.toBeInTheDocument();
     });
 
     it("shows cancellation message", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -220,7 +289,7 @@ describe("Landing", () => {
 
     it("shows Restore Meeting button", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -231,7 +300,7 @@ describe("Landing", () => {
 
     it("hides format-specific content when cancelled", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(screen.getByText("Cancelled")).toBeInTheDocument();
@@ -246,7 +315,7 @@ describe("Landing", () => {
 
     it("applies rd-cancelled class to article", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         const article = screen.getByRole("article");
@@ -257,7 +326,7 @@ describe("Landing", () => {
     it("calls cancelMeeting with is_cancelled=false when Restore clicked", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
       cancelMeeting.mockResolvedValue({});
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -278,11 +347,240 @@ describe("Landing", () => {
     });
   });
 
+  describe("lookahead", () => {
+    it("shows upcoming meetings section", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Upcoming Meetings")).toBeInTheDocument();
+      });
+    });
+
+    it("displays next 3 meetings (excludes primary)", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Sunday, March 1")).toBeInTheDocument();
+        expect(screen.getByText("Sunday, March 8")).toBeInTheDocument();
+        expect(screen.getByText("Sunday, March 15")).toBeInTheDocument();
+      });
+    });
+
+    it("shows format badges for lookahead meetings", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Speaker")).toBeInTheDocument();
+        expect(screen.getByText("Book Study")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("topic undo/re-draw", () => {
+    it("shows Undo and Re-draw buttons when topic is drawn", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Meditation Practices")).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Undo" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Re-draw" }),
+      ).toBeInTheDocument();
+    });
+
+    it("does not show Undo/Re-draw when no topic drawn", async () => {
+      getUpcomingMeeting.mockResolvedValue({
+        ...baseMeeting,
+        topic_name: null,
+      });
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Draw Topic" }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: "Undo" }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Re-draw" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("calls undoTopicDraw when Undo is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      undoTopicDraw.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Undo" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await waitFor(() => {
+        expect(undoTopicDraw).toHaveBeenCalled();
+      });
+    });
+
+    it("calls undoTopicDraw then drawTopic when Re-draw is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      undoTopicDraw.mockResolvedValue({});
+      drawTopic.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Re-draw" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Re-draw" }));
+
+      await waitFor(() => {
+        expect(undoTopicDraw).toHaveBeenCalled();
+        expect(drawTopic).toHaveBeenCalled();
+      });
+    });
+
+    it("shows toast when undo fails", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      undoTopicDraw.mockRejectedValue(new Error("Undo failed"));
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Undo" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Undo failed")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("speaker management", () => {
+    it("shows Edit and Remove buttons when speaker is scheduled", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: "Edit speaker" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Remove speaker" }),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Schedule Speaker button when no speaker scheduled", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeetingNoSpeaker);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Schedule Speaker" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("opens edit form pre-filled with current speaker name", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Edit speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit speaker" }));
+
+      const input = screen.getByPlaceholderText("Speaker name");
+      expect(input).toHaveValue("Jane Doe");
+      expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    });
+
+    it("calls scheduleSpeaker with new name on edit submit", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeeting);
+      scheduleSpeaker.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Edit speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit speaker" }));
+      fireEvent.change(screen.getByPlaceholderText("Speaker name"), {
+        target: { value: "John Smith" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(scheduleSpeaker).toHaveBeenCalledWith(
+          "2026-02-22",
+          "John Smith",
+        );
+      });
+    });
+
+    it("calls unscheduleSpeaker when Remove is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeeting);
+      unscheduleSpeaker.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Remove speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove speaker" }));
+
+      await waitFor(() => {
+        expect(unscheduleSpeaker).toHaveBeenCalledWith("2026-02-22");
+      });
+    });
+
+    it("shows toast on remove failure", async () => {
+      getUpcomingMeeting.mockResolvedValue(speakerMeeting);
+      unscheduleSpeaker.mockRejectedValue(new Error("Remove failed"));
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Remove speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Remove speaker" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Remove failed")).toBeInTheDocument();
+      });
+    });
+  });
+
   describe("error handling", () => {
-    it("shows error when cancel fails", async () => {
+    it("shows toast when cancel fails", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       cancelMeeting.mockRejectedValue(new Error("Cancel failed"));
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -293,14 +591,14 @@ describe("Landing", () => {
       fireEvent.click(screen.getByRole("button", { name: "Cancel Meeting" }));
 
       await waitFor(() => {
-        expect(screen.getByRole("alert")).toHaveTextContent("Cancel failed");
+        expect(screen.getByText("Cancel failed")).toBeInTheDocument();
       });
     });
 
-    it("shows error when restore fails", async () => {
+    it("shows toast when restore fails", async () => {
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
       cancelMeeting.mockRejectedValue(new Error("Restore failed"));
-      render(<Landing />);
+      renderLanding();
 
       await waitFor(() => {
         expect(
@@ -311,7 +609,7 @@ describe("Landing", () => {
       fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
 
       await waitFor(() => {
-        expect(screen.getByRole("alert")).toHaveTextContent("Restore failed");
+        expect(screen.getByText("Restore failed")).toBeInTheDocument();
       });
     });
   });

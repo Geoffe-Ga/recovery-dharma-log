@@ -1,13 +1,22 @@
 """Meetings router: log and upcoming meeting."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import MeetingLog, User
-from app.schemas import MeetingCancel, MeetingResponse, UpcomingMeeting
-from app.services import get_format_for_date, get_upcoming_meeting_data
+from app.schemas import (
+    MeetingCancel,
+    MeetingResponse,
+    UpcomingMeeting,
+    UpcomingMeetingBrief,
+)
+from app.services import (
+    get_format_for_date,
+    get_upcoming_meeting_data,
+    get_upcoming_meetings,
+)
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
@@ -19,6 +28,16 @@ def get_upcoming_meeting(
 ) -> dict:
     """Get the next upcoming meeting with its format and content."""
     return get_upcoming_meeting_data(db, current_user.group)
+
+
+@router.get("/upcoming/lookahead", response_model=list[UpcomingMeetingBrief])
+def get_upcoming_lookahead(
+    weeks: int = Query(default=4, ge=1, le=12),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[dict]:
+    """Get the next N upcoming meetings with their formats."""
+    return get_upcoming_meetings(db, current_user.group, weeks)
 
 
 @router.get("/log", response_model=list[MeetingResponse])

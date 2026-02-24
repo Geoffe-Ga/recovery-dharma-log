@@ -87,6 +87,15 @@ class UpcomingMeeting(BaseModel):
     banners: list[str] = []
 
 
+class UpcomingMeetingBrief(BaseModel):
+    """Brief meeting info for multi-week lookahead."""
+
+    meeting_date: date
+    meeting_time: time | None = None
+    format_type: str
+    is_cancelled: bool = False
+
+
 class MeetingCancel(BaseModel):
     """Request schema for cancelling a meeting."""
 

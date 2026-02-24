@@ -14,6 +14,7 @@ import type {
   Topic,
   TopicDrawResult,
   UpcomingMeeting,
+  UpcomingMeetingBrief,
   User,
 } from "../types/index";
 
@@ -53,6 +54,14 @@ export async function getUpcomingMeeting(): Promise<UpcomingMeeting> {
   return api.get<UpcomingMeeting>("/meetings/upcoming");
 }
 
+export async function getUpcomingMeetings(
+  weeks: number = 4,
+): Promise<UpcomingMeetingBrief[]> {
+  return api.get<UpcomingMeetingBrief[]>(
+    `/meetings/upcoming/lookahead?weeks=${weeks}`,
+  );
+}
+
 export async function getMeetingLog(): Promise<MeetingLogEntry[]> {
   return api.get<MeetingLogEntry[]>("/meetings/log");
 }
@@ -87,6 +96,10 @@ export async function drawTopic(): Promise<TopicDrawResult> {
 
 export async function reshuffleTopics(): Promise<void> {
   await api.post("/topics/reshuffle");
+}
+
+export async function undoTopicDraw(): Promise<void> {
+  await api.post("/topics/undo");
 }
 
 // --- Book ---

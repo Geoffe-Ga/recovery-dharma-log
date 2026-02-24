@@ -56,11 +56,33 @@ describe("API client", () => {
   it("throws on non-ok response", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
+      status: 400,
+      json: () => Promise.resolve({ detail: "Bad request" }),
+    });
+
+    await expect(api.get("/test")).rejects.toThrow("Bad request");
+  });
+
+  it("clears token and redirects on 401 for non-auth paths", async () => {
+    setToken("my-jwt");
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
       status: 401,
       json: () => Promise.resolve({ detail: "Unauthorized" }),
     });
 
-    await expect(api.get("/test")).rejects.toThrow("Unauthorized");
+    await expect(api.get("/test")).rejects.toThrow("Session expired");
+    expect(getToken()).toBeNull();
+  });
+
+  it("does not redirect on 401 for auth paths", async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: () => Promise.resolve({ detail: "Invalid credentials" }),
+    });
+
+    await expect(api.get("/auth/login")).rejects.toThrow("Invalid credentials");
   });
 
   it("makes POST request with body", async () => {

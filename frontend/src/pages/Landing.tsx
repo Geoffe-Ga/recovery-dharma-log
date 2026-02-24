@@ -5,23 +5,34 @@ import {
   cancelMeeting,
   drawTopic,
   getUpcomingMeeting,
+  getUpcomingMeetings,
   scheduleSpeaker,
+  undoTopicDraw,
+  unscheduleSpeaker,
 } from "../api/index";
-import type { UpcomingMeeting } from "../types/index";
+import { useShowToast } from "../contexts/ToastContext";
+import type { UpcomingMeeting, UpcomingMeetingBrief } from "../types/index";
 import { formatMeetingDate, formatMeetingTime } from "../utils/dates";
 
 export function Landing(): React.ReactElement {
   const [meeting, setMeeting] = useState<UpcomingMeeting | null>(null);
+  const [lookahead, setLookahead] = useState<UpcomingMeetingBrief[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [speakerInput, setSpeakerInput] = useState("");
   const [showSpeakerForm, setShowSpeakerForm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const showToast = useShowToast();
 
   const refresh = useCallback(async () => {
     try {
-      const updated = await getUpcomingMeeting();
+      const [updated, upcoming] = await Promise.all([
+        getUpcomingMeeting(),
+        getUpcomingMeetings(4),
+      ]);
       setMeeting(updated);
+      // Exclude the first meeting (already shown as primary card)
+      setLookahead(upcoming.slice(1));
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
@@ -36,9 +47,38 @@ export function Landing(): React.ReactElement {
       await drawTopic();
       await refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to draw topic");
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to draw topic",
+      );
     }
-  }, [refresh]);
+  }, [refresh, showToast]);
+
+  const handleUndoDraw = useCallback(async () => {
+    try {
+      await undoTopicDraw();
+      await refresh();
+      showToast("info", "Topic returned to deck");
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to undo draw",
+      );
+    }
+  }, [refresh, showToast]);
+
+  const handleRedraw = useCallback(async () => {
+    try {
+      await undoTopicDraw();
+      await drawTopic();
+      await refresh();
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to re-draw topic",
+      );
+    }
+  }, [refresh, showToast]);
 
   const handleScheduleSpeaker = useCallback(
     async (e: React.FormEvent) => {
@@ -49,14 +89,30 @@ export function Landing(): React.ReactElement {
         setSpeakerInput("");
         setShowSpeakerForm(false);
         await refresh();
+        showToast("success", "Speaker scheduled");
       } catch (err: unknown) {
-        setError(
+        showToast(
+          "error",
           err instanceof Error ? err.message : "Failed to schedule speaker",
         );
       }
     },
-    [meeting, speakerInput, refresh],
+    [meeting, speakerInput, refresh, showToast],
   );
+
+  const handleRemoveSpeaker = useCallback(async () => {
+    if (!meeting) return;
+    try {
+      await unscheduleSpeaker(meeting.meeting_date);
+      await refresh();
+      showToast("success", "Speaker removed");
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to remove speaker",
+      );
+    }
+  }, [meeting, refresh, showToast]);
 
   const handleToggleCancel = useCallback(async () => {
     if (!meeting || isCancelling) return;
@@ -67,11 +123,14 @@ export function Landing(): React.ReactElement {
       await cancelMeeting(meeting.meeting_date, newCancelled);
       await refresh();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update meeting");
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to update meeting",
+      );
     } finally {
       setIsCancelling(false);
     }
-  }, [meeting, isCancelling, refresh]);
+  }, [meeting, isCancelling, refresh, showToast]);
 
   if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
@@ -121,9 +180,27 @@ export function Landing(): React.ReactElement {
             {meeting.format_type === "Topic" && (
               <section>
                 {meeting.topic_name ? (
-                  <p>
-                    <strong>{meeting.topic_name}</strong>
-                  </p>
+                  <>
+                    <p>
+                      <strong>{meeting.topic_name}</strong>
+                    </p>
+                    <div className="rd-topic-actions">
+                      <button
+                        type="button"
+                        className="outline"
+                        onClick={handleUndoDraw}
+                      >
+                        Undo
+                      </button>
+                      <button
+                        type="button"
+                        className="outline"
+                        onClick={handleRedraw}
+                      >
+                        Re-draw
+                      </button>
+                    </div>
+                  </>
                 ) : (
                   <button type="button" onClick={handleDrawTopic}>
                     Draw Topic
@@ -139,9 +216,56 @@ export function Landing(): React.ReactElement {
             {meeting.format_type === "Speaker" && (
               <section>
                 {meeting.speaker_name ? (
-                  <p>
-                    <strong>{meeting.speaker_name}</strong>
-                  </p>
+                  <>
+                    {showSpeakerForm ? (
+                      <form onSubmit={handleScheduleSpeaker}>
+                        <input
+                          type="text"
+                          placeholder="Speaker name"
+                          value={speakerInput}
+                          onChange={(e) => setSpeakerInput(e.target.value)}
+                        />
+                        <button type="submit">Save</button>
+                        <button
+                          type="button"
+                          className="outline"
+                          onClick={() => {
+                            setShowSpeakerForm(false);
+                            setSpeakerInput("");
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="rd-speaker-display">
+                        <p>
+                          <strong>{meeting.speaker_name}</strong>
+                        </p>
+                        <div className="rd-speaker-actions">
+                          <button
+                            type="button"
+                            className="outline rd-icon-btn"
+                            aria-label="Edit speaker"
+                            onClick={() => {
+                              setSpeakerInput(meeting.speaker_name ?? "");
+                              setShowSpeakerForm(true);
+                            }}
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="outline rd-danger-outline rd-icon-btn"
+                            aria-label="Remove speaker"
+                            onClick={handleRemoveSpeaker}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <>
                     {showSpeakerForm ? (
@@ -195,6 +319,26 @@ export function Landing(): React.ReactElement {
           </>
         )}
       </article>
+
+      {lookahead.length > 0 && (
+        <section className="rd-lookahead">
+          <h3>Upcoming Meetings</h3>
+          <ul className="rd-lookahead__list">
+            {lookahead.map((m) => (
+              <li key={m.meeting_date} className="rd-lookahead__item">
+                <span className="rd-lookahead__date">
+                  {formatMeetingDate(m.meeting_date)}
+                </span>
+                <span
+                  className={`rd-lookahead__badge${m.is_cancelled ? " rd-lookahead__badge--cancelled" : ""}`}
+                >
+                  {m.is_cancelled ? "Cancelled" : m.format_type}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

@@ -40,6 +40,13 @@ export interface UpcomingMeeting {
   banners: string[];
 }
 
+export interface UpcomingMeetingBrief {
+  meeting_date: string;
+  meeting_time: string | null;
+  format_type: string;
+  is_cancelled: boolean;
+}
+
 export interface MeetingLogEntry {
   id: number;
   meeting_date: string;

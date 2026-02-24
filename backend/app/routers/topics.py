@@ -5,9 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
-from app.models import Topic, TopicDeckState, User
+from app.models import MeetingLog, Topic, TopicDeckState, User
 from app.schemas import TopicCreate, TopicDrawResponse, TopicResponse
-from app.services import draw_random_topic, get_deck_stats, reshuffle_deck
+from app.services import (
+    draw_random_topic,
+    get_deck_stats,
+    get_format_for_date,
+    get_next_meeting_date,
+    reshuffle_deck,
+    undo_topic_draw,
+)
 
 router = APIRouter(prefix="/topics", tags=["topics"])
 
@@ -91,8 +98,32 @@ def draw_topic(
     db: Session = Depends(get_db),
 ) -> dict:
     """Draw a random topic from the remaining deck."""
-    topic = draw_random_topic(db, current_user.group)
-    remaining, total = get_deck_stats(db, current_user.group)
+    group = current_user.group
+    topic = draw_random_topic(db, group)
+
+    # Store topic_id in meeting log
+    meeting_date = get_next_meeting_date(group)
+    log_entry = (
+        db.query(MeetingLog)
+        .filter(
+            MeetingLog.group_id == group.id,
+            MeetingLog.meeting_date == meeting_date,
+        )
+        .first()
+    )
+    if log_entry:
+        log_entry.topic_id = topic.id
+    else:
+        fmt = get_format_for_date(db, group, meeting_date)
+        log_entry = MeetingLog(
+            group_id=group.id,
+            meeting_date=meeting_date,
+            format_type=fmt,
+            topic_id=topic.id,
+        )
+        db.add(log_entry)
+
+    remaining, total = get_deck_stats(db, group)
     db.commit()
     return {
         "topic": {
@@ -116,3 +147,22 @@ def reshuffle(
     new_cycle = reshuffle_deck(db, current_user.group)
     db.commit()
     return {"detail": "Deck reshuffled", "deck_cycle": new_cycle}
+
+
+@router.post("/undo")
+def undo_draw(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Undo the last topic draw for the next meeting."""
+    group = current_user.group
+    meeting_date = get_next_meeting_date(group)
+    try:
+        undo_topic_draw(db, group, meeting_date)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    db.commit()
+    return {"detail": "Topic draw undone"}

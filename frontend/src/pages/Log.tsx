@@ -6,8 +6,11 @@ import {
   getMeetingLog,
   getPrintableExportUrl,
 } from "../api/index";
+import { useLogFilters } from "../hooks/useLogFilters";
 import type { MeetingLogEntry } from "../types/index";
 import { formatLogDate } from "../utils/dates";
+
+const FORMAT_OPTIONS = ["", "Speaker", "Topic", "Book Study"];
 
 export function Log(): React.ReactElement {
   const [entries, setEntries] = useState<MeetingLogEntry[]>([]);
@@ -23,6 +26,14 @@ export function Log(): React.ReactElement {
       .finally(() => setLoading(false));
   }, []);
 
+  const {
+    filters,
+    setFilter,
+    clearFilters,
+    filteredEntries,
+    hasActiveFilters,
+  } = useLogFilters(entries);
+
   if (loading) return <p aria-busy="true">Loading...</p>;
   if (error) return <p role="alert">{error}</p>;
 
@@ -36,8 +47,58 @@ export function Log(): React.ReactElement {
         </a>
       </nav>
 
+      {entries.length > 0 && (
+        <div className="rd-filter-bar">
+          <label>
+            From
+            <input
+              type="date"
+              value={filters.startDate}
+              onChange={(e) => setFilter("startDate", e.target.value)}
+            />
+          </label>
+          <label>
+            To
+            <input
+              type="date"
+              value={filters.endDate}
+              onChange={(e) => setFilter("endDate", e.target.value)}
+            />
+          </label>
+          <label>
+            Format
+            <select
+              value={filters.formatType}
+              onChange={(e) => setFilter("formatType", e.target.value)}
+            >
+              {FORMAT_OPTIONS.map((opt) => (
+                <option key={opt} value={opt}>
+                  {opt || "All"}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            Search
+            <input
+              type="text"
+              placeholder="Search..."
+              value={filters.search}
+              onChange={(e) => setFilter("search", e.target.value)}
+            />
+          </label>
+          {hasActiveFilters && (
+            <button type="button" className="outline" onClick={clearFilters}>
+              Clear Filters
+            </button>
+          )}
+        </div>
+      )}
+
       {entries.length === 0 ? (
         <p>No meetings recorded yet.</p>
+      ) : filteredEntries.length === 0 ? (
+        <p>No matching meetings.</p>
       ) : (
         <div style={{ overflowX: "auto" }}>
           <table>
@@ -50,7 +111,7 @@ export function Log(): React.ReactElement {
               </tr>
             </thead>
             <tbody>
-              {entries.map((entry) => (
+              {filteredEntries.map((entry) => (
                 <tr key={entry.id}>
                   <td>{formatLogDate(entry.meeting_date)}</td>
                   <td>{entry.format_type}</td>
@@ -58,7 +119,7 @@ export function Log(): React.ReactElement {
                     {entry.speaker_name ??
                       entry.topic_name ??
                       entry.content_summary ??
-                      "—"}
+                      "\u2014"}
                   </td>
                   <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
                 </tr>

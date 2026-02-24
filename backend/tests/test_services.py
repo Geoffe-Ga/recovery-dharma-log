@@ -26,9 +26,11 @@ from app.services import (
     get_plan_status,
     get_rotation_for_group,
     get_upcoming_meeting_data,
+    get_upcoming_meetings,
     page_count,
     page_to_int,
     reshuffle_deck,
+    undo_topic_draw,
     update_assignment_chapters,
 )
 
@@ -244,6 +246,61 @@ class TestTopicDeck:
         remaining, total = get_deck_stats(db_session, group)
         assert remaining == 3
         assert total == 3
+
+
+class TestUndoTopicDraw:
+    """Tests for undoing a topic draw."""
+
+    def test_undo_returns_topic_to_deck(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        drawn = draw_random_topic(db_session, group)
+
+        # Create a meeting log with the drawn topic
+        meeting_date = date(2025, 1, 12)
+        log_entry = MeetingLog(
+            group_id=group.id,
+            meeting_date=meeting_date,
+            format_type="Topic",
+            topic_id=drawn.id,
+        )
+        db_session.add(log_entry)
+        db_session.flush()
+
+        # Before undo: 2 remaining
+        remaining, _total = get_deck_stats(db_session, group)
+        assert remaining == 2
+
+        undo_topic_draw(db_session, group, meeting_date)
+
+        # After undo: 3 remaining (topic returned to deck)
+        remaining, _total = get_deck_stats(db_session, group)
+        assert remaining == 3
+
+        # Log entry no longer has topic_id
+        db_session.refresh(log_entry)
+        assert log_entry.topic_id is None
+
+    def test_undo_raises_when_no_topic_drawn(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        meeting_date = date(2025, 1, 12)
+
+        with pytest.raises(ValueError, match="No topic drawn"):
+            undo_topic_draw(db_session, group, meeting_date)
+
+    def test_undo_raises_when_log_has_no_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        meeting_date = date(2025, 1, 12)
+        log_entry = MeetingLog(
+            group_id=group.id,
+            meeting_date=meeting_date,
+            format_type="Topic",
+        )
+        db_session.add(log_entry)
+        db_session.flush()
+
+        with pytest.raises(ValueError, match="No topic drawn"):
+            undo_topic_draw(db_session, group, meeting_date)
 
 
 class TestBookReadingPlan:
@@ -555,6 +612,46 @@ class TestSpeakerBanners:
         data = get_upcoming_meeting_data(db_session, group)
         assert "banners" in data
         assert isinstance(data["banners"], list)
+
+
+class TestUpcomingMeetings:
+    """Tests for multi-week lookahead."""
+
+    def test_returns_correct_count(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        result = get_upcoming_meetings(db_session, group, weeks=4)
+        assert len(result) == 4
+
+    def test_meetings_are_weekly(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        result = get_upcoming_meetings(db_session, group, weeks=3)
+        dates = [r["meeting_date"] for r in result]
+        assert (dates[1] - dates[0]).days == 7
+        assert (dates[2] - dates[1]).days == 7
+
+    def test_includes_format_type(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        result = get_upcoming_meetings(db_session, group, weeks=1)
+        assert result[0]["format_type"] in ["Speaker", "Topic", "Book Study"]
+
+    def test_cancelled_meeting_shown(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_topics(db_session, group, count=3)
+        next_date = get_next_meeting_date(group)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=next_date,
+                format_type="Topic",
+                is_cancelled=True,
+            )
+        )
+        db_session.flush()
+        result = get_upcoming_meetings(db_session, group, weeks=1)
+        assert result[0]["is_cancelled"] is True
 
 
 class TestExport:

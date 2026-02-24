@@ -1,20 +1,29 @@
 /** Tests for Login page component. */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import { ToastProvider } from "../src/contexts/ToastContext";
 import { Login } from "../src/pages/Login";
 
 const mockLogin = jest.fn();
 const mockRegister = jest.fn();
 
-function renderLogin(overrides = {}): void {
+function renderLogin(
+  overrides: Record<string, unknown> = {},
+  initialEntries: string[] = ["/"],
+): void {
   render(
-    <Login
-      onLogin={mockLogin}
-      onRegister={mockRegister}
-      error={null}
-      loading={false}
-      {...overrides}
-    />,
+    <MemoryRouter initialEntries={initialEntries}>
+      <ToastProvider>
+        <Login
+          onLogin={mockLogin}
+          onRegister={mockRegister}
+          error={null}
+          loading={false}
+          {...overrides}
+        />
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -58,5 +67,14 @@ describe("Login", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Log In" }));
     expect(mockLogin).toHaveBeenCalledWith("testuser", "testpass");
+  });
+
+  it("shows session expired toast when expired=1 query param", async () => {
+    renderLogin({}, ["/login?expired=1"]);
+    await waitFor(() => {
+      expect(
+        screen.getByText("Your session has expired. Please log in again."),
+      ).toBeInTheDocument();
+    });
   });
 });

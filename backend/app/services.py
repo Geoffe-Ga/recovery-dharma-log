@@ -200,6 +200,39 @@ def draw_random_topic(db: Session, group: Group) -> Topic:
     return topic
 
 
+def undo_topic_draw(db: Session, group: Group, meeting_date: date) -> None:
+    """Undo a topic draw: return topic to deck and clear from meeting log."""
+    log_entry = (
+        db.query(MeetingLog)
+        .filter(
+            MeetingLog.group_id == group.id,
+            MeetingLog.meeting_date == meeting_date,
+        )
+        .first()
+    )
+    if not log_entry or not log_entry.topic_id:
+        raise ValueError("No topic drawn for this meeting")
+
+    # Return topic to deck (mark as undrawn)
+    cycle = _get_current_cycle(db, group)
+    deck_state = (
+        db.query(TopicDeckState)
+        .filter(
+            TopicDeckState.group_id == group.id,
+            TopicDeckState.topic_id == log_entry.topic_id,
+            TopicDeckState.deck_cycle == cycle,
+            TopicDeckState.is_drawn.is_(True),
+        )
+        .first()
+    )
+    if deck_state:
+        deck_state.is_drawn = False
+
+    # Clear topic from meeting log
+    log_entry.topic_id = None
+    db.flush()
+
+
 def reshuffle_deck(db: Session, group: Group) -> int:
     """Reshuffle the deck by creating a new cycle. Returns new cycle number."""
     current_cycle = _get_current_cycle(db, group)
@@ -573,6 +606,41 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
         "topics_total": topics_total,
         "banners": banners,
     }
+
+
+def get_upcoming_meetings(
+    db: Session,
+    group: Group,
+    weeks: int = 4,
+) -> list[dict]:
+    """Get the next N upcoming meetings with their formats."""
+    results: list[dict] = []
+    current = get_next_meeting_date(group)
+
+    for _ in range(weeks):
+        fmt = get_format_for_date(db, group, current)
+
+        log_entry = (
+            db.query(MeetingLog)
+            .filter(
+                MeetingLog.group_id == group.id,
+                MeetingLog.meeting_date == current,
+            )
+            .first()
+        )
+        is_cancelled = bool(log_entry and log_entry.is_cancelled)
+
+        results.append(
+            {
+                "meeting_date": current,
+                "meeting_time": group.meeting_time,
+                "format_type": fmt,
+                "is_cancelled": is_cancelled,
+            }
+        )
+        current += timedelta(days=7)
+
+    return results
 
 
 # --- Export ---

@@ -107,6 +107,36 @@ class TestMeetingsEndpoints:
         )
         assert response.status_code == 200
 
+    def test_lookahead_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Lookahead endpoint returns a list of upcoming meetings."""
+        response = client.get(
+            "/meetings/upcoming/lookahead?weeks=4",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        assert len(data) == 4
+        assert "meeting_date" in data[0]
+        assert "format_type" in data[0]
+
+    def test_lookahead_default_weeks(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Lookahead defaults to 4 weeks."""
+        response = client.get(
+            "/meetings/upcoming/lookahead",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert len(response.json()) == 4
+
     def test_endpoints_require_auth(self, client: TestClient) -> None:
         """Meeting endpoints return 401 without auth."""
         assert client.get("/meetings/upcoming").status_code == 401
@@ -169,6 +199,28 @@ class TestTopicsEndpoints:
         """Delete topic returns valid response."""
         response = client.delete("/topics/1", headers=auth_headers)
         assert response.status_code == 200
+
+    def test_undo_after_draw_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Undo topic draw after drawing returns valid response."""
+        # First draw a topic
+        client.post("/topics/draw", headers=auth_headers)
+        # Then undo it
+        response = client.post("/topics/undo", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["detail"] == "Topic draw undone"
+
+    def test_undo_without_draw_returns_400(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Undo without a prior draw returns 400."""
+        response = client.post("/topics/undo", headers=auth_headers)
+        assert response.status_code == 400
 
 
 class TestBookEndpoints:

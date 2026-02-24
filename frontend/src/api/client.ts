@@ -32,6 +32,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   });
 
   if (!response.ok) {
+    if (response.status === 401 && !path.startsWith("/auth/")) {
+      setToken(null);
+      window.location.href = "/login?expired=1";
+      throw new Error("Session expired");
+    }
     const errorBody = await response.json().catch(() => null);
     const message =
       errorBody?.detail ?? `Request failed with status ${response.status}`;
