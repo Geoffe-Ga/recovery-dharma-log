@@ -222,6 +222,34 @@ class TestTopicsEndpoints:
         response = client.post("/topics/undo", headers=auth_headers)
         assert response.status_code == 400
 
+    def test_list_topics_includes_last_used(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """List topics returns last_used field, null when never used."""
+        response = client.get("/topics/", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) > 0
+        for topic in data:
+            assert "last_used" in topic
+
+    def test_last_used_populated_after_draw(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """After drawing a topic, its last_used date is populated."""
+        draw_response = client.post("/topics/draw", headers=auth_headers)
+        assert draw_response.status_code == 200
+        drawn_topic_id = draw_response.json()["topic"]["id"]
+
+        response = client.get("/topics/", headers=auth_headers)
+        topics = response.json()
+        drawn = next(t for t in topics if t["id"] == drawn_topic_id)
+        assert drawn["last_used"] is not None
+
 
 class TestBookEndpoints:
     """Tests for book/reading plan endpoints."""

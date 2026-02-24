@@ -113,6 +113,7 @@ class TopicResponse(BaseModel):
     name: str
     is_active: bool
     is_drawn: bool = False
+    last_used: date | None = None
 
     model_config = {"from_attributes": True}
 

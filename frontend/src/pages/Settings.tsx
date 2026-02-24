@@ -23,6 +23,7 @@ import type {
   ReadingPlanStatus,
   Topic,
 } from "../types/index";
+import { formatLogDate } from "../utils/dates";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -238,7 +239,14 @@ export function Settings(): React.ReactElement {
   if (!settings) return <p>No settings found.</p>;
 
   const inDeck = topics.filter((t) => !t.is_drawn);
-  const drawn = topics.filter((t) => t.is_drawn);
+  const drawn = topics
+    .filter((t) => t.is_drawn)
+    .sort((a, b) => {
+      if (!a.last_used && !b.last_used) return 0;
+      if (!a.last_used) return 1;
+      if (!b.last_used) return -1;
+      return b.last_used.localeCompare(a.last_used);
+    });
 
   return (
     <main className="rd-settings">
@@ -327,7 +335,15 @@ export function Settings(): React.ReactElement {
         <ul className="rd-topic-list">
           {inDeck.map((t) => (
             <li key={t.id} className="rd-topic-item">
-              <span>{t.name}</span>
+              <span>
+                {t.name}
+                {t.last_used && (
+                  <span className="rd-topic-item__last-used">
+                    {" "}
+                    &mdash; last used {formatLogDate(t.last_used)}
+                  </span>
+                )}
+              </span>
               <button
                 type="button"
                 className="rd-ghost"
@@ -345,7 +361,15 @@ export function Settings(): React.ReactElement {
             <ul className="rd-topic-list">
               {drawn.map((t) => (
                 <li key={t.id} className="rd-topic-item">
-                  <span>{t.name}</span>
+                  <span>
+                    {t.name}
+                    {t.last_used && (
+                      <span className="rd-topic-item__last-used">
+                        {" "}
+                        &mdash; last used {formatLogDate(t.last_used)}
+                      </span>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
