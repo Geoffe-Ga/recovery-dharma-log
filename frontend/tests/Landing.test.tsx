@@ -177,15 +177,36 @@ describe("Landing", () => {
     });
   });
 
-  it("renders deck status for topic format", async () => {
+  it("renders deck meter for topic format", async () => {
     getUpcomingMeeting.mockResolvedValue(baseMeeting);
     renderLanding();
 
     await waitFor(() => {
-      expect(
-        screen.getByText("5 of 10 topics remain in deck"),
-      ).toBeInTheDocument();
+      expect(screen.getByText("5 of 10 topics remain")).toBeInTheDocument();
     });
+    const progressbar = screen.getByRole("progressbar", {
+      name: "Topics remaining in deck",
+    });
+    expect(progressbar).toBeInTheDocument();
+    expect(progressbar.style.width).toBe("50%");
+  });
+
+  it("renders 0% width when topics_total is zero", async () => {
+    getUpcomingMeeting.mockResolvedValue({
+      ...baseMeeting,
+      topic_name: null,
+      topics_remaining: 0,
+      topics_total: 0,
+    });
+    renderLanding();
+
+    await waitFor(() => {
+      expect(screen.getByText("0 of 0 topics remain")).toBeInTheDocument();
+    });
+    const progressbar = screen.getByRole("progressbar", {
+      name: "Topics remaining in deck",
+    });
+    expect(progressbar.style.width).toBe("0%");
   });
 
   it("renders banners when present", async () => {
@@ -344,7 +365,9 @@ describe("Landing", () => {
         screen.queryByText("Meditation Practices"),
       ).not.toBeInTheDocument();
       expect(
-        screen.queryByText(/topics remain in deck/),
+        screen.queryByRole("progressbar", {
+          name: "Topics remaining in deck",
+        }),
       ).not.toBeInTheDocument();
     });
 
