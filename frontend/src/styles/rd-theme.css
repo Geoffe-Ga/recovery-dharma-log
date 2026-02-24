@@ -678,6 +678,31 @@ p[role="alert"] {
   font-size: var(--rd-font-size-sm);
 }
 
+/* Deck meter - visual progress bar for topic deck */
+.rd-deck-meter {
+  margin-bottom: var(--rd-space-sm);
+}
+
+.rd-deck-meter__label {
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  margin-bottom: var(--rd-space-xs);
+}
+
+.rd-deck-meter__bar {
+  height: 8px;
+  background: var(--rd-teal-pale);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rd-deck-meter__fill {
+  height: 100%;
+  background: var(--rd-teal);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
 /* Speaker display with edit/remove actions */
 .rd-speaker-display {
   display: flex;

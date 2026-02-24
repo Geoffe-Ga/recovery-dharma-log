@@ -179,6 +179,25 @@ export function Landing(): React.ReactElement {
           <>
             {meeting.format_type === "Topic" && (
               <section>
+                <div className="rd-deck-meter">
+                  <div className="rd-deck-meter__label">
+                    {meeting.topics_remaining} of {meeting.topics_total} topics
+                    remain
+                  </div>
+                  <div className="rd-deck-meter__bar">
+                    <div
+                      className="rd-deck-meter__fill"
+                      role="progressbar"
+                      aria-valuenow={meeting.topics_remaining}
+                      aria-valuemin={0}
+                      aria-valuemax={meeting.topics_total}
+                      aria-label="Topics remaining in deck"
+                      style={{
+                        width: `${meeting.topics_total > 0 ? (meeting.topics_remaining / meeting.topics_total) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                </div>
                 {meeting.topic_name ? (
                   <>
                     <p>
@@ -206,10 +225,6 @@ export function Landing(): React.ReactElement {
                     Draw Topic
                   </button>
                 )}
-                <p className="rd-deck-status">
-                  {meeting.topics_remaining} of {meeting.topics_total} topics
-                  remain in deck
-                </p>
               </section>
             )}
 
