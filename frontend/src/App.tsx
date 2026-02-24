@@ -1,6 +1,6 @@
 /** Root application component with routing. */
 
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   BrowserRouter,
   NavLink,
@@ -8,6 +8,7 @@ import {
   Route,
   Routes,
 } from "react-router-dom";
+import { getSettings } from "./api/index";
 import { ToastProvider } from "./contexts/ToastContext";
 import { useAuth } from "./hooks/useAuth";
 import { Landing } from "./pages/Landing";
@@ -20,12 +21,20 @@ function AuthenticatedApp({
 }: {
   onLogout: () => void;
 }): React.ReactElement {
+  const [groupName, setGroupName] = useState("RD Log");
+
+  useEffect(() => {
+    getSettings()
+      .then((settings) => setGroupName(settings.name))
+      .catch(() => {});
+  }, []);
+
   return (
     <>
       <nav className="container">
         <ul>
           <li>
-            <strong>RD Log</strong>
+            <strong>{groupName}</strong>
           </li>
         </ul>
         <ul>
