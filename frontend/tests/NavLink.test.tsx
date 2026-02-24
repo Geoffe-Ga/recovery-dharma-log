@@ -30,6 +30,15 @@ jest.mock("../src/pages/Settings", () => ({
   Settings: () => <div data-testid="settings-page">Settings</div>,
 }));
 
+// Mock API to handle getSettings call in AuthenticatedApp
+jest.mock("../src/api/index", () => ({
+  getSettings: jest.fn().mockResolvedValue({ name: "RD Log" }),
+  isLoggedIn: jest.fn(() => true),
+  login: jest.fn(),
+  logout: jest.fn(),
+  register: jest.fn(),
+}));
+
 // Override BrowserRouter with MemoryRouter for test control
 jest.mock("react-router-dom", () => {
   const actual = jest.requireActual("react-router-dom");
