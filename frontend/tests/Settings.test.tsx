@@ -148,6 +148,53 @@ describe("Settings", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("renders meeting day dropdown with correct initial value", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Sunday")).toBeInTheDocument();
+    });
+  });
+
+  it("shows sticky bar when meeting day is changed", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Sunday")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("Sunday"), {
+      target: { value: "0" },
+    });
+
+    expect(screen.getByDisplayValue("Monday")).toBeInTheDocument();
+    expect(screen.getByText("You have unsaved changes")).toBeInTheDocument();
+  });
+
+  it("includes meeting_day in updateSettings call when saving", async () => {
+    (api.updateSettings as jest.Mock).mockResolvedValue({
+      ...mockSettings,
+      meeting_day: 1,
+    });
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Sunday")).toBeInTheDocument();
+    });
+
+    fireEvent.change(screen.getByDisplayValue("Sunday"), {
+      target: { value: "1" },
+    });
+
+    fireEvent.click(screen.getByText("Save Changes"));
+
+    await waitFor(() =>
+      expect(api.updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ meeting_day: 1 }),
+      ),
+    );
+  });
+
   it("shows toast on save error", async () => {
     (api.updateSettings as jest.Mock).mockRejectedValue(
       new Error("Save failed"),

@@ -24,6 +24,16 @@ import type {
   Topic,
 } from "../types/index";
 
+const DAYS_OF_WEEK = [
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+  "Sunday",
+] as const;
+
 export function Settings(): React.ReactElement {
   const [settings, setSettings] = useState<GroupSettings | null>(null);
   const [savedSettings, setSavedSettings] = useState<GroupSettings | null>(
@@ -78,6 +88,7 @@ export function Settings(): React.ReactElement {
     try {
       const updated = await updateSettings({
         name: settings.name,
+        meeting_day: settings.meeting_day,
         format_rotation: settings.format_rotation,
       });
       setSettings(updated);
@@ -243,14 +254,24 @@ export function Settings(): React.ReactElement {
             onChange={(e) => setSettings({ ...settings, name: e.target.value })}
           />
         </label>
-        <p className="rd-meta">
-          Meeting Day:{" "}
-          {
-            ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][
-              settings.meeting_day
-            ]
-          }
-        </p>
+        <label>
+          Meeting Day
+          <select
+            value={settings.meeting_day}
+            onChange={(e) =>
+              setSettings({
+                ...settings,
+                meeting_day: Number(e.target.value),
+              })
+            }
+          >
+            {DAYS_OF_WEEK.map((day, i) => (
+              <option key={day} value={i}>
+                {day}
+              </option>
+            ))}
+          </select>
+        </label>
         <p className="rd-meta">Start Date: {settings.start_date}</p>
       </section>
 
