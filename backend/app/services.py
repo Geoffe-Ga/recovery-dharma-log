@@ -334,11 +334,33 @@ def get_plan_status(db: Session, group: Group) -> dict:
     next_chapter = get_next_unassigned_chapter(db, group)
     next_chapter_dict = _chapter_to_dict(next_chapter) if next_chapter else None
 
+    # Progress stats: count all chapters and pages for the group,
+    # then count chapters/pages across all finalized assignments.
+    all_chapters = db.query(BookChapter).filter(BookChapter.group_id == group.id).all()
+    total_chapters = len(all_chapters)
+    total_pages = sum(page_count(ch.start_page, ch.end_page) for ch in all_chapters)
+
+    assigned_chapter_ids: set[int] = set()
+    for assignment in completed:
+        for ch in assignment["chapters"]:
+            assigned_chapter_ids.add(ch["id"])
+
+    assigned_chapters = len(assigned_chapter_ids)
+    assigned_pages = sum(
+        page_count(ch.start_page, ch.end_page)
+        for ch in all_chapters
+        if ch.id in assigned_chapter_ids
+    )
+
     return {
         "current_assignment_chapters": current_chapters,
         "current_assignment_total_pages": current_total_pages,
         "next_chapter": next_chapter_dict,
         "completed_assignments": completed,
+        "total_chapters": total_chapters,
+        "assigned_chapters": assigned_chapters,
+        "total_pages": total_pages,
+        "assigned_pages": assigned_pages,
     }
 
 

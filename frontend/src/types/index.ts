@@ -97,6 +97,10 @@ export interface ReadingPlanStatus {
   current_assignment_total_pages: number;
   next_chapter: BookChapter | null;
   completed_assignments: ReadingAssignment[];
+  total_chapters: number;
+  assigned_chapters: number;
+  total_pages: number;
+  assigned_pages: number;
 }
 
 export interface SpeakerSchedule {

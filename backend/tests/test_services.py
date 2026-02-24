@@ -385,6 +385,35 @@ class TestBookReadingPlan:
         assert status["next_chapter"] is None
         assert status["completed_assignments"] == []
 
+    def test_plan_status_progress_fields(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)  # 3 chapters: 1 + 3 + 2 = 6 pages
+
+        # Initially no chapters assigned
+        status = get_plan_status(db_session, group)
+        assert status["total_chapters"] == 3
+        assert status["assigned_chapters"] == 0
+        assert status["total_pages"] == 6
+        assert status["assigned_pages"] == 0
+
+        # Add and finalize first chapter (1 page)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+
+        status = get_plan_status(db_session, group)
+        assert status["total_chapters"] == 3
+        assert status["assigned_chapters"] == 1
+        assert status["total_pages"] == 6
+        assert status["assigned_pages"] == 1
+
+        # Add and finalize second chapter (3 pages)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+
+        status = get_plan_status(db_session, group)
+        assert status["assigned_chapters"] == 2
+        assert status["assigned_pages"] == 4
+
 
 class TestAssignmentEditing:
     """Tests for editing and deleting finalized assignments."""
