@@ -703,6 +703,32 @@ p[role="alert"] {
   transition: width 0.3s ease;
 }
 
+/* Plan progress - visual progress bar for reading plan */
+.rd-plan-progress {
+  margin-bottom: var(--rd-space-md);
+}
+
+.rd-plan-progress__label {
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  margin-bottom: var(--rd-space-xs);
+}
+
+.rd-plan-progress__bar {
+  height: 8px;
+  background: var(--rd-teal-pale);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.rd-plan-progress__fill {
+  height: 100%;
+  background: var(--rd-teal);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
 /* Speaker display with edit/remove actions */
 .rd-speaker-display {
   display: flex;

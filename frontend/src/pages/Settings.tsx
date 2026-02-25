@@ -371,6 +371,35 @@ export function Settings(): React.ReactElement {
         <section>
           <h2>Book Reading Plan</h2>
 
+          {plan.total_chapters > 0 && (
+            <div className="rd-plan-progress">
+              <p className="rd-plan-progress__label">
+                {plan.assigned_chapters} of {plan.total_chapters} chapters
+                assigned &middot; {plan.assigned_pages} of {plan.total_pages}{" "}
+                pages assigned
+              </p>
+              <div className="rd-plan-progress__bar">
+                <div
+                  className="rd-plan-progress__fill"
+                  role="progressbar"
+                  aria-valuenow={plan.assigned_chapters}
+                  aria-valuemin={0}
+                  aria-valuemax={plan.total_chapters}
+                  aria-label="Reading plan progress"
+                  style={{
+                    width: `${(plan.assigned_chapters / plan.total_chapters) * 100}%`,
+                  }}
+                />
+              </div>
+              {plan.total_chapters - plan.assigned_chapters > 0 && (
+                <p className="rd-plan-progress__label">
+                  ~{plan.total_chapters - plan.assigned_chapters} weeks
+                  remaining
+                </p>
+              )}
+            </div>
+          )}
+
           {plan.current_assignment_chapters.length > 0 && (
             <div>
               <h3>Current Assignment</h3>

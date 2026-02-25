@@ -44,6 +44,10 @@ const mockPlan: ReadingPlanStatus = {
   current_assignment_total_pages: 0,
   next_chapter: null,
   completed_assignments: [],
+  total_chapters: 0,
+  assigned_chapters: 0,
+  total_pages: 0,
+  assigned_pages: 0,
 };
 
 const mockChapters: BookChapter[] = [];
@@ -192,6 +196,35 @@ describe("Settings", () => {
       expect(api.updateSettings).toHaveBeenCalledWith(
         expect.objectContaining({ meeting_day: 1 }),
       ),
+    );
+  });
+
+  it("renders progress bar with correct chapter count text", async () => {
+    const planWithProgress: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 39,
+      assigned_chapters: 12,
+      total_pages: 400,
+      assigned_pages: 245,
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithProgress);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/12 of 39 chapters assigned/),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/245 of 400 pages assigned/)).toBeInTheDocument();
+    expect(screen.getByText(/~27 weeks remaining/)).toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuenow",
+      "12",
+    );
+    expect(screen.getByRole("progressbar")).toHaveAttribute(
+      "aria-valuemax",
+      "39",
     );
   });
 
