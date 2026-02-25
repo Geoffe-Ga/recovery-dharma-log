@@ -1026,6 +1026,11 @@ button.rd-danger-outline:hover {
   border-bottom: none;
 }
 
+.rd-topic-item__last-used {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+}
+
 .rd-settings .rd-topic-list {
   list-style: none;
   padding: 0;

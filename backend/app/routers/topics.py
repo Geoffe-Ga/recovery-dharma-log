@@ -41,12 +41,19 @@ def list_topics(
             .order_by(TopicDeckState.deck_cycle.desc())
             .first()
         )
+        last_log = (
+            db.query(MeetingLog)
+            .filter(MeetingLog.topic_id == topic.id)
+            .order_by(MeetingLog.meeting_date.desc())
+            .first()
+        )
         result.append(
             {
                 "id": topic.id,
                 "name": topic.name,
                 "is_active": topic.is_active,
                 "is_drawn": drawn_state is not None,
+                "last_used": last_log.meeting_date if last_log else None,
             }
         )
     return result
@@ -67,7 +74,13 @@ def create_topic(
     db.add(topic)
     db.commit()
     db.refresh(topic)
-    return {"id": topic.id, "name": topic.name, "is_active": True, "is_drawn": False}
+    return {
+        "id": topic.id,
+        "name": topic.name,
+        "is_active": True,
+        "is_drawn": False,
+        "last_used": None,
+    }
 
 
 @router.delete("/{topic_id}")

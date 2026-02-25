@@ -36,7 +36,7 @@ const mockSettings: GroupSettings = {
 };
 
 const mockTopics: Topic[] = [
-  { id: 1, name: "Topic 1", is_active: true, is_drawn: false },
+  { id: 1, name: "Topic 1", is_active: true, is_drawn: false, last_used: null },
 ];
 
 const mockPlan: ReadingPlanStatus = {
@@ -247,5 +247,45 @@ describe("Settings", () => {
     await waitFor(() => {
       expect(screen.getByText("Save failed")).toBeInTheDocument();
     });
+  });
+
+  it("displays last-used date for topics that have one", async () => {
+    const topicsWithDates: Topic[] = [
+      {
+        id: 1,
+        name: "Mindfulness",
+        is_active: true,
+        is_drawn: false,
+        last_used: "2025-02-08",
+      },
+    ];
+    (api.getTopics as jest.Mock).mockResolvedValue(topicsWithDates);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/last used/)).toBeInTheDocument();
+    });
+
+    expect(screen.getByText(/Feb 8, 2025/)).toBeInTheDocument();
+  });
+
+  it("does not display last-used text for topics without a date", async () => {
+    const topicsWithoutDates: Topic[] = [
+      {
+        id: 2,
+        name: "Karma",
+        is_active: true,
+        is_drawn: false,
+        last_used: null,
+      },
+    ];
+    (api.getTopics as jest.Mock).mockResolvedValue(topicsWithoutDates);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("Karma")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/last used/)).not.toBeInTheDocument();
   });
 });

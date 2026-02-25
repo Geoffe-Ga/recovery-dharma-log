@@ -69,6 +69,7 @@ export interface Topic {
   name: string;
   is_active: boolean;
   is_drawn: boolean;
+  last_used: string | null;
 }
 
 export interface TopicDrawResult {
