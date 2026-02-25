@@ -21,6 +21,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: "Mindfulness",
     reading_assignment_summary: null,
     is_cancelled: false,
+    attendance_count: 12,
   },
   {
     id: 2,
@@ -31,6 +32,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: null,
     reading_assignment_summary: null,
     is_cancelled: false,
+    attendance_count: null,
   },
   {
     id: 3,
@@ -41,6 +43,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: null,
     reading_assignment_summary: null,
     is_cancelled: false,
+    attendance_count: 8,
   },
 ];
 
@@ -125,6 +128,17 @@ describe("Log", () => {
     await waitFor(() => {
       expect(screen.getByText("Export CSV")).toBeInTheDocument();
       expect(screen.getByText("Printable View")).toBeInTheDocument();
+    });
+  });
+
+  it("renders attendance column with count value", async () => {
+    getMeetingLog.mockResolvedValue(mockEntries);
+    renderLog();
+
+    await waitFor(() => {
+      expect(screen.getByText("Attendance")).toBeInTheDocument();
+      expect(screen.getByText("12")).toBeInTheDocument();
+      expect(screen.getByText("8")).toBeInTheDocument();
     });
   });
 

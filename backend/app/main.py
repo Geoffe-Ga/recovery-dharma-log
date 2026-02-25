@@ -5,17 +5,45 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
+from sqlalchemy.exc import OperationalError
 
 from app.config import settings
 from app.database import Base, engine
 from app.routers import auth, book, export, meetings, speakers, topics
 from app.routers import settings as settings_router
 
+# Columns added after initial schema. Each entry is (table, column, type).
+_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("meeting_logs", "attendance_count", "INTEGER"),
+]
+
+
+def _run_migrations() -> None:
+    """Add columns that may be missing from existing databases.
+
+    Idempotent: checks column existence before altering.
+    Safe: catches OperationalError so a duplicate column never crashes startup.
+    """
+    inspector = inspect(engine)
+    for table, column, col_type in _MIGRATIONS:
+        existing = [c["name"] for c in inspector.get_columns(table)]
+        if column not in existing:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                    )
+                    conn.commit()
+            except OperationalError:
+                pass  # Column already exists (race or stale inspector cache)
+
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     """Create database tables on startup."""
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
     yield
 
 

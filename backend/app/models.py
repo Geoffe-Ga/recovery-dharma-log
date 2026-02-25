@@ -234,5 +234,9 @@ class MeetingLog(Base):
         nullable=False,
         default=False,
     )
+    attendance_count: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
 
     group: Mapped["Group"] = relationship(back_populates="meeting_logs")

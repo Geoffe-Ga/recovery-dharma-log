@@ -140,6 +140,7 @@ export function Log(): React.ReactElement {
                 <th>Format</th>
                 <th>Content</th>
                 <th>Status</th>
+                <th>Attendance</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -156,6 +157,7 @@ export function Log(): React.ReactElement {
                         "\u2014"}
                     </td>
                     <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
+                    <td>{entry.attendance_count ?? "\u2014"}</td>
                     <td>
                       {editingId !== entry.id && (
                         <button
@@ -170,7 +172,7 @@ export function Log(): React.ReactElement {
                   </tr>
                   {editingId === entry.id && (
                     <tr>
-                      <td colSpan={5}>
+                      <td colSpan={6}>
                         <div className="rd-log-edit-form">
                           <label>
                             Speaker Name

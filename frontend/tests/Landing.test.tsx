@@ -14,6 +14,7 @@ jest.mock("../src/api/index", () => ({
   scheduleSpeaker: jest.fn(),
   unscheduleSpeaker: jest.fn(),
   cancelMeeting: jest.fn(),
+  updateAttendance: jest.fn(),
 }));
 
 function renderLanding(): void {
@@ -31,6 +32,7 @@ const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
 const scheduleSpeaker = api.scheduleSpeaker as jest.Mock;
 const unscheduleSpeaker = api.unscheduleSpeaker as jest.Mock;
+const updateAttendance = api.updateAttendance as jest.Mock;
 
 const lookaheadMeetings = [
   {
@@ -70,6 +72,7 @@ const baseMeeting: UpcomingMeeting = {
   banners: [],
   meeting_time: "18:00:00",
   is_cancelled: false,
+  attendance_count: null,
 };
 
 const cancelledMeeting: UpcomingMeeting = {
@@ -665,6 +668,102 @@ describe("Landing", () => {
 
       await waitFor(() => {
         expect(screen.getByText("Remove failed")).toBeInTheDocument();
+      });
+    });
+  });
+
+  describe("attendance tracking", () => {
+    it("renders Record Attendance button when no attendance recorded", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Record Attendance" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("shows attendance count when already recorded", async () => {
+      getUpcomingMeeting.mockResolvedValue({
+        ...baseMeeting,
+        attendance_count: 15,
+      });
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Attendance: 15")).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("button", { name: "Edit attendance" }),
+      ).toBeInTheDocument();
+    });
+
+    it("calls updateAttendance when saving attendance", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      updateAttendance.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Record Attendance" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Record Attendance" }),
+      );
+      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
+        target: { value: "20" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", 20);
+      });
+    });
+
+    it("shows error toast for invalid attendance input", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Record Attendance" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", { name: "Record Attendance" }),
+      );
+      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
+        target: { value: "-5" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      expect(updateAttendance).not.toHaveBeenCalled();
+    });
+
+    it("clears attendance by saving empty input", async () => {
+      getUpcomingMeeting.mockResolvedValue({
+        ...baseMeeting,
+        attendance_count: 15,
+      });
+      updateAttendance.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Attendance: 15")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Edit attendance" }));
+      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
+        target: { value: "" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", null);
       });
     });
   });

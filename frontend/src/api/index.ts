@@ -84,6 +84,15 @@ export async function cancelMeeting(
   });
 }
 
+export async function updateAttendance(
+  meetingDate: string,
+  count: number | null,
+): Promise<MeetingLogEntry> {
+  return api.put<MeetingLogEntry>(`/meetings/${meetingDate}/attendance`, {
+    attendance_count: count,
+  });
+}
+
 // --- Topics ---
 
 export async function getTopics(): Promise<Topic[]> {

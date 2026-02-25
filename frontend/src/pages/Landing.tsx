@@ -9,6 +9,7 @@ import {
   scheduleSpeaker,
   undoTopicDraw,
   unscheduleSpeaker,
+  updateAttendance,
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
 import type { UpcomingMeeting, UpcomingMeetingBrief } from "../types/index";
@@ -22,6 +23,8 @@ export function Landing(): React.ReactElement {
   const [speakerInput, setSpeakerInput] = useState("");
   const [showSpeakerForm, setShowSpeakerForm] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [attendanceInput, setAttendanceInput] = useState("");
+  const [showAttendanceForm, setShowAttendanceForm] = useState(false);
   const showToast = useShowToast();
 
   const refresh = useCallback(async () => {
@@ -113,6 +116,30 @@ export function Landing(): React.ReactElement {
       );
     }
   }, [meeting, refresh, showToast]);
+
+  const handleSaveAttendance = useCallback(async () => {
+    if (!meeting) return;
+    const value = attendanceInput.trim();
+    const count = value === "" ? null : parseInt(value, 10);
+    if (value !== "" && (isNaN(count as number) || (count as number) < 0)) {
+      showToast("error", "Please enter a valid number");
+      return;
+    }
+    try {
+      await updateAttendance(meeting.meeting_date, count);
+      setShowAttendanceForm(false);
+      await refresh();
+      showToast(
+        "success",
+        count === null ? "Attendance cleared" : "Attendance saved",
+      );
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to save attendance",
+      );
+    }
+  }, [meeting, attendanceInput, refresh, showToast]);
 
   const handleToggleCancel = useCallback(async () => {
     if (!meeting || isCancelling) return;
@@ -320,6 +347,59 @@ export function Landing(): React.ReactElement {
                 </p>
               </section>
             )}
+
+            <section className="rd-attendance">
+              {meeting.attendance_count != null && !showAttendanceForm ? (
+                <div className="rd-attendance__display">
+                  <span>Attendance: {meeting.attendance_count}</span>
+                  <button
+                    type="button"
+                    className="outline rd-icon-btn"
+                    aria-label="Edit attendance"
+                    onClick={() => {
+                      setAttendanceInput(
+                        String(meeting.attendance_count ?? ""),
+                      );
+                      setShowAttendanceForm(true);
+                    }}
+                  >
+                    Edit
+                  </button>
+                </div>
+              ) : showAttendanceForm ? (
+                <div className="rd-attendance__form">
+                  <input
+                    type="number"
+                    min="0"
+                    aria-label="Attendance count"
+                    placeholder="Attendance"
+                    value={attendanceInput}
+                    onChange={(e) => setAttendanceInput(e.target.value)}
+                  />
+                  <button type="button" onClick={handleSaveAttendance}>
+                    Save
+                  </button>
+                  <button
+                    type="button"
+                    className="outline"
+                    onClick={() => {
+                      setShowAttendanceForm(false);
+                      setAttendanceInput("");
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="outline"
+                  onClick={() => setShowAttendanceForm(true)}
+                >
+                  Record Attendance
+                </button>
+              )}
+            </section>
 
             <section className="rd-cancel-section">
               <button
