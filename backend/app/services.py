@@ -341,8 +341,8 @@ def get_plan_status(db: Session, group: Group) -> dict:
     total_pages = sum(page_count(ch.start_page, ch.end_page) for ch in all_chapters)
 
     assigned_chapter_ids: set[int] = set()
-    for assignment in completed:
-        for ch in assignment["chapters"]:
+    for entry in completed:
+        for ch in entry["chapters"]:
             assigned_chapter_ids.add(ch["id"])
 
     assigned_chapters = len(assigned_chapter_ids)
