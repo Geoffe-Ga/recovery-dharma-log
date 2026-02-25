@@ -133,7 +133,7 @@ describe("Log", () => {
 
   it("renders attendance column with count value", async () => {
     getMeetingLog.mockResolvedValue(mockEntries);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("Attendance")).toBeInTheDocument();
