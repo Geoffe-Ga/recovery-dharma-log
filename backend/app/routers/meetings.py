@@ -1,6 +1,6 @@
 """Meetings router: log and upcoming meeting."""
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -8,6 +8,7 @@ from app.database import get_db
 from app.models import MeetingLog, User
 from app.schemas import (
     MeetingCancel,
+    MeetingLogUpdate,
     MeetingResponse,
     UpcomingMeeting,
     UpcomingMeetingBrief,
@@ -52,6 +53,31 @@ def get_meeting_log(
         .order_by(MeetingLog.meeting_date.desc())
         .all()
     )
+
+
+@router.put("/log/{entry_id}", response_model=MeetingResponse)
+def update_meeting_log_entry(
+    entry_id: int,
+    update: MeetingLogUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> MeetingLog:
+    """Update an existing meeting log entry."""
+    log_entry = (
+        db.query(MeetingLog)
+        .filter(
+            MeetingLog.id == entry_id,
+            MeetingLog.group_id == current_user.group_id,
+        )
+        .first()
+    )
+    if not log_entry:
+        raise HTTPException(status_code=404, detail="Meeting log entry not found")
+    for field, value in update.model_dump(exclude_none=True).items():
+        setattr(log_entry, field, value)
+    db.commit()
+    db.refresh(log_entry)
+    return log_entry
 
 
 @router.post("/cancel", response_model=MeetingResponse)

@@ -1,4 +1,4 @@
-/** Tests for Log page component with filtering. */
+/** Tests for Log page component with filtering and editing. */
 
 import {
   fireEvent,
@@ -8,6 +8,7 @@ import {
   act,
 } from "@testing-library/react";
 import { Log } from "../src/pages/Log";
+import { ToastProvider } from "../src/contexts/ToastContext";
 import type { MeetingLogEntry } from "../src/types/index";
 
 const mockEntries: MeetingLogEntry[] = [
@@ -47,11 +48,21 @@ import * as api from "../src/api/index";
 
 jest.mock("../src/api/index", () => ({
   getMeetingLog: jest.fn(),
+  updateMeetingLogEntry: jest.fn(),
   getCsvExportUrl: () => "/api/export/csv",
   getPrintableExportUrl: () => "/api/export/printable",
 }));
 
 const getMeetingLog = api.getMeetingLog as jest.Mock;
+const updateMeetingLogEntry = api.updateMeetingLogEntry as jest.Mock;
+
+function renderLog(): ReturnType<typeof render> {
+  return render(
+    <ToastProvider>
+      <Log />
+    </ToastProvider>,
+  );
+}
 
 describe("Log", () => {
   beforeEach(() => {
@@ -65,7 +76,7 @@ describe("Log", () => {
 
   it("renders formatted dates in the table", async () => {
     getMeetingLog.mockResolvedValue(mockEntries);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("Feb 8, 2026")).toBeInTheDocument();
@@ -75,7 +86,7 @@ describe("Log", () => {
 
   it("renders meeting content in the table", async () => {
     getMeetingLog.mockResolvedValue(mockEntries);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -85,13 +96,13 @@ describe("Log", () => {
 
   it("shows loading state initially", () => {
     getMeetingLog.mockReturnValue(new Promise(() => {}));
-    render(<Log />);
+    renderLog();
     expect(screen.getByText("Loading...")).toBeInTheDocument();
   });
 
   it("shows error message on API failure", async () => {
     getMeetingLog.mockRejectedValue(new Error("Server error"));
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Server error");
@@ -100,7 +111,7 @@ describe("Log", () => {
 
   it("shows empty state when no entries", async () => {
     getMeetingLog.mockResolvedValue([]);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("No meetings recorded yet.")).toBeInTheDocument();
@@ -109,7 +120,7 @@ describe("Log", () => {
 
   it("renders export links", async () => {
     getMeetingLog.mockResolvedValue(mockEntries);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("Export CSV")).toBeInTheDocument();
@@ -121,7 +132,7 @@ describe("Log", () => {
     getMeetingLog.mockResolvedValue([
       { ...mockEntries[0], is_cancelled: true },
     ]);
-    render(<Log />);
+    renderLog();
 
     await waitFor(() => {
       expect(screen.getByText("Cancelled")).toBeInTheDocument();
@@ -131,7 +142,7 @@ describe("Log", () => {
   describe("filtering", () => {
     it("filters by format type", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -147,7 +158,7 @@ describe("Log", () => {
 
     it("filters by date range", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -163,7 +174,7 @@ describe("Log", () => {
 
     it("filters by search text with debounce", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -187,7 +198,7 @@ describe("Log", () => {
 
     it("shows no matching meetings message", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -202,7 +213,7 @@ describe("Log", () => {
 
     it("shows clear filters button when filters active", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -217,7 +228,7 @@ describe("Log", () => {
 
     it("clears all filters on clear button click", async () => {
       getMeetingLog.mockResolvedValue(mockEntries);
-      render(<Log />);
+      renderLog();
 
       await waitFor(() => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -233,6 +244,90 @@ describe("Log", () => {
 
       expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+    });
+  });
+
+  describe("editing", () => {
+    it("renders Edit button on each row", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Mindfulness")).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByText("Edit");
+      expect(editButtons).toHaveLength(mockEntries.length);
+    });
+
+    it("clicking Edit shows inline form with current values", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByText("Edit");
+      fireEvent.click(editButtons[1]); // Speaker entry
+
+      expect(screen.getByLabelText("Speaker Name")).toHaveValue("Jane Doe");
+      expect(screen.getByLabelText("Notes")).toHaveValue("");
+      expect(screen.getByLabelText("Cancelled")).not.toBeChecked();
+    });
+
+    it("saving calls updateMeetingLogEntry and updates the row", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      const updatedEntry = {
+        ...mockEntries[1],
+        speaker_name: "John Smith",
+      };
+      updateMeetingLogEntry.mockResolvedValue(updatedEntry);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByText("Edit");
+      fireEvent.click(editButtons[1]);
+
+      fireEvent.change(screen.getByLabelText("Speaker Name"), {
+        target: { value: "John Smith" },
+      });
+
+      fireEvent.click(screen.getByText("Save"));
+
+      await waitFor(() => {
+        expect(updateMeetingLogEntry).toHaveBeenCalledWith(2, {
+          speaker_name: "John Smith",
+          content_summary: "",
+          is_cancelled: false,
+        });
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText("John Smith")).toBeInTheDocument();
+      });
+    });
+
+    it("clicking Cancel closes the form without saving", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Jane Doe")).toBeInTheDocument();
+      });
+
+      const editButtons = screen.getAllByText("Edit");
+      fireEvent.click(editButtons[1]);
+
+      expect(screen.getByLabelText("Speaker Name")).toBeInTheDocument();
+
+      fireEvent.click(screen.getByText("Cancel"));
+
+      expect(screen.queryByLabelText("Speaker Name")).not.toBeInTheDocument();
+      expect(updateMeetingLogEntry).not.toHaveBeenCalled();
     });
   });
 });

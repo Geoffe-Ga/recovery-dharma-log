@@ -7,6 +7,7 @@ import type {
   GroupSettings,
   GroupSettingsUpdate,
   MeetingLogEntry,
+  MeetingLogUpdate,
   ReadingAssignment,
   ReadingPlanStatus,
   SpeakerSchedule,
@@ -64,6 +65,13 @@ export async function getUpcomingMeetings(
 
 export async function getMeetingLog(): Promise<MeetingLogEntry[]> {
   return api.get<MeetingLogEntry[]>("/meetings/log");
+}
+
+export async function updateMeetingLogEntry(
+  entryId: number,
+  data: MeetingLogUpdate,
+): Promise<MeetingLogEntry> {
+  return api.put<MeetingLogEntry>(`/meetings/log/${entryId}`, data);
 }
 
 export async function cancelMeeting(
