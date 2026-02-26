@@ -189,6 +189,7 @@ class ReadingPlanStatus(BaseModel):
     current_assignment_total_pages: int
     next_chapter: BookChapterResponse | None
     completed_assignments: list[ReadingAssignmentResponse]
+    unassigned_chapters: list[BookChapterResponse] = []
     total_chapters: int = 0
     assigned_chapters: int = 0
     total_pages: int = 0

@@ -106,6 +106,7 @@ export interface ReadingPlanStatus {
   current_assignment_total_pages: number;
   next_chapter: BookChapter | null;
   completed_assignments: ReadingAssignment[];
+  unassigned_chapters: BookChapter[];
   total_chapters: number;
   assigned_chapters: number;
   total_pages: number;
