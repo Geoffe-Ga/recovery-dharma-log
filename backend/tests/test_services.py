@@ -385,6 +385,40 @@ class TestBookReadingPlan:
         assert status["next_chapter"] is None
         assert status["completed_assignments"] == []
 
+    def test_plan_status_unassigned_chapters(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)  # 3 chapters
+
+        # Initially all chapters are unassigned
+        status = get_plan_status(db_session, group)
+        assert len(status["unassigned_chapters"]) == 3
+        assert status["unassigned_chapters"][0]["title"] == "Preface"
+
+        # Add one chapter to draft
+        add_chapter_to_current_assignment(db_session, group)
+        status = get_plan_status(db_session, group)
+        assert len(status["unassigned_chapters"]) == 2
+        assert status["unassigned_chapters"][0]["title"] == "What is Recovery Dharma?"
+
+        # Finalize and add another
+        finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        status = get_plan_status(db_session, group)
+        # 1 finalized + 1 in draft = 2 assigned, 1 unassigned
+        assert len(status["unassigned_chapters"]) == 1
+        assert status["unassigned_chapters"][0]["title"] == "Where to Begin"
+
+    def test_plan_status_unassigned_empty_when_all_assigned(
+        self, db_session: Session
+    ) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)  # 3 chapters
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        status = get_plan_status(db_session, group)
+        assert status["unassigned_chapters"] == []
+
     def test_plan_status_progress_fields(self, db_session: Session) -> None:
         group = _create_group(db_session)
         _create_chapters(db_session, group)  # 3 chapters: 1 + 3 + 2 = 6 pages

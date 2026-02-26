@@ -51,6 +51,8 @@ export function Settings(): React.ReactElement {
     null,
   );
   const [editChapterIds, setEditChapterIds] = useState<number[]>([]);
+  const [selectedChapterIds, setSelectedChapterIds] = useState<number[]>([]);
+  const [addingChapters, setAddingChapters] = useState(false);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -172,12 +174,28 @@ export function Settings(): React.ReactElement {
     }
   }, []);
 
-  const handleAddChapter = useCallback(async () => {
+  const handleAddSelectedChapters = useCallback(async () => {
+    if (selectedChapterIds.length === 0) return;
+    setAddingChapters(true);
     try {
-      setPlan(await addChapterToPlan());
+      for (let i = 0; i < selectedChapterIds.length; i++) {
+        await addChapterToPlan();
+      }
+      setPlan(await getReadingPlan());
+      setSelectedChapterIds([]);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add chapter");
+      setError(err instanceof Error ? err.message : "Failed to add chapters");
+    } finally {
+      setAddingChapters(false);
     }
+  }, [selectedChapterIds]);
+
+  const toggleSelectedChapter = useCallback((chapterId: number) => {
+    setSelectedChapterIds((prev) =>
+      prev.includes(chapterId)
+        ? prev.filter((id) => id !== chapterId)
+        : [...prev, chapterId],
+    );
   }, []);
 
   const handleFinalize = useCallback(async () => {
@@ -441,31 +459,58 @@ export function Settings(): React.ReactElement {
             </div>
           )}
 
-          {plan.next_chapter && (
-            <p>
-              Next: <strong>{plan.next_chapter.title}</strong> (pp.{" "}
-              {plan.next_chapter.start_page}&ndash;{plan.next_chapter.end_page},{" "}
-              {plan.next_chapter.page_count} pages)
-            </p>
+          {plan.unassigned_chapters.length > 0 && (
+            <div>
+              <h3>Add Chapters</h3>
+              <ul className="rd-chapter-picker">
+                {plan.unassigned_chapters.map((ch) => (
+                  <li key={ch.id}>
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedChapterIds.includes(ch.id)}
+                        onChange={() => toggleSelectedChapter(ch.id)}
+                      />
+                      {ch.title} (pp. {ch.start_page}&ndash;{ch.end_page},{" "}
+                      {ch.page_count} pages)
+                    </label>
+                  </li>
+                ))}
+              </ul>
+              <div className="rd-button-row">
+                <button
+                  type="button"
+                  onClick={handleAddSelectedChapters}
+                  disabled={selectedChapterIds.length === 0 || addingChapters}
+                >
+                  {addingChapters
+                    ? "Adding..."
+                    : `Add Selected (${selectedChapterIds.length})`}
+                </button>
+                <button
+                  type="button"
+                  className="outline"
+                  onClick={handleFinalize}
+                  disabled={plan.current_assignment_chapters.length === 0}
+                >
+                  Finalize Assignment
+                </button>
+              </div>
+            </div>
           )}
 
-          <div className="rd-button-row">
-            <button
-              type="button"
-              onClick={handleAddChapter}
-              disabled={!plan.next_chapter}
-            >
-              + Add Next Chapter
-            </button>
-            <button
-              type="button"
-              className="outline"
-              onClick={handleFinalize}
-              disabled={plan.current_assignment_chapters.length === 0}
-            >
-              Finalize Assignment
-            </button>
-          </div>
+          {plan.unassigned_chapters.length === 0 && (
+            <div className="rd-button-row">
+              <button
+                type="button"
+                className="outline"
+                onClick={handleFinalize}
+                disabled={plan.current_assignment_chapters.length === 0}
+              >
+                Finalize Assignment
+              </button>
+            </div>
+          )}
 
           {plan.completed_assignments.length > 0 && (
             <>

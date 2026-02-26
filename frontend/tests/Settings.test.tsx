@@ -44,6 +44,7 @@ const mockPlan: ReadingPlanStatus = {
   current_assignment_total_pages: 0,
   next_chapter: null,
   completed_assignments: [],
+  unassigned_chapters: [],
   total_chapters: 0,
   assigned_chapters: 0,
   total_pages: 0,
@@ -267,6 +268,120 @@ describe("Settings", () => {
     });
 
     expect(screen.getByText(/Feb 8, 2025/)).toBeInTheDocument();
+  });
+
+  it("renders chapter picker with unassigned chapters", async () => {
+    const planWithChapters: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "IX",
+          end_page: "X",
+          title: "Preface",
+          page_count: 1,
+        },
+        {
+          id: 2,
+          order: 2,
+          start_page: "X",
+          end_page: "XIII",
+          title: "What is Recovery Dharma?",
+          page_count: 3,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Add Chapters" }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.getByLabelText(/Preface/)).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/What is Recovery Dharma\?/),
+    ).toBeInTheDocument();
+  });
+
+  it("enables Add Selected button only when chapters are checked", async () => {
+    const planWithChapters: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 2,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "IX",
+          end_page: "X",
+          title: "Preface",
+          page_count: 1,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Add Selected/)).toBeInTheDocument();
+    });
+
+    // Button should be disabled when no chapters selected
+    expect(screen.getByText(/Add Selected/)).toBeDisabled();
+
+    // Check a chapter
+    fireEvent.click(screen.getByLabelText(/Preface/));
+
+    // Button should now be enabled
+    expect(screen.getByText(/Add Selected \(1\)/)).toBeEnabled();
+  });
+
+  it("calls addChapterToPlan for each selected chapter", async () => {
+    const planWithChapters: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 2,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "IX",
+          end_page: "X",
+          title: "Preface",
+          page_count: 1,
+        },
+        {
+          id: 2,
+          order: 2,
+          start_page: "X",
+          end_page: "XIII",
+          title: "Introduction",
+          page_count: 3,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    (api.addChapterToPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByLabelText(/Preface/)).toBeInTheDocument();
+    });
+
+    // Select both chapters
+    fireEvent.click(screen.getByLabelText(/Preface/));
+    fireEvent.click(screen.getByLabelText(/Introduction/));
+
+    fireEvent.click(screen.getByText(/Add Selected \(2\)/));
+
+    await waitFor(() => {
+      expect(api.addChapterToPlan).toHaveBeenCalledTimes(2);
+    });
+
+    expect(api.getReadingPlan).toHaveBeenCalledTimes(2); // initial + after add
   });
 
   it("does not display last-used text for topics without a date", async () => {

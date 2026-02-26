@@ -300,6 +300,47 @@ def _chapters_for_ids(db: Session, chapter_ids: list[int]) -> list[dict]:
     return [_chapter_to_dict(ch) for ch in chapters]
 
 
+def _get_plan_progress(
+    db: Session,
+    group: Group,
+    completed: list[dict],
+    current_chapters: list[dict],
+) -> dict:
+    """Compute progress stats and unassigned chapters for the reading plan."""
+    all_chapters = db.query(BookChapter).filter(BookChapter.group_id == group.id).all()
+    total_chapters = len(all_chapters)
+    total_pages = sum(page_count(ch.start_page, ch.end_page) for ch in all_chapters)
+
+    assigned_chapter_ids: set[int] = set()
+    for entry in completed:
+        for ch in entry["chapters"]:
+            assigned_chapter_ids.add(ch["id"])
+
+    assigned_chapters = len(assigned_chapter_ids)
+    assigned_pages = sum(
+        page_count(ch.start_page, ch.end_page)
+        for ch in all_chapters
+        if ch.id in assigned_chapter_ids
+    )
+
+    # Collect all chapter IDs in any assignment (finalized or current draft)
+    all_assigned_ids = set(assigned_chapter_ids)
+    for ch in current_chapters:
+        all_assigned_ids.add(ch["id"])
+
+    unassigned = [
+        _chapter_to_dict(ch) for ch in all_chapters if ch.id not in all_assigned_ids
+    ]
+
+    return {
+        "unassigned_chapters": unassigned,
+        "total_chapters": total_chapters,
+        "assigned_chapters": assigned_chapters,
+        "total_pages": total_pages,
+        "assigned_pages": assigned_pages,
+    }
+
+
 def get_plan_status(db: Session, group: Group) -> dict:
     """Get the full reading plan builder state."""
     assignments = (
@@ -334,33 +375,14 @@ def get_plan_status(db: Session, group: Group) -> dict:
     next_chapter = get_next_unassigned_chapter(db, group)
     next_chapter_dict = _chapter_to_dict(next_chapter) if next_chapter else None
 
-    # Progress stats: count all chapters and pages for the group,
-    # then count chapters/pages across all finalized assignments.
-    all_chapters = db.query(BookChapter).filter(BookChapter.group_id == group.id).all()
-    total_chapters = len(all_chapters)
-    total_pages = sum(page_count(ch.start_page, ch.end_page) for ch in all_chapters)
-
-    assigned_chapter_ids: set[int] = set()
-    for entry in completed:
-        for ch in entry["chapters"]:
-            assigned_chapter_ids.add(ch["id"])
-
-    assigned_chapters = len(assigned_chapter_ids)
-    assigned_pages = sum(
-        page_count(ch.start_page, ch.end_page)
-        for ch in all_chapters
-        if ch.id in assigned_chapter_ids
-    )
+    progress = _get_plan_progress(db, group, completed, current_chapters)
 
     return {
         "current_assignment_chapters": current_chapters,
         "current_assignment_total_pages": current_total_pages,
         "next_chapter": next_chapter_dict,
         "completed_assignments": completed,
-        "total_chapters": total_chapters,
-        "assigned_chapters": assigned_chapters,
-        "total_pages": total_pages,
-        "assigned_pages": assigned_pages,
+        **progress,
     }
 
 
