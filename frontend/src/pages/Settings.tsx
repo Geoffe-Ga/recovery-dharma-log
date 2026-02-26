@@ -341,6 +341,14 @@ export function Settings(): React.ReactElement {
           startDate={settings.start_date}
           formatRotation={settings.format_rotation}
         />
+        {settings.format_rotation.length < 5 && (
+          <p className="rd-meta">
+            Note: Months with a 5th {DAYS_OF_WEEK[settings.meeting_day]} will
+            use the{" "}
+            {settings.format_rotation[4 % settings.format_rotation.length]}{" "}
+            format (position {(4 % settings.format_rotation.length) + 1}).
+          </p>
+        )}
       </section>
 
       <section>
