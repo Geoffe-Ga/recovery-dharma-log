@@ -100,7 +100,11 @@ describe("Log", () => {
   it("shows loading state initially", () => {
     getMeetingLog.mockReturnValue(new Promise(() => {}));
     renderLog();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading content")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading content")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 
   it("shows error message on API failure", async () => {

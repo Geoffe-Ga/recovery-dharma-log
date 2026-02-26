@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { RotationCalendar } from "../components/RotationCalendar";
+import { Skeleton } from "../components/Skeleton";
 import {
   addChapterToPlan,
   createTopic,
@@ -252,7 +253,7 @@ export function Settings(): React.ReactElement {
     );
   }, []);
 
-  if (loading) return <p aria-busy="true">Loading...</p>;
+  if (loading) return <Skeleton lines={4} />;
   if (error) return <p role="alert">{error}</p>;
   if (!settings) return <p>No settings found.</p>;
 

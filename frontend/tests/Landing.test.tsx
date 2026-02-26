@@ -156,7 +156,11 @@ describe("Landing", () => {
   it("shows loading state initially", () => {
     getUpcomingMeeting.mockReturnValue(new Promise(() => {}));
     renderLanding();
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading content")).toBeInTheDocument();
+    expect(screen.getByLabelText("Loading content")).toHaveAttribute(
+      "aria-busy",
+      "true",
+    );
   });
 
   it("shows error message on API failure", async () => {
