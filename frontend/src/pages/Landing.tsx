@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   cancelMeeting,
   drawTopic,
+  getSpeakerNames,
   getUpcomingMeeting,
   getUpcomingMeetings,
   scheduleSpeaker,
@@ -22,6 +23,7 @@ export function Landing(): React.ReactElement {
   const [error, setError] = useState<string | null>(null);
   const [speakerInput, setSpeakerInput] = useState("");
   const [showSpeakerForm, setShowSpeakerForm] = useState(false);
+  const [speakerNames, setSpeakerNames] = useState<string[]>([]);
   const [isCancelling, setIsCancelling] = useState(false);
   const [attendanceInput, setAttendanceInput] = useState("");
   const [showAttendanceForm, setShowAttendanceForm] = useState(false);
@@ -44,6 +46,14 @@ export function Landing(): React.ReactElement {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
+
+  useEffect(() => {
+    if (showSpeakerForm) {
+      getSpeakerNames()
+        .then(setSpeakerNames)
+        .catch(() => setSpeakerNames([]));
+    }
+  }, [showSpeakerForm]);
 
   const handleDrawTopic = useCallback(async () => {
     try {
@@ -266,6 +276,7 @@ export function Landing(): React.ReactElement {
                           placeholder="Speaker name"
                           value={speakerInput}
                           onChange={(e) => setSpeakerInput(e.target.value)}
+                          list="speaker-names"
                         />
                         <button type="submit">Save</button>
                         <button
@@ -317,6 +328,7 @@ export function Landing(): React.ReactElement {
                           placeholder="Speaker name"
                           value={speakerInput}
                           onChange={(e) => setSpeakerInput(e.target.value)}
+                          list="speaker-names"
                         />
                         <button type="submit">Schedule</button>
                         <button
@@ -434,6 +446,11 @@ export function Landing(): React.ReactElement {
           </ul>
         </section>
       )}
+      <datalist id="speaker-names">
+        {speakerNames.map((name) => (
+          <option key={name} value={name} />
+        ))}
+      </datalist>
     </main>
   );
 }

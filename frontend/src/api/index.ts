@@ -150,6 +150,10 @@ export async function deleteAssignment(assignmentId: number): Promise<void> {
 
 // --- Speakers ---
 
+export async function getSpeakerNames(): Promise<string[]> {
+  return api.get<string[]>("/speakers/names");
+}
+
 export async function getSpeakerSchedule(): Promise<SpeakerSchedule[]> {
   return api.get<SpeakerSchedule[]>("/speakers/schedule");
 }

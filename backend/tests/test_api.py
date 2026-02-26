@@ -488,6 +488,43 @@ class TestSpeakersEndpoints:
         )
         assert response.status_code == 200
 
+    def test_get_names_empty(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Get speaker names returns empty list when none scheduled."""
+        response = client.get("/speakers/names", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_get_names_returns_deduplicated_sorted(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Get speaker names returns deduplicated sorted list."""
+        # Schedule multiple speakers, some duplicates
+        client.post(
+            "/speakers/schedule",
+            json={"meeting_date": "2025-03-02", "speaker_name": "Zara"},
+            headers=auth_headers,
+        )
+        client.post(
+            "/speakers/schedule",
+            json={"meeting_date": "2025-03-09", "speaker_name": "Alice"},
+            headers=auth_headers,
+        )
+        client.post(
+            "/speakers/schedule",
+            json={"meeting_date": "2025-03-16", "speaker_name": "Zara"},
+            headers=auth_headers,
+        )
+        response = client.get("/speakers/names", headers=auth_headers)
+        assert response.status_code == 200
+        names = response.json()
+        assert names == ["Alice", "Zara"]
+
 
 class TestSettingsEndpoints:
     """Tests for settings endpoints."""
