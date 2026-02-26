@@ -95,6 +95,7 @@ export interface ReadingAssignment {
   assignment_order: number;
   chapters: BookChapter[];
   total_pages: number;
+  meeting_date: string | null;
 }
 
 export interface AssignmentUpdate {

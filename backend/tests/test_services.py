@@ -23,6 +23,7 @@ from app.services import (
     get_deck_stats,
     get_format_for_date,
     get_next_meeting_date,
+    get_nth_book_study_date,
     get_plan_status,
     get_rotation_for_group,
     get_upcoming_meeting_data,
@@ -447,6 +448,80 @@ class TestBookReadingPlan:
         status = get_plan_status(db_session, group)
         assert status["assigned_chapters"] == 2
         assert status["assigned_pages"] == 4
+
+
+class TestBookStudyDateProjection:
+    """Tests for computing Book Study meeting dates."""
+
+    def test_first_book_study_date(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        # Rotation: Speaker, Topic, Book Study, Topic, Book Study
+        # Week-of-month: 1st Sun=Speaker, 2nd=Topic, 3rd=Book Study
+        result = get_nth_book_study_date(db_session, group, 1)
+        assert result == date(2025, 1, 19)  # 3rd Sunday of Jan 2025
+
+    def test_second_book_study_date(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        # Week-of-month position 2 = Book Study. Jan 19 is first, Feb 16 is second.
+        result = get_nth_book_study_date(db_session, group, 2)
+        assert result == date(2025, 2, 16)  # 3rd Sunday of Feb 2025
+
+    def test_invalid_n_returns_none(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        assert get_nth_book_study_date(db_session, group, 0) is None
+        assert get_nth_book_study_date(db_session, group, -1) is None
+
+    def test_skips_cancelled_book_study(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        # Cancel the first Book Study (3rd Sunday = Jan 19)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 19),
+                format_type="Book Study",
+                is_cancelled=True,
+            )
+        )
+        db_session.flush()
+        # The 1st non-cancelled Book Study should skip Jan 19
+        result = get_nth_book_study_date(db_session, group, 1)
+        assert result != date(2025, 1, 19)
+        assert result is not None
+
+    def test_finalize_sets_meeting_date(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        result = finalize_current_assignment(db_session, group)
+        assert result is not None
+        assert result["meeting_date"] == date(2025, 1, 19)
+
+    def test_finalize_second_assignment_gets_second_date(
+        self, db_session: Session
+    ) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_chapters(db_session, group)
+        # Finalize first assignment
+        add_chapter_to_current_assignment(db_session, group)
+        result1 = finalize_current_assignment(db_session, group)
+        assert result1 is not None
+
+        # Finalize second assignment
+        add_chapter_to_current_assignment(db_session, group)
+        result2 = finalize_current_assignment(db_session, group)
+        assert result2 is not None
+        assert result2["meeting_date"] is not None
+        # Second date should be after first
+        assert result2["meeting_date"] > result1["meeting_date"]
+
+    def test_plan_status_includes_meeting_date(self, db_session: Session) -> None:
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        status = get_plan_status(db_session, group)
+        assert len(status["completed_assignments"]) == 1
+        assert status["completed_assignments"][0]["meeting_date"] == date(2025, 1, 19)
 
 
 class TestAssignmentEditing:
