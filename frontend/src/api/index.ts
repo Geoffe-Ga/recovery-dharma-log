@@ -158,6 +158,12 @@ export async function getSpeakerSchedule(): Promise<SpeakerSchedule[]> {
   return api.get<SpeakerSchedule[]>("/speakers/schedule");
 }
 
+export async function getUpcomingSpeakerDates(
+  weeks: number = 8,
+): Promise<SpeakerSchedule[]> {
+  return api.get<SpeakerSchedule[]>(`/speakers/upcoming?weeks=${weeks}`);
+}
+
 export async function scheduleSpeaker(
   meetingDate: string,
   speakerName: string,

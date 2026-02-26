@@ -470,6 +470,78 @@ class TestSpeakersEndpoints:
         )
         assert response.status_code == 200
 
+    def test_upcoming_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Upcoming speaker dates returns a list."""
+        response = client.get(
+            "/speakers/upcoming?weeks=8",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert isinstance(data, list)
+        for entry in data:
+            assert "meeting_date" in entry
+            assert "speaker_name" in entry
+
+    def test_upcoming_includes_unassigned(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Upcoming speaker dates include dates without a speaker assigned."""
+        response = client.get(
+            "/speakers/upcoming?weeks=8",
+            headers=auth_headers,
+        )
+        data = response.json()
+        if data:
+            # At least one entry should have speaker_name as null
+            # (no speakers scheduled by default)
+            has_null = any(e["speaker_name"] is None for e in data)
+            assert has_null
+
+    def test_upcoming_reflects_scheduled_speaker(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """After scheduling a speaker, upcoming shows that speaker."""
+        # Get upcoming dates first
+        response = client.get(
+            "/speakers/upcoming?weeks=8",
+            headers=auth_headers,
+        )
+        data = response.json()
+        if not data:
+            return  # Skip if no speaker dates in rotation
+
+        target_date = data[0]["meeting_date"]
+        # Schedule a speaker for that date
+        client.post(
+            "/speakers/schedule",
+            json={
+                "meeting_date": target_date,
+                "speaker_name": "Test Speaker",
+            },
+            headers=auth_headers,
+        )
+        # Verify it shows up
+        response = client.get(
+            "/speakers/upcoming?weeks=8",
+            headers=auth_headers,
+        )
+        updated = response.json()
+        match = next(
+            (e for e in updated if e["meeting_date"] == target_date),
+            None,
+        )
+        assert match is not None
+        assert match["speaker_name"] == "Test Speaker"
+
     def test_unschedule_returns_200(
         self,
         client: TestClient,

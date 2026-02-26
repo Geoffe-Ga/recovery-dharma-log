@@ -837,6 +837,65 @@ p[role="alert"] {
   background: var(--rd-bg-elevated);
 }
 
+/* Speaker schedule list */
+.rd-speaker-schedule {
+  margin-top: var(--rd-space-lg);
+}
+
+.rd-speaker-schedule h3 {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: var(--rd-space-sm);
+}
+
+.rd-speaker-schedule__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.rd-speaker-schedule__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  border-bottom: 1px solid var(--rd-border-subtle);
+  gap: var(--rd-space-sm);
+}
+
+.rd-speaker-schedule__item:last-child {
+  border-bottom: none;
+}
+
+.rd-speaker-schedule__date {
+  font-size: var(--rd-font-size-sm);
+  color: var(--rd-text);
+}
+
+.rd-speaker-schedule__name {
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-accent);
+}
+
+.rd-speaker-schedule__form {
+  display: flex;
+  gap: var(--rd-space-xs);
+  align-items: flex-end;
+}
+
+.rd-speaker-schedule__form input {
+  margin-bottom: 0;
+  max-width: 160px;
+}
+
+.rd-speaker-schedule__form button {
+  margin-bottom: 0;
+  white-space: nowrap;
+}
+
 button.rd-danger-outline {
   border-color: var(--rd-danger);
   color: var(--rd-danger);

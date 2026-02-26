@@ -10,6 +10,7 @@ jest.mock("../src/api/index", () => ({
   getUpcomingMeeting: jest.fn(),
   getUpcomingMeetings: jest.fn(),
   getSpeakerNames: jest.fn(),
+  getUpcomingSpeakerDates: jest.fn(),
   drawTopic: jest.fn(),
   undoTopicDraw: jest.fn(),
   scheduleSpeaker: jest.fn(),
@@ -29,6 +30,7 @@ function renderLanding(): void {
 const getUpcomingMeeting = api.getUpcomingMeeting as jest.Mock;
 const getUpcomingMeetings = api.getUpcomingMeetings as jest.Mock;
 const getSpeakerNames = api.getSpeakerNames as jest.Mock;
+const getUpcomingSpeakerDates = api.getUpcomingSpeakerDates as jest.Mock;
 const drawTopic = api.drawTopic as jest.Mock;
 const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
@@ -96,11 +98,17 @@ const speakerMeetingNoSpeaker: UpcomingMeeting = {
   speaker_name: null,
 };
 
+const speakerScheduleData = [
+  { meeting_date: "2026-03-01", speaker_name: "Alice" },
+  { meeting_date: "2026-03-29", speaker_name: null },
+];
+
 describe("Landing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getUpcomingMeetings.mockResolvedValue(lookaheadMeetings);
     getSpeakerNames.mockResolvedValue([]);
+    getUpcomingSpeakerDates.mockResolvedValue(speakerScheduleData);
   });
 
   it("renders formatted meeting date", async () => {
@@ -461,9 +469,12 @@ describe("Landing", () => {
       renderLanding();
 
       await waitFor(() => {
-        expect(screen.getByText("Sunday, March 1")).toBeInTheDocument();
-        expect(screen.getByText("Sunday, March 8")).toBeInTheDocument();
-        expect(screen.getByText("Sunday, March 15")).toBeInTheDocument();
+        const lookaheadSection = screen
+          .getByText("Upcoming Meetings")
+          .closest("section")!;
+        expect(lookaheadSection).toHaveTextContent("Sunday, March 1");
+        expect(lookaheadSection).toHaveTextContent("Sunday, March 8");
+        expect(lookaheadSection).toHaveTextContent("Sunday, March 15");
       });
     });
 
@@ -796,6 +807,85 @@ describe("Landing", () => {
       await waitFor(() => {
         expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", null);
       });
+    });
+  });
+
+  describe("speaker schedule", () => {
+    it("shows Speaker Schedule section with upcoming speaker dates", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Speaker Schedule")).toBeInTheDocument();
+      });
+    });
+
+    it("displays assigned speaker names", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Alice")).toBeInTheDocument();
+      });
+    });
+
+    it("shows Assign Speaker button for open dates", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Assign Speaker" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("opens inline form when Assign Speaker is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Assign Speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Assign Speaker" }));
+
+      expect(screen.getByPlaceholderText("Speaker name")).toBeInTheDocument();
+    });
+
+    it("calls scheduleSpeaker on form submit", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      scheduleSpeaker.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Assign Speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Assign Speaker" }));
+      fireEvent.change(screen.getByPlaceholderText("Speaker name"), {
+        target: { value: "Bob" },
+      });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      await waitFor(() => {
+        expect(scheduleSpeaker).toHaveBeenCalledWith("2026-03-29", "Bob");
+      });
+    });
+
+    it("hides section when no speaker dates returned", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      getUpcomingSpeakerDates.mockResolvedValue([]);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(screen.getByText("Upcoming Meetings")).toBeInTheDocument();
+      });
+      expect(screen.queryByText("Speaker Schedule")).not.toBeInTheDocument();
     });
   });
 
