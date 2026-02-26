@@ -9,6 +9,7 @@ import type { UpcomingMeeting } from "../src/types/index";
 jest.mock("../src/api/index", () => ({
   getUpcomingMeeting: jest.fn(),
   getUpcomingMeetings: jest.fn(),
+  getSpeakerNames: jest.fn(),
   drawTopic: jest.fn(),
   undoTopicDraw: jest.fn(),
   scheduleSpeaker: jest.fn(),
@@ -27,6 +28,7 @@ function renderLanding(): void {
 
 const getUpcomingMeeting = api.getUpcomingMeeting as jest.Mock;
 const getUpcomingMeetings = api.getUpcomingMeetings as jest.Mock;
+const getSpeakerNames = api.getSpeakerNames as jest.Mock;
 const drawTopic = api.drawTopic as jest.Mock;
 const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
@@ -98,6 +100,7 @@ describe("Landing", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     getUpcomingMeetings.mockResolvedValue(lookaheadMeetings);
+    getSpeakerNames.mockResolvedValue([]);
   });
 
   it("renders formatted meeting date", async () => {
@@ -650,6 +653,34 @@ describe("Landing", () => {
 
       await waitFor(() => {
         expect(unscheduleSpeaker).toHaveBeenCalledWith("2026-02-22");
+      });
+    });
+
+    it("renders datalist with speaker name options when form is shown", async () => {
+      getSpeakerNames.mockResolvedValue(["Alice", "Bob", "Zara"]);
+      getUpcomingMeeting.mockResolvedValue(speakerMeetingNoSpeaker);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Schedule Speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("button", { name: "Schedule Speaker" }));
+
+      await waitFor(() => {
+        expect(getSpeakerNames).toHaveBeenCalled();
+      });
+
+      await waitFor(() => {
+        const datalist = document.getElementById("speaker-names");
+        expect(datalist).toBeInTheDocument();
+        const options = datalist!.querySelectorAll("option");
+        expect(options).toHaveLength(3);
+        expect(options[0]).toHaveAttribute("value", "Alice");
+        expect(options[1]).toHaveAttribute("value", "Bob");
+        expect(options[2]).toHaveAttribute("value", "Zara");
       });
     });
 

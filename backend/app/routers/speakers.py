@@ -13,6 +13,25 @@ from app.schemas import SpeakerSchedule, SpeakerScheduleCreate
 router = APIRouter(prefix="/speakers", tags=["speakers"])
 
 
+@router.get("/names", response_model=list[str])
+def get_speaker_names(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[str]:
+    """Get all unique speaker names from history."""
+    entries = (
+        db.query(MeetingLog.speaker_name)
+        .filter(
+            MeetingLog.group_id == current_user.group_id,
+            MeetingLog.speaker_name.isnot(None),
+            MeetingLog.speaker_name != "",
+        )
+        .distinct()
+        .all()
+    )
+    return sorted(name for (name,) in entries)
+
+
 @router.get("/schedule", response_model=list[SpeakerSchedule])
 def get_speaker_schedule(
     current_user: User = Depends(get_current_user),
