@@ -52,4 +52,16 @@ describe("formatMeetingTime", () => {
   it("returns null for empty string", () => {
     expect(formatMeetingTime("")).toBeNull();
   });
+
+  it("returns null for fully malformed input", () => {
+    expect(formatMeetingTime("abc:zz")).toBeNull();
+  });
+
+  it("returns null when minutes are malformed", () => {
+    expect(formatMeetingTime("12:abc")).toBeNull();
+  });
+
+  it("returns null for non-time string", () => {
+    expect(formatMeetingTime("not-a-time")).toBeNull();
+  });
 });
