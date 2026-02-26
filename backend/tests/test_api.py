@@ -498,11 +498,11 @@ class TestSpeakersEndpoints:
             headers=auth_headers,
         )
         data = response.json()
-        if data:
-            # At least one entry should have speaker_name as null
-            # (no speakers scheduled by default)
-            has_null = any(e["speaker_name"] is None for e in data)
-            assert has_null
+        assert data, "Expected at least one upcoming speaker date"
+        # At least one entry should have speaker_name as null
+        # (no speakers scheduled by default)
+        has_null = any(e["speaker_name"] is None for e in data)
+        assert has_null
 
     def test_upcoming_reflects_scheduled_speaker(
         self,
@@ -516,8 +516,7 @@ class TestSpeakersEndpoints:
             headers=auth_headers,
         )
         data = response.json()
-        if not data:
-            return  # Skip if no speaker dates in rotation
+        assert data, "Expected at least one upcoming speaker date"
 
         target_date = data[0]["meeting_date"]
         # Schedule a speaker for that date

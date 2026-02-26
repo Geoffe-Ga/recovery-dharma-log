@@ -2,7 +2,7 @@
 
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -35,13 +35,13 @@ def get_speaker_names(
 
 @router.get("/upcoming", response_model=list[SpeakerSchedule])
 def get_upcoming_speaker_dates(
-    weeks: int = 8,
+    weeks: int = Query(default=8, ge=1, le=52),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
-) -> list[dict]:
+) -> list[SpeakerSchedule]:
     """Get all upcoming Speaker-format dates with assigned speakers."""
     group = current_user.group
-    results: list[dict] = []
+    results: list[SpeakerSchedule] = []
     current = get_next_meeting_date(group)
 
     for _ in range(weeks):
@@ -57,10 +57,10 @@ def get_upcoming_speaker_dates(
             )
             speaker_name = log_entry.speaker_name if log_entry else None
             results.append(
-                {
-                    "meeting_date": current,
-                    "speaker_name": speaker_name,
-                }
+                SpeakerSchedule(
+                    meeting_date=current,
+                    speaker_name=speaker_name,
+                )
             )
         current += timedelta(days=7)
 

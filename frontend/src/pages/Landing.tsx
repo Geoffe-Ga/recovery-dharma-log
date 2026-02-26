@@ -499,6 +499,7 @@ export function Landing(): React.ReactElement {
                     <input
                       type="text"
                       placeholder="Speaker name"
+                      aria-label="Speaker name"
                       value={scheduleInput}
                       onChange={(e) => setScheduleInput(e.target.value)}
                     />
