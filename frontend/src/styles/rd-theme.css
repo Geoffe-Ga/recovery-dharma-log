@@ -1001,6 +1001,56 @@ button.rd-danger-outline:hover {
 }
 
 /* ===================================================================
+   17a. Settings section navigation
+   =================================================================== */
+
+.rd-section-nav {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  display: flex;
+  gap: var(--rd-space-xs);
+  padding: var(--rd-space-sm) var(--rd-space-md);
+  background: var(--rd-bg-card);
+  border: 1px solid var(--rd-border-subtle);
+  border-radius: var(--rd-radius);
+  box-shadow: var(--rd-shadow-sm);
+  margin-bottom: var(--rd-space-lg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.rd-section-nav::-webkit-scrollbar {
+  display: none;
+}
+
+.rd-section-nav__link {
+  flex-shrink: 0;
+  padding: var(--rd-space-xs) var(--rd-space-md);
+  font-size: var(--rd-font-size-sm);
+  font-weight: 600;
+  color: var(--rd-text-muted);
+  text-decoration: none;
+  border-radius: var(--rd-radius-sm);
+  white-space: nowrap;
+  transition:
+    color var(--rd-duration) var(--rd-ease),
+    background-color var(--rd-duration) var(--rd-ease);
+}
+
+.rd-section-nav__link:hover {
+  color: var(--rd-accent);
+  background-color: var(--rd-bg-elevated);
+  text-decoration: none;
+}
+
+.rd-section-nav__link--active {
+  color: var(--rd-accent);
+  background-color: var(--rd-bg-elevated);
+}
+
+/* ===================================================================
    17. Settings page specifics
    =================================================================== */
 

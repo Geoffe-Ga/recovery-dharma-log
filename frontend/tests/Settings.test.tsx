@@ -1,4 +1,4 @@
-/** Tests for Settings page sticky save bar. */
+/** Tests for Settings page section navigation and sticky save bar. */
 
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { ToastProvider } from "../src/contexts/ToastContext";
@@ -68,6 +68,34 @@ describe("Settings", () => {
     (api.getTopics as jest.Mock).mockResolvedValue(mockTopics);
     (api.getReadingPlan as jest.Mock).mockResolvedValue(mockPlan);
     (api.getChapters as jest.Mock).mockResolvedValue(mockChapters);
+  });
+
+  it("renders section nav with correct links", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Settings" }),
+      ).toBeInTheDocument();
+    });
+
+    const nav = screen.getByRole("navigation", { name: "Section navigation" });
+    expect(nav).toBeInTheDocument();
+
+    const links = nav.querySelectorAll("a");
+    expect(links).toHaveLength(4);
+
+    expect(links[0]).toHaveTextContent("Meeting");
+    expect(links[0]).toHaveAttribute("href", "#meeting");
+
+    expect(links[1]).toHaveTextContent("Rotation");
+    expect(links[1]).toHaveAttribute("href", "#rotation");
+
+    expect(links[2]).toHaveTextContent("Topics");
+    expect(links[2]).toHaveAttribute("href", "#topics");
+
+    expect(links[3]).toHaveTextContent("Reading Plan");
+    expect(links[3]).toHaveAttribute("href", "#reading-plan");
   });
 
   it("renders settings page", async () => {
