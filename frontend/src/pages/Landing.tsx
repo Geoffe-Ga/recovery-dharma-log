@@ -7,23 +7,31 @@ import {
   getSpeakerNames,
   getUpcomingMeeting,
   getUpcomingMeetings,
+  getUpcomingSpeakerDates,
   scheduleSpeaker,
   undoTopicDraw,
   unscheduleSpeaker,
   updateAttendance,
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
-import type { UpcomingMeeting, UpcomingMeetingBrief } from "../types/index";
+import type {
+  SpeakerSchedule,
+  UpcomingMeeting,
+  UpcomingMeetingBrief,
+} from "../types/index";
 import { formatMeetingDate, formatMeetingTime } from "../utils/dates";
 
 export function Landing(): React.ReactElement {
   const [meeting, setMeeting] = useState<UpcomingMeeting | null>(null);
   const [lookahead, setLookahead] = useState<UpcomingMeetingBrief[]>([]);
+  const [speakerDates, setSpeakerDates] = useState<SpeakerSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [speakerInput, setSpeakerInput] = useState("");
   const [showSpeakerForm, setShowSpeakerForm] = useState(false);
   const [speakerNames, setSpeakerNames] = useState<string[]>([]);
+  const [scheduleFormDate, setScheduleFormDate] = useState<string | null>(null);
+  const [scheduleInput, setScheduleInput] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
   const [attendanceInput, setAttendanceInput] = useState("");
   const [showAttendanceForm, setShowAttendanceForm] = useState(false);
@@ -31,13 +39,15 @@ export function Landing(): React.ReactElement {
 
   const refresh = useCallback(async () => {
     try {
-      const [updated, upcoming] = await Promise.all([
+      const [updated, upcoming, speakers] = await Promise.all([
         getUpcomingMeeting(),
         getUpcomingMeetings(4),
+        getUpcomingSpeakerDates(8),
       ]);
       setMeeting(updated);
       // Exclude the first meeting (already shown as primary card)
       setLookahead(upcoming.slice(1));
+      setSpeakerDates(speakers);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
@@ -150,6 +160,26 @@ export function Landing(): React.ReactElement {
       );
     }
   }, [meeting, attendanceInput, refresh, showToast]);
+
+  const handleScheduleFromList = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!scheduleFormDate || !scheduleInput.trim()) return;
+      try {
+        await scheduleSpeaker(scheduleFormDate, scheduleInput.trim());
+        setScheduleInput("");
+        setScheduleFormDate(null);
+        await refresh();
+        showToast("success", "Speaker scheduled");
+      } catch (err: unknown) {
+        showToast(
+          "error",
+          err instanceof Error ? err.message : "Failed to schedule speaker",
+        );
+      }
+    },
+    [scheduleFormDate, scheduleInput, refresh, showToast],
+  );
 
   const handleToggleCancel = useCallback(async () => {
     if (!meeting || isCancelling) return;
@@ -451,6 +481,58 @@ export function Landing(): React.ReactElement {
           <option key={name} value={name} />
         ))}
       </datalist>
+
+      {speakerDates.length > 0 && (
+        <section className="rd-speaker-schedule">
+          <h3>Speaker Schedule</h3>
+          <ul className="rd-speaker-schedule__list">
+            {speakerDates.map((s) => (
+              <li key={s.meeting_date} className="rd-speaker-schedule__item">
+                <span className="rd-speaker-schedule__date">
+                  {formatMeetingDate(s.meeting_date)}
+                </span>
+                {scheduleFormDate === s.meeting_date ? (
+                  <form
+                    className="rd-speaker-schedule__form"
+                    onSubmit={handleScheduleFromList}
+                  >
+                    <input
+                      type="text"
+                      placeholder="Speaker name"
+                      aria-label="Speaker name"
+                      value={scheduleInput}
+                      onChange={(e) => setScheduleInput(e.target.value)}
+                    />
+                    <button type="submit">Save</button>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={() => {
+                        setScheduleFormDate(null);
+                        setScheduleInput("");
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </form>
+                ) : s.speaker_name ? (
+                  <span className="rd-speaker-schedule__name">
+                    {s.speaker_name}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    className="outline rd-icon-btn"
+                    onClick={() => setScheduleFormDate(s.meeting_date)}
+                  >
+                    Assign Speaker
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </main>
   );
 }

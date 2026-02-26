@@ -1,14 +1,15 @@
 """Speakers router: schedule and manage speakers."""
 
-from datetime import date
+from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import MeetingLog, User
 from app.schemas import SpeakerSchedule, SpeakerScheduleCreate
+from app.services import get_format_for_date, get_next_meeting_date
 
 router = APIRouter(prefix="/speakers", tags=["speakers"])
 
@@ -30,6 +31,40 @@ def get_speaker_names(
         .all()
     )
     return sorted(name for (name,) in entries)
+
+
+@router.get("/upcoming", response_model=list[SpeakerSchedule])
+def get_upcoming_speaker_dates(
+    weeks: int = Query(default=8, ge=1, le=52),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> list[SpeakerSchedule]:
+    """Get all upcoming Speaker-format dates with assigned speakers."""
+    group = current_user.group
+    results: list[SpeakerSchedule] = []
+    current = get_next_meeting_date(group)
+
+    for _ in range(weeks):
+        fmt = get_format_for_date(db, group, current)
+        if fmt == "Speaker":
+            log_entry = (
+                db.query(MeetingLog)
+                .filter(
+                    MeetingLog.group_id == group.id,
+                    MeetingLog.meeting_date == current,
+                )
+                .first()
+            )
+            speaker_name = log_entry.speaker_name if log_entry else None
+            results.append(
+                SpeakerSchedule(
+                    meeting_date=current,
+                    speaker_name=speaker_name,
+                )
+            )
+        current += timedelta(days=7)
+
+    return results
 
 
 @router.get("/schedule", response_model=list[SpeakerSchedule])
