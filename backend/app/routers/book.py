@@ -92,6 +92,7 @@ def list_assignments(
                 "assignment_order": assignment.assignment_order,
                 "chapters": chapter_dicts,
                 "total_pages": total,
+                "meeting_date": assignment.meeting_date,
             }
         )
     return result

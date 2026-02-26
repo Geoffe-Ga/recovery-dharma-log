@@ -172,6 +172,7 @@ class ReadingAssignmentResponse(BaseModel):
     assignment_order: int
     chapters: list[BookChapterResponse]
     total_pages: int
+    meeting_date: date | None = None
 
     model_config = {"from_attributes": True}
 

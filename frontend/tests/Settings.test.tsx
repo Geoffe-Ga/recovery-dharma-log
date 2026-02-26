@@ -384,6 +384,76 @@ describe("Settings", () => {
     expect(api.getReadingPlan).toHaveBeenCalledTimes(2); // initial + after add
   });
 
+  it("displays meeting date next to finalized assignment", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 1,
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Preface",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: "2025-03-15",
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Mar 15/)).toBeInTheDocument();
+    });
+  });
+
+  it("does not show date when assignment has no meeting_date", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 1,
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Preface",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/\u2014\s+\w{3}\s+\d/)).not.toBeInTheDocument();
+  });
+
   it("does not display last-used text for topics without a date", async () => {
     const topicsWithoutDates: Topic[] = [
       {

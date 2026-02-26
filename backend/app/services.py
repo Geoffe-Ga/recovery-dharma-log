@@ -255,6 +255,48 @@ def reshuffle_deck(db: Session, group: Group) -> int:
     return new_cycle
 
 
+# --- Book Study Date Projection ---
+
+
+def get_nth_book_study_date(
+    db: Session,
+    group: Group,
+    n: int,
+) -> date | None:
+    """Return the date of the Nth Book Study meeting (1-indexed).
+
+    Walks forward from the group's start_date, counting weeks whose
+    format is "Book Study" according to get_format_for_date, skipping
+    cancelled meetings.
+    """
+    if n < 1:
+        return None
+
+    current = get_next_meeting_date(group, after=group.start_date)
+    count = 0
+    # Safety cap to avoid infinite loops (10 years of weekly meetings).
+    max_iterations = 520
+    for _ in range(max_iterations):
+        fmt = get_format_for_date(db, group, current)
+        if fmt == "Book Study":
+            # Check if the meeting is cancelled
+            log_entry = (
+                db.query(MeetingLog)
+                .filter(
+                    MeetingLog.group_id == group.id,
+                    MeetingLog.meeting_date == current,
+                    MeetingLog.is_cancelled.is_(True),
+                )
+                .first()
+            )
+            if not log_entry:
+                count += 1
+                if count == n:
+                    return current
+        current += timedelta(days=7)
+    return None
+
+
 # --- Book Reading Plan Engine ---
 
 
@@ -369,6 +411,7 @@ def get_plan_status(db: Session, group: Group) -> dict:
                     "assignment_order": assignment.assignment_order,
                     "chapters": chapter_dicts,
                     "total_pages": total,
+                    "meeting_date": assignment.meeting_date,
                 }
             )
 
@@ -420,6 +463,11 @@ def finalize_current_assignment(db: Session, group: Group) -> dict | None:
     if not chapter_ids:
         return None
 
+    # Compute the meeting date for this assignment: it's the Nth Book Study
+    # date, where N = this assignment's order.
+    meeting_date = get_nth_book_study_date(db, group, draft.assignment_order)
+    draft.meeting_date = meeting_date
+
     chapter_dicts = _chapters_for_ids(db, chapter_ids)
     total = sum(int(c["page_count"]) for c in chapter_dicts)
 
@@ -436,6 +484,7 @@ def finalize_current_assignment(db: Session, group: Group) -> dict | None:
         "assignment_order": draft.assignment_order,
         "chapters": chapter_dicts,
         "total_pages": total,
+        "meeting_date": meeting_date,
     }
 
 
@@ -480,6 +529,7 @@ def update_assignment_chapters(
         "assignment_order": assignment.assignment_order,
         "chapters": chapter_dicts,
         "total_pages": total,
+        "meeting_date": assignment.meeting_date,
     }
 
 

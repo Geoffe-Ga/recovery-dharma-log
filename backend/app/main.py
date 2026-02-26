@@ -16,6 +16,7 @@ from app.routers import settings as settings_router
 # Columns added after initial schema. Each entry is (table, column, type).
 _MIGRATIONS: list[tuple[str, str, str]] = [
     ("meeting_logs", "attendance_count", "INTEGER"),
+    ("reading_assignments", "meeting_date", "DATE"),
 ]
 
 

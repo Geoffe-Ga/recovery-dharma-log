@@ -23,7 +23,7 @@ import type {
   ReadingPlanStatus,
   Topic,
 } from "../types/index";
-import { formatLogDate } from "../utils/dates";
+import { formatLogDate, formatShortDate } from "../utils/dates";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -554,6 +554,12 @@ export function Settings(): React.ReactElement {
                         <span>
                           {a.chapters.map((c) => c.title).join(", ")} (
                           {a.total_pages} pages)
+                          {a.meeting_date && (
+                            <span className="rd-assignment-item__date">
+                              {" "}
+                              &mdash; {formatShortDate(a.meeting_date)}
+                            </span>
+                          )}
                         </span>
                         <span className="rd-assignment-item__actions">
                           <button

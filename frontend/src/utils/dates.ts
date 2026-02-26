@@ -29,6 +29,19 @@ export function formatLogDate(isoDate: string): string {
 }
 
 /**
+ * Format an ISO date string as "Mar 15".
+ * Used for compact date display such as reading assignment dates.
+ */
+export function formatShortDate(isoDate: string): string {
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+/**
  * Format a time string (HH:MM or HH:MM:SS) as "6:00 PM".
  * Returns null if the input is null or empty.
  */

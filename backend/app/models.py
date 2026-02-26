@@ -192,6 +192,7 @@ class ReadingAssignment(Base):
         nullable=False,
         default="[]",
     )
+    meeting_date: Mapped[date | None] = mapped_column(Date, nullable=True)
 
     group: Mapped["Group"] = relationship(
         back_populates="reading_assignments",
