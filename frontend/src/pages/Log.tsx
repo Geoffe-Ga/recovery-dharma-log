@@ -1,6 +1,6 @@
 /** Meeting log page - shows history of past meetings. */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   getCsvExportUrl,
   getMeetingLog,
@@ -10,6 +10,7 @@ import {
 import { useShowToast } from "../contexts/ToastContext";
 import { useLogFilters } from "../hooks/useLogFilters";
 import type { MeetingLogEntry, MeetingLogUpdate } from "../types/index";
+import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { Skeleton } from "../components/Skeleton";
 import { formatLogDate } from "../utils/dates";
 
@@ -23,7 +24,9 @@ export function Log(): React.ReactElement {
   const [editForm, setEditForm] = useState<MeetingLogUpdate>({});
   const showToast = useShowToast();
 
-  useEffect(() => {
+  const loadEntries = useCallback(() => {
+    setError(null);
+    setLoading(true);
     getMeetingLog()
       .then(setEntries)
       .catch((err: unknown) =>
@@ -31,6 +34,10 @@ export function Log(): React.ReactElement {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadEntries();
+  }, [loadEntries]);
 
   const {
     filters,
@@ -68,7 +75,7 @@ export function Log(): React.ReactElement {
   }
 
   if (loading) return <Skeleton lines={4} />;
-  if (error) return <p role="alert">{error}</p>;
+  if (error) return <ErrorWithRetry message={error} onRetry={loadEntries} />;
 
   return (
     <main className="rd-log">

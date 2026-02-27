@@ -19,6 +19,7 @@ import type {
   UpcomingMeeting,
   UpcomingMeetingBrief,
 } from "../types/index";
+import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { Skeleton } from "../components/Skeleton";
 import { formatMeetingDate, formatMeetingTime } from "../utils/dates";
 
@@ -201,7 +202,17 @@ export function Landing(): React.ReactElement {
   }, [meeting, isCancelling, refresh, showToast]);
 
   if (loading) return <Skeleton lines={4} />;
-  if (error) return <p role="alert">{error}</p>;
+  if (error)
+    return (
+      <ErrorWithRetry
+        message={error}
+        onRetry={() => {
+          setError(null);
+          setLoading(true);
+          refresh().finally(() => setLoading(false));
+        }}
+      />
+    );
   if (!meeting) return <p>No upcoming meeting found.</p>;
 
   const formattedTime = formatMeetingTime(meeting.meeting_time);

@@ -548,6 +548,17 @@ li button {
   margin: var(--rd-space-xs) 0;
 }
 
+.rd-error {
+  text-align: center;
+  padding: var(--rd-space-xl);
+}
+
+.rd-error p {
+  color: var(--rd-danger);
+  font-weight: 600;
+  margin-bottom: var(--rd-space-md);
+}
+
 /* Error alerts */
 p[role="alert"] {
   background: linear-gradient(
