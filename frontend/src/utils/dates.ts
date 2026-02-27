@@ -48,6 +48,7 @@ export function formatShortDate(isoDate: string): string {
 export function formatMeetingTime(timeStr: string | null): string | null {
   if (!timeStr) return null;
   const [hours, minutes] = timeStr.split(":").map(Number);
+  if (isNaN(hours) || isNaN(minutes)) return null;
   const date = new Date(2000, 0, 1, hours, minutes);
   return date.toLocaleTimeString("en-US", {
     hour: "numeric",
