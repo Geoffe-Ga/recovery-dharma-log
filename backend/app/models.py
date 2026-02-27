@@ -2,16 +2,7 @@
 
 from datetime import UTC, date, datetime, time
 
-from sqlalchemy import (
-    Boolean,
-    Date,
-    DateTime,
-    ForeignKey,
-    Integer,
-    String,
-    Text,
-    Time,
-)
+from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Time
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -197,6 +188,34 @@ class ReadingAssignment(Base):
     group: Mapped["Group"] = relationship(
         back_populates="reading_assignments",
     )
+
+
+class ActivityLog(Base):
+    """An audit log entry recording a user action."""
+
+    __tablename__ = "activity_log"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("groups.id"),
+        nullable=False,
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id"),
+        nullable=False,
+    )
+    action: Mapped[str] = mapped_column(String(100), nullable=False)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
+
+    group: Mapped["Group"] = relationship()
+    user: Mapped["User"] = relationship()
 
 
 class MeetingLog(Base):

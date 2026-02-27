@@ -2,6 +2,7 @@
 
 import { api, getToken, postForm, setToken } from "./client";
 import type {
+  ActivityLogEntry,
   AssignmentUpdate,
   BookChapter,
   GroupSettings,
@@ -209,4 +210,10 @@ export function getPrintableExportUrl(
   if (endDate) params.set("end_date", endDate);
   const qs = params.toString();
   return `/api/export/printable${qs ? `?${qs}` : ""}`;
+}
+
+// --- Activity Log ---
+
+export async function getActivity(): Promise<ActivityLogEntry[]> {
+  return api.get<ActivityLogEntry[]>("/activity/");
 }

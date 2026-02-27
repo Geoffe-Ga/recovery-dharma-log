@@ -1,6 +1,6 @@
 """Pydantic request/response schemas."""
 
-from datetime import date, time
+from datetime import date, datetime, time
 
 from pydantic import BaseModel, Field
 
@@ -212,6 +212,21 @@ class SpeakerScheduleCreate(BaseModel):
 
     meeting_date: date
     speaker_name: str
+
+
+# --- Activity Log ---
+
+
+class ActivityLogResponse(BaseModel):
+    """Response schema for an activity log entry."""
+
+    id: int
+    action: str
+    details: str | None
+    created_at: datetime
+    user_id: int
+
+    model_config = {"from_attributes": True}
 
 
 # --- Export ---

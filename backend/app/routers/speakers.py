@@ -9,7 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import MeetingLog, User
 from app.schemas import SpeakerSchedule, SpeakerScheduleCreate
-from app.services import get_format_for_date, get_next_meeting_date
+from app.services import get_format_for_date, get_next_meeting_date, log_activity
 
 router = APIRouter(prefix="/speakers", tags=["speakers"])
 
@@ -116,6 +116,13 @@ def schedule_speaker(
         )
         db.add(log_entry)
     db.commit()
+    log_activity(
+        db,
+        current_user.group,
+        current_user,
+        "speaker_scheduled",
+        f"{schedule_in.speaker_name} on {schedule_in.meeting_date}",
+    )
     return {
         "meeting_date": schedule_in.meeting_date,
         "speaker_name": schedule_in.speaker_name,
@@ -144,4 +151,11 @@ def unschedule_speaker(
         )
     log_entry.speaker_name = None
     db.commit()
+    log_activity(
+        db,
+        current_user.group,
+        current_user,
+        "speaker_removed",
+        str(meeting_date),
+    )
     return {"detail": "Speaker unscheduled"}

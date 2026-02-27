@@ -20,6 +20,7 @@ from app.services import (
     get_format_for_date,
     get_upcoming_meeting_data,
     get_upcoming_meetings,
+    log_activity,
 )
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -111,6 +112,14 @@ def cancel_meeting(
         db.add(log_entry)
     db.commit()
     db.refresh(log_entry)
+    action = "meeting_cancelled" if cancel.is_cancelled else "meeting_restored"
+    log_activity(
+        db,
+        current_user.group,
+        current_user,
+        action,
+        str(cancel.meeting_date),
+    )
     return log_entry
 
 
