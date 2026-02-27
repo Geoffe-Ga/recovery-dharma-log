@@ -20,6 +20,7 @@ from app.services import (
     draw_random_topic,
     finalize_current_assignment,
     generate_csv_export,
+    generate_printable_export,
     get_deck_stats,
     get_format_for_date,
     get_next_meeting_date,
@@ -662,7 +663,9 @@ class TestUpcomingMeeting:
         from app.services import _get_book_chapter_summary
 
         summary = _get_book_chapter_summary(
-            db_session, group, date(2025, 1, 19)  # 3rd week = Book Study
+            db_session,
+            group,
+            date(2025, 1, 19),  # 3rd week = Book Study
         )
         assert summary is not None
         assert "Preface" in summary
@@ -896,8 +899,6 @@ class TestExport:
         )
         db_session.flush()
 
-        from app.services import generate_printable_export
-
         html = generate_printable_export(db_session, group)
         assert "<!DOCTYPE html>" in html
         assert "Test Meeting" in html
@@ -906,8 +907,132 @@ class TestExport:
 
     def test_printable_export_empty(self, db_session: Session) -> None:
         group = _create_group(db_session)
-        from app.services import generate_printable_export
 
         html = generate_printable_export(db_session, group)
         assert "<!DOCTYPE html>" in html
         assert "Test Meeting" in html
+
+    def test_printable_export_uses_lato_font(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group)
+        assert "fonts.googleapis.com" in html
+        assert "Lato" in html
+
+    def test_printable_export_blank_rows_default(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group)
+        # Default is 10 blank rows; each has class="blank-row"
+        assert html.count('class="blank-row"') == 10
+
+    def test_printable_export_blank_rows_custom(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group, blank_rows=5)
+        assert html.count('class="blank-row"') == 5
+
+    def test_printable_export_blank_rows_zero(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group, blank_rows=0)
+        assert 'class="blank-row"' not in html
+
+    def test_printable_export_date_range_header(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Speaker",
+            )
+        )
+        db_session.flush()
+
+        html = generate_printable_export(
+            db_session,
+            group,
+            start_date=date(2025, 1, 1),
+            end_date=date(2025, 3, 31),
+        )
+        assert "January 2025" in html
+        assert "March 2025" in html
+
+    def test_printable_export_rd_brand_colors(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group)
+        assert "#1b6b6d" in html
+        assert "#c4922a" in html
+
+    def test_printable_export_footer(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+
+        html = generate_printable_export(db_session, group)
+        assert "Generated from RD Log" in html
+
+    def test_printable_export_shows_attendance(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Speaker",
+                speaker_name="Clare",
+                attendance_count=15,
+            )
+        )
+        db_session.flush()
+
+        html = generate_printable_export(db_session, group)
+        assert "15" in html
+        assert "Attendance" in html
+
+    def test_printable_export_shows_topic(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        topic = Topic(group_id=group.id, name="Letting Go", is_active=True)
+        db_session.add(topic)
+        db_session.flush()
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 12),
+                format_type="Topic",
+                topic_id=topic.id,
+            )
+        )
+        db_session.flush()
+
+        html = generate_printable_export(db_session, group)
+        assert "Letting Go" in html
+
+    def test_printable_export_shows_book_study(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        ch = BookChapter(
+            group_id=group.id,
+            order=1,
+            start_page="1",
+            end_page="20",
+            title="Introduction",
+        )
+        db_session.add(ch)
+        db_session.flush()
+        ra = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=1,
+            chapters_json=f"[{ch.id}]",
+            meeting_date=date(2025, 1, 19),
+        )
+        db_session.add(ra)
+        db_session.flush()
+        db_session.add(
+            MeetingLog(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 19),
+                format_type="Book Study",
+            )
+        )
+        db_session.flush()
+
+        html = generate_printable_export(db_session, group)
+        assert "Introduction" in html
