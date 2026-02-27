@@ -31,7 +31,7 @@ function toIsoDate(d: Date): string {
 export function RotationCalendar({
   meetingDay,
   formatRotation,
-  count = 8,
+  count = 10,
 }: RotationCalendarProps): React.ReactElement {
   // Convert meetingDay (0=Mon, 6=Sun) to JS day (0=Sun, 6=Sat)
   const jsMeetingDay = meetingDay === 6 ? 0 : meetingDay + 1;

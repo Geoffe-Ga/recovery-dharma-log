@@ -4,7 +4,7 @@ import { render, screen } from "@testing-library/react";
 import { RotationCalendar } from "../src/components/RotationCalendar";
 
 describe("RotationCalendar", () => {
-  it("renders 8 meetings by default", () => {
+  it("renders 10 meetings by default", () => {
     const { container } = render(
       <RotationCalendar
         meetingDay={6}
@@ -13,7 +13,7 @@ describe("RotationCalendar", () => {
       />,
     );
     const rows = container.querySelectorAll(".rd-rotation-calendar__row");
-    expect(rows.length).toBe(8);
+    expect(rows.length).toBe(10);
   });
 
   it("renders custom count of meetings", () => {

@@ -501,4 +501,35 @@ describe("Settings", () => {
 
     expect(screen.queryByText(/last used/)).not.toBeInTheDocument();
   });
+
+  it("shows 5th-week note when rotation length is less than 5", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
+    });
+
+    // Default mock has 3-item rotation: ["Speaker", "Topic", "Book Study"]
+    // 4 % 3 = 1, so position 2, format = "Topic"
+    expect(
+      screen.getByText(
+        /Months with a 5th Sunday will use the Topic format \(position 2\)/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show 5th-week note when rotation length is 5 or more", async () => {
+    const fiveItemSettings: GroupSettings = {
+      ...mockSettings,
+      format_rotation: ["Speaker", "Topic", "Book Study", "Speaker", "Topic"],
+    };
+    (api.getSettings as jest.Mock).mockResolvedValue(fiveItemSettings);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/Months with a 5th/)).not.toBeInTheDocument();
+  });
 });
