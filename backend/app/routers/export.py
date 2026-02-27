@@ -1,6 +1,8 @@
 """Export router: CSV and printable log."""
 
-from fastapi import APIRouter, Depends
+from datetime import date
+
+from fastapi import APIRouter, Depends, Query
 from fastapi.responses import PlainTextResponse
 from sqlalchemy.orm import Session
 
@@ -14,11 +16,13 @@ router = APIRouter(prefix="/export", tags=["export"])
 
 @router.get("/csv")
 def export_csv(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PlainTextResponse:
     """Export meeting log as CSV."""
-    csv_content = generate_csv_export(db, current_user.group)
+    csv_content = generate_csv_export(db, current_user.group, start_date, end_date)
     return PlainTextResponse(
         content=csv_content,
         media_type="text/csv",
@@ -28,9 +32,11 @@ def export_csv(
 
 @router.get("/printable")
 def export_printable(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PlainTextResponse:
     """Export a printable HTML log template."""
-    html = generate_printable_export(db, current_user.group)
+    html = generate_printable_export(db, current_user.group, start_date, end_date)
     return PlainTextResponse(content=html, media_type="text/html")

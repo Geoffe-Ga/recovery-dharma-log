@@ -74,8 +74,14 @@ export function Log(): React.ReactElement {
     <main className="rd-log">
       <h1>Meeting Log</h1>
       <nav>
-        <a href={getCsvExportUrl()}>Export CSV</a>
-        <a href={getPrintableExportUrl()} target="_blank" rel="noreferrer">
+        <a href={getCsvExportUrl(filters.startDate, filters.endDate)}>
+          Export CSV
+        </a>
+        <a
+          href={getPrintableExportUrl(filters.startDate, filters.endDate)}
+          target="_blank"
+          rel="noreferrer"
+        >
           Printable View
         </a>
       </nav>

@@ -1,6 +1,7 @@
-/** Tests for API client module. */
+/** Tests for API client module and export URL helpers. */
 
 import { api, getToken, setToken } from "../src/api/client";
+import { getCsvExportUrl, getPrintableExportUrl } from "../src/api/index";
 
 // Mock global fetch
 const mockFetch = jest.fn();
@@ -106,5 +107,61 @@ describe("API client", () => {
     await api.delete("/test/1");
     const [, options] = mockFetch.mock.calls[0];
     expect(options.method).toBe("DELETE");
+  });
+});
+
+describe("getCsvExportUrl", () => {
+  it("returns base URL with no date params", () => {
+    expect(getCsvExportUrl()).toBe("/api/export/csv");
+  });
+
+  it("returns base URL when dates are empty strings", () => {
+    expect(getCsvExportUrl("", "")).toBe("/api/export/csv");
+  });
+
+  it("includes start_date param when provided", () => {
+    expect(getCsvExportUrl("2025-01-01")).toBe(
+      "/api/export/csv?start_date=2025-01-01",
+    );
+  });
+
+  it("includes end_date param when provided", () => {
+    expect(getCsvExportUrl(undefined, "2025-12-31")).toBe(
+      "/api/export/csv?end_date=2025-12-31",
+    );
+  });
+
+  it("includes both date params when provided", () => {
+    expect(getCsvExportUrl("2025-01-01", "2025-12-31")).toBe(
+      "/api/export/csv?start_date=2025-01-01&end_date=2025-12-31",
+    );
+  });
+});
+
+describe("getPrintableExportUrl", () => {
+  it("returns base URL with no date params", () => {
+    expect(getPrintableExportUrl()).toBe("/api/export/printable");
+  });
+
+  it("returns base URL when dates are empty strings", () => {
+    expect(getPrintableExportUrl("", "")).toBe("/api/export/printable");
+  });
+
+  it("includes start_date param when provided", () => {
+    expect(getPrintableExportUrl("2025-01-01")).toBe(
+      "/api/export/printable?start_date=2025-01-01",
+    );
+  });
+
+  it("includes end_date param when provided", () => {
+    expect(getPrintableExportUrl(undefined, "2025-12-31")).toBe(
+      "/api/export/printable?end_date=2025-12-31",
+    );
+  });
+
+  it("includes both date params when provided", () => {
+    expect(getPrintableExportUrl("2025-01-01", "2025-12-31")).toBe(
+      "/api/export/printable?start_date=2025-01-01&end_date=2025-12-31",
+    );
   });
 });

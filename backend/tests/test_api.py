@@ -648,3 +648,130 @@ class TestExportEndpoints:
         response = client.get("/export/printable", headers=auth_headers)
         assert response.status_code == 200
         assert "text/html" in response.headers["content-type"]
+
+    def test_csv_with_start_date(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """CSV export with start_date filters out earlier entries."""
+        # Create entries at two different dates
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-01-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-06-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        response = client.get(
+            "/export/csv?start_date=2025-03-01",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        lines = response.text.strip().split("\n")
+        # Header + only the June entry
+        assert len(lines) == 2
+        assert "2025-06-01" in lines[1]
+
+    def test_csv_with_end_date(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """CSV export with end_date filters out later entries."""
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-01-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-06-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        response = client.get(
+            "/export/csv?end_date=2025-03-01",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        lines = response.text.strip().split("\n")
+        assert len(lines) == 2
+        assert "2025-01-01" in lines[1]
+
+    def test_csv_with_date_range(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """CSV export with both start and end date returns only matching."""
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-01-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-04-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-08-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        response = client.get(
+            "/export/csv?start_date=2025-02-01&end_date=2025-06-01",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        lines = response.text.strip().split("\n")
+        assert len(lines) == 2
+        assert "2025-04-01" in lines[1]
+
+    def test_printable_with_date_range(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Printable export with date range filters entries."""
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-01-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-06-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        response = client.get(
+            "/export/printable?start_date=2025-03-01",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert "2025-06-01" in response.text
+        assert "2025-01-01" not in response.text
+
+    def test_csv_no_date_params_returns_all(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """CSV export without date params returns all entries."""
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-01-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        client.post(
+            "/meetings/cancel",
+            json={"meeting_date": "2025-06-01", "is_cancelled": False},
+            headers=auth_headers,
+        )
+        response = client.get("/export/csv", headers=auth_headers)
+        assert response.status_code == 200
+        lines = response.text.strip().split("\n")
+        assert len(lines) == 3  # header + 2 entries

@@ -192,10 +192,21 @@ export async function updateSettings(
 
 // --- Export ---
 
-export function getCsvExportUrl(): string {
-  return "/api/export/csv";
+export function getCsvExportUrl(startDate?: string, endDate?: string): string {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  const qs = params.toString();
+  return `/api/export/csv${qs ? `?${qs}` : ""}`;
 }
 
-export function getPrintableExportUrl(): string {
-  return "/api/export/printable";
+export function getPrintableExportUrl(
+  startDate?: string,
+  endDate?: string,
+): string {
+  const params = new URLSearchParams();
+  if (startDate) params.set("start_date", startDate);
+  if (endDate) params.set("end_date", endDate);
+  const qs = params.toString();
+  return `/api/export/printable${qs ? `?${qs}` : ""}`;
 }

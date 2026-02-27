@@ -742,45 +742,70 @@ def get_upcoming_meetings(
 # --- Export ---
 
 
-def generate_csv_export(db: Session, group: Group) -> str:
-    """Generate CSV content from the meeting log."""
-    entries = (
-        db.query(MeetingLog)
-        .filter(MeetingLog.group_id == group.id)
-        .order_by(MeetingLog.meeting_date)
-        .all()
+def _query_meeting_log(
+    db: Session,
+    group: Group,
+    start_date: date | None = None,
+    end_date: date | None = None,
+    *,
+    exclude_cancelled: bool = False,
+) -> list[MeetingLog]:
+    """Query meeting log entries with optional date range filtering."""
+    query = db.query(MeetingLog).filter(MeetingLog.group_id == group.id)
+    if exclude_cancelled:
+        query = query.filter(MeetingLog.is_cancelled.is_(False))
+    if start_date is not None:
+        query = query.filter(MeetingLog.meeting_date >= start_date)
+    if end_date is not None:
+        query = query.filter(MeetingLog.meeting_date <= end_date)
+    return query.order_by(MeetingLog.meeting_date).all()
+
+
+def _format_csv_row(db: Session, group: Group, entry: MeetingLog) -> str:
+    """Format a single meeting log entry as a CSV row."""
+    topic_name = ""
+    if entry.topic_id:
+        topic = db.query(Topic).filter(Topic.id == entry.topic_id).first()
+        topic_name = topic.name if topic else ""
+    book_section = ""
+    if entry.format_type == "Book Study" and not entry.is_cancelled:
+        summary = _get_book_chapter_summary(db, group, entry.meeting_date)
+        if summary:
+            book_section = summary
+    cancelled = "Yes" if entry.is_cancelled else ""
+    speaker = entry.speaker_name or ""
+    attendance = (
+        str(entry.attendance_count) if entry.attendance_count is not None else ""
     )
+    return (
+        f"{entry.meeting_date},{entry.format_type},"
+        f'"{speaker}","{topic_name}","{book_section}",{cancelled},{attendance}'
+    )
+
+
+def generate_csv_export(
+    db: Session,
+    group: Group,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> str:
+    """Generate CSV content from the meeting log."""
+    entries = _query_meeting_log(db, group, start_date, end_date)
     lines = ["date,format,speaker,topic,book_section,cancelled,attendance"]
     for entry in entries:
-        topic_name = ""
-        if entry.topic_id:
-            topic = db.query(Topic).filter(Topic.id == entry.topic_id).first()
-            topic_name = topic.name if topic else ""
-        book_section = ""
-        if entry.format_type == "Book Study" and not entry.is_cancelled:
-            summary = _get_book_chapter_summary(db, group, entry.meeting_date)
-            if summary:
-                book_section = summary
-        cancelled = "Yes" if entry.is_cancelled else ""
-        speaker = entry.speaker_name or ""
-        attendance = (
-            str(entry.attendance_count) if entry.attendance_count is not None else ""
-        )
-        line = (
-            f"{entry.meeting_date},{entry.format_type},"
-            f'"{speaker}","{topic_name}","{book_section}",{cancelled},{attendance}'
-        )
-        lines.append(line)
+        lines.append(_format_csv_row(db, group, entry))
     return "\n".join(lines) + "\n"
 
 
-def generate_printable_export(db: Session, group: Group) -> str:
+def generate_printable_export(
+    db: Session,
+    group: Group,
+    start_date: date | None = None,
+    end_date: date | None = None,
+) -> str:
     """Generate a printable HTML meeting log."""
-    entries = (
-        db.query(MeetingLog)
-        .filter(MeetingLog.group_id == group.id, MeetingLog.is_cancelled.is_(False))
-        .order_by(MeetingLog.meeting_date)
-        .all()
+    entries = _query_meeting_log(
+        db, group, start_date, end_date, exclude_cancelled=True
     )
 
     rows = []
