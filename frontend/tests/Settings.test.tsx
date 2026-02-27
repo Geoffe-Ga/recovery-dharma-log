@@ -1,6 +1,7 @@
 /** Tests for Settings page section navigation and sticky save bar. */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ToastProvider } from "../src/contexts/ToastContext";
 import { Settings } from "../src/pages/Settings";
 import type {
@@ -124,20 +125,21 @@ describe("Settings", () => {
   });
 
   it("shows sticky bar when name is changed", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Test Meeting"), {
-      target: { value: "New Name" },
-    });
+    await user.clear(screen.getByDisplayValue("Test Meeting"));
+    await user.type(screen.getByLabelText("Group Name"), "New Name");
 
     expect(screen.getByText("You have unsaved changes")).toBeInTheDocument();
   });
 
   it("hides sticky bar after save", async () => {
+    const user = userEvent.setup();
     (api.updateSettings as jest.Mock).mockResolvedValue({
       ...mockSettings,
       name: "New Name",
@@ -148,13 +150,12 @@ describe("Settings", () => {
       expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Test Meeting"), {
-      target: { value: "New Name" },
-    });
+    await user.clear(screen.getByDisplayValue("Test Meeting"));
+    await user.type(screen.getByLabelText("Group Name"), "New Name");
 
     expect(screen.getByText("You have unsaved changes")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     await waitFor(() => {
       expect(
@@ -164,19 +165,19 @@ describe("Settings", () => {
   });
 
   it("reverts changes on discard", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Test Meeting"), {
-      target: { value: "Changed Name" },
-    });
+    await user.clear(screen.getByDisplayValue("Test Meeting"));
+    await user.type(screen.getByLabelText("Group Name"), "Changed Name");
 
     expect(screen.getByDisplayValue("Changed Name")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    await user.click(screen.getByRole("button", { name: "Discard" }));
 
     expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
     expect(
@@ -193,21 +194,21 @@ describe("Settings", () => {
   });
 
   it("shows sticky bar when meeting day is changed", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
       expect(screen.getByDisplayValue("Sunday")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Sunday"), {
-      target: { value: "0" },
-    });
+    await user.selectOptions(screen.getByDisplayValue("Sunday"), "0");
 
     expect(screen.getByDisplayValue("Monday")).toBeInTheDocument();
     expect(screen.getByText("You have unsaved changes")).toBeInTheDocument();
   });
 
   it("includes meeting_day in updateSettings call when saving", async () => {
+    const user = userEvent.setup();
     (api.updateSettings as jest.Mock).mockResolvedValue({
       ...mockSettings,
       meeting_day: 1,
@@ -218,11 +219,9 @@ describe("Settings", () => {
       expect(screen.getByDisplayValue("Sunday")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Sunday"), {
-      target: { value: "1" },
-    });
+    await user.selectOptions(screen.getByDisplayValue("Sunday"), "1");
 
-    fireEvent.click(screen.getByText("Save Changes"));
+    await user.click(screen.getByText("Save Changes"));
 
     await waitFor(() =>
       expect(api.updateSettings).toHaveBeenCalledWith(
@@ -261,6 +260,7 @@ describe("Settings", () => {
   });
 
   it("shows toast on save error", async () => {
+    const user = userEvent.setup();
     (api.updateSettings as jest.Mock).mockRejectedValue(
       new Error("Save failed"),
     );
@@ -270,11 +270,10 @@ describe("Settings", () => {
       expect(screen.getByDisplayValue("Test Meeting")).toBeInTheDocument();
     });
 
-    fireEvent.change(screen.getByDisplayValue("Test Meeting"), {
-      target: { value: "New Name" },
-    });
+    await user.clear(screen.getByDisplayValue("Test Meeting"));
+    await user.type(screen.getByLabelText("Group Name"), "New Name");
 
-    fireEvent.click(screen.getByRole("button", { name: "Save Changes" }));
+    await user.click(screen.getByRole("button", { name: "Save Changes" }));
 
     await waitFor(() => {
       expect(screen.getByText("Save failed")).toBeInTheDocument();
@@ -340,6 +339,7 @@ describe("Settings", () => {
   });
 
   it("enables Add Selected button only when chapters are checked", async () => {
+    const user = userEvent.setup();
     const planWithChapters: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 2,
@@ -365,13 +365,14 @@ describe("Settings", () => {
     expect(screen.getByText(/Add Selected/)).toBeDisabled();
 
     // Check a chapter
-    fireEvent.click(screen.getByLabelText(/Preface/));
+    await user.click(screen.getByLabelText(/Preface/));
 
     // Button should now be enabled
     expect(screen.getByText(/Add Selected \(1\)/)).toBeEnabled();
   });
 
   it("calls addChapterToPlan for each selected chapter", async () => {
+    const user = userEvent.setup();
     const planWithChapters: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 2,
@@ -403,10 +404,10 @@ describe("Settings", () => {
     });
 
     // Select both chapters
-    fireEvent.click(screen.getByLabelText(/Preface/));
-    fireEvent.click(screen.getByLabelText(/Introduction/));
+    await user.click(screen.getByLabelText(/Preface/));
+    await user.click(screen.getByLabelText(/Introduction/));
 
-    fireEvent.click(screen.getByText(/Add Selected \(2\)/));
+    await user.click(screen.getByText(/Add Selected \(2\)/));
 
     await waitFor(() => {
       expect(api.addChapterToPlan).toHaveBeenCalledTimes(2);
@@ -551,6 +552,7 @@ describe("Settings", () => {
   });
 
   it("shows inline confirmation for reshuffle", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
@@ -559,7 +561,7 @@ describe("Settings", () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+    await user.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
 
     expect(
       screen.getByText("Reshuffle the deck? All drawn topics will return."),
@@ -571,6 +573,7 @@ describe("Settings", () => {
   });
 
   it("cancels reshuffle on cancel click", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
@@ -579,8 +582,8 @@ describe("Settings", () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(
       screen.getByRole("button", { name: "Reshuffle Deck" }),
@@ -591,6 +594,7 @@ describe("Settings", () => {
   });
 
   it("executes reshuffle on confirm", async () => {
+    const user = userEvent.setup();
     (api.reshuffleTopics as jest.Mock).mockResolvedValue(undefined);
     (api.getTopics as jest.Mock).mockResolvedValue(mockTopics);
     renderSettings();
@@ -601,8 +605,8 @@ describe("Settings", () => {
       ).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Reshuffle" }));
+    await user.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Reshuffle" }));
 
     await waitFor(() => {
       expect(api.reshuffleTopics).toHaveBeenCalledTimes(1);
@@ -610,6 +614,7 @@ describe("Settings", () => {
   });
 
   it("shows inline confirmation when deleting a topic", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
@@ -618,7 +623,7 @@ describe("Settings", () => {
 
     const topicItem = screen.getByText("Topic 1").closest("li")!;
     const removeBtn = topicItem.querySelector("button")!;
-    fireEvent.click(removeBtn);
+    await user.click(removeBtn);
 
     expect(
       screen.getByRole("button", { name: "Confirm Remove" }),
@@ -626,6 +631,7 @@ describe("Settings", () => {
   });
 
   it("cancels topic deletion on cancel click", async () => {
+    const user = userEvent.setup();
     renderSettings();
 
     await waitFor(() => {
@@ -634,9 +640,9 @@ describe("Settings", () => {
 
     const topicItem = screen.getByText("Topic 1").closest("li")!;
     const removeBtn = topicItem.querySelector("button")!;
-    fireEvent.click(removeBtn);
+    await user.click(removeBtn);
 
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(
       screen.queryByRole("button", { name: "Confirm Remove" }),
@@ -644,6 +650,7 @@ describe("Settings", () => {
   });
 
   it("executes topic deletion on confirm", async () => {
+    const user = userEvent.setup();
     (api.deleteTopic as jest.Mock).mockResolvedValue(undefined);
     renderSettings();
 
@@ -656,9 +663,9 @@ describe("Settings", () => {
 
     const topicItem = screen.getByText("Topic 1").closest("li")!;
     const removeBtn = topicItem.querySelector("button")!;
-    fireEvent.click(removeBtn);
+    await user.click(removeBtn);
 
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Remove" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Remove" }));
 
     await waitFor(() => {
       expect(api.deleteTopic).toHaveBeenCalledWith(1);
@@ -666,6 +673,7 @@ describe("Settings", () => {
   });
 
   it("shows inline confirmation when deleting an assignment", async () => {
+    const user = userEvent.setup();
     const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 3,
@@ -698,7 +706,7 @@ describe("Settings", () => {
       expect(screen.getByText(/Preface/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
 
     expect(
       screen.getByRole("button", { name: "Confirm Delete" }),
@@ -707,6 +715,7 @@ describe("Settings", () => {
   });
 
   it("cancels assignment deletion on cancel click", async () => {
+    const user = userEvent.setup();
     const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 3,
@@ -739,8 +748,8 @@ describe("Settings", () => {
       expect(screen.getByText(/Preface/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
     expect(
@@ -749,6 +758,7 @@ describe("Settings", () => {
   });
 
   it("executes assignment deletion on confirm", async () => {
+    const user = userEvent.setup();
     const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 3,
@@ -784,8 +794,8 @@ describe("Settings", () => {
       expect(screen.getByText(/Preface/)).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Confirm Delete" }));
 
     await waitFor(() => {
       expect(api.deleteAssignment).toHaveBeenCalledWith(10);

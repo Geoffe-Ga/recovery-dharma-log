@@ -1,6 +1,7 @@
 /** Tests for Toast component and ToastContainer. */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Toast, ToastContainer } from "../src/components/Toast";
 import type { ToastData } from "../src/components/Toast";
 
@@ -46,9 +47,10 @@ describe("Toast", () => {
     expect(screen.getByRole("status")).toBeInTheDocument();
   });
 
-  it("calls onDismiss when close button is clicked", () => {
+  it("calls onDismiss when close button is clicked", async () => {
+    const user = userEvent.setup();
     render(<Toast toast={infoToast} onDismiss={mockDismiss} />);
-    fireEvent.click(screen.getByLabelText("Dismiss notification"));
+    await user.click(screen.getByLabelText("Dismiss notification"));
     expect(mockDismiss).toHaveBeenCalledWith("t1");
   });
 });

@@ -1,6 +1,7 @@
 /** Tests for Login page component. */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ToastProvider } from "../src/contexts/ToastContext";
 import { Login } from "../src/pages/Login";
@@ -39,9 +40,10 @@ describe("Login", () => {
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
   });
 
-  it("toggles to register mode", () => {
+  it("toggles to register mode", async () => {
+    const user = userEvent.setup();
     renderLogin();
-    fireEvent.click(screen.getByText("Need an account? Register"));
+    await user.click(screen.getByText("Need an account? Register"));
     expect(
       screen.getByRole("heading", { name: "Create Account" }),
     ).toBeInTheDocument();
@@ -57,15 +59,12 @@ describe("Login", () => {
     expect(screen.getByText("Please wait...")).toBeDisabled();
   });
 
-  it("calls onLogin when form is submitted in login mode", () => {
+  it("calls onLogin when form is submitted in login mode", async () => {
+    const user = userEvent.setup();
     renderLogin();
-    fireEvent.change(screen.getByLabelText("Username"), {
-      target: { value: "testuser" },
-    });
-    fireEvent.change(screen.getByLabelText("Password"), {
-      target: { value: "testpass" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Log In" }));
+    await user.type(screen.getByLabelText("Username"), "testuser");
+    await user.type(screen.getByLabelText("Password"), "testpass");
+    await user.click(screen.getByRole("button", { name: "Log In" }));
     expect(mockLogin).toHaveBeenCalledWith("testuser", "testpass");
   });
 

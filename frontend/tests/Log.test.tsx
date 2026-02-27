@@ -7,6 +7,7 @@ import {
   waitFor,
   act,
 } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { Log } from "../src/pages/Log";
 import { ToastProvider } from "../src/contexts/ToastContext";
 import type { MeetingLogEntry } from "../src/types/index";
@@ -162,6 +163,7 @@ describe("Log", () => {
 
   describe("filtering", () => {
     it("filters by format type", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -169,9 +171,7 @@ describe("Log", () => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByLabelText("Format"), {
-        target: { value: "Speaker" },
-      });
+      await user.selectOptions(screen.getByLabelText("Format"), "Speaker");
 
       expect(screen.getByText("Jane Doe")).toBeInTheDocument();
       expect(screen.queryByText("Mindfulness")).not.toBeInTheDocument();
@@ -194,6 +194,7 @@ describe("Log", () => {
     });
 
     it("filters by search text with debounce", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -201,9 +202,7 @@ describe("Log", () => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByPlaceholderText("Search..."), {
-        target: { value: "Jane" },
-      });
+      await user.type(screen.getByPlaceholderText("Search..."), "Jane");
 
       // Before debounce, all entries still visible
       expect(screen.getByText("Mindfulness")).toBeInTheDocument();
@@ -233,6 +232,7 @@ describe("Log", () => {
     });
 
     it("shows clear filters button when filters active", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -240,9 +240,7 @@ describe("Log", () => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByLabelText("Format"), {
-        target: { value: "Speaker" },
-      });
+      await user.selectOptions(screen.getByLabelText("Format"), "Speaker");
 
       expect(screen.getByText("Clear Filters")).toBeInTheDocument();
     });
@@ -291,6 +289,7 @@ describe("Log", () => {
     });
 
     it("clears all filters on clear button click", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -298,13 +297,11 @@ describe("Log", () => {
         expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       });
 
-      fireEvent.change(screen.getByLabelText("Format"), {
-        target: { value: "Speaker" },
-      });
+      await user.selectOptions(screen.getByLabelText("Format"), "Speaker");
 
       expect(screen.queryByText("Mindfulness")).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByText("Clear Filters"));
+      await user.click(screen.getByText("Clear Filters"));
 
       expect(screen.getByText("Mindfulness")).toBeInTheDocument();
       expect(screen.getByText("Jane Doe")).toBeInTheDocument();
@@ -325,6 +322,7 @@ describe("Log", () => {
     });
 
     it("clicking Edit shows inline form with current values", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -333,7 +331,7 @@ describe("Log", () => {
       });
 
       const editButtons = screen.getAllByText("Edit");
-      fireEvent.click(editButtons[1]); // Speaker entry
+      await user.click(editButtons[1]); // Speaker entry
 
       expect(screen.getByLabelText("Speaker Name")).toHaveValue("Jane Doe");
       expect(screen.getByLabelText("Notes")).toHaveValue("");
@@ -341,6 +339,7 @@ describe("Log", () => {
     });
 
     it("saving calls updateMeetingLogEntry and updates the row", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       const updatedEntry = {
         ...mockEntries[1],
@@ -354,13 +353,12 @@ describe("Log", () => {
       });
 
       const editButtons = screen.getAllByText("Edit");
-      fireEvent.click(editButtons[1]);
+      await user.click(editButtons[1]);
 
-      fireEvent.change(screen.getByLabelText("Speaker Name"), {
-        target: { value: "John Smith" },
-      });
+      await user.clear(screen.getByLabelText("Speaker Name"));
+      await user.type(screen.getByLabelText("Speaker Name"), "John Smith");
 
-      fireEvent.click(screen.getByText("Save"));
+      await user.click(screen.getByText("Save"));
 
       await waitFor(() => {
         expect(updateMeetingLogEntry).toHaveBeenCalledWith(2, {
@@ -376,6 +374,7 @@ describe("Log", () => {
     });
 
     it("clicking Cancel closes the form without saving", async () => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
       getMeetingLog.mockResolvedValue(mockEntries);
       renderLog();
 
@@ -384,11 +383,11 @@ describe("Log", () => {
       });
 
       const editButtons = screen.getAllByText("Edit");
-      fireEvent.click(editButtons[1]);
+      await user.click(editButtons[1]);
 
       expect(screen.getByLabelText("Speaker Name")).toBeInTheDocument();
 
-      fireEvent.click(screen.getByText("Cancel"));
+      await user.click(screen.getByText("Cancel"));
 
       expect(screen.queryByLabelText("Speaker Name")).not.toBeInTheDocument();
       expect(updateMeetingLogEntry).not.toHaveBeenCalled();
