@@ -775,3 +775,28 @@ class TestExportEndpoints:
         assert response.status_code == 200
         lines = response.text.strip().split("\n")
         assert len(lines) == 3  # header + 2 entries
+
+    def test_printable_blank_rows_param(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Printable export respects blank_rows query param."""
+        response = client.get(
+            "/export/printable?blank_rows=3",
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.text.count('class="blank-row"') == 3
+
+    def test_printable_blank_rows_validation(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Printable export rejects blank_rows outside 0-52 range."""
+        response = client.get(
+            "/export/printable?blank_rows=100",
+            headers=auth_headers,
+        )
+        assert response.status_code == 422

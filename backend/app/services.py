@@ -823,57 +823,148 @@ def generate_csv_export(
     return "\n".join(lines) + "\n"
 
 
+def _format_date_range(start_date: date | None, end_date: date | None) -> str:
+    """Format date range for display in the printable export header."""
+    if start_date and end_date:
+        start_str = start_date.strftime("%B %Y")
+        end_str = end_date.strftime("%B %Y")
+        if start_str == end_str:
+            return start_str
+        return f"{start_str} &mdash; {end_str}"
+    if start_date:
+        return f"From {start_date.strftime('%B %Y')}"
+    if end_date:
+        return f"Through {end_date.strftime('%B %Y')}"
+    return ""
+
+
+def _get_entry_content(db: Session, group: Group, entry: MeetingLog) -> str:
+    """Extract display content from a meeting log entry based on format type."""
+    if entry.format_type == "Speaker":
+        return entry.speaker_name or "_______________"
+    if entry.format_type == "Topic" and entry.topic_id:
+        topic = db.query(Topic).filter(Topic.id == entry.topic_id).first()
+        return topic.name if topic else ""
+    if entry.format_type == "Book Study":
+        summary = _get_book_chapter_summary(db, group, entry.meeting_date)
+        return summary or ""
+    return ""
+
+
+def _build_export_rows(
+    db: Session,
+    group: Group,
+    entries: list[MeetingLog],
+    blank_rows: int,
+) -> str:
+    """Build HTML table rows for the printable export."""
+    rows = []
+    for entry in entries:
+        content = _get_entry_content(db, group, entry)
+        attendance = (
+            str(entry.attendance_count) if entry.attendance_count is not None else ""
+        )
+        rows.append(
+            f"<tr><td>{entry.meeting_date}</td>"
+            f"<td>{entry.format_type}</td>"
+            f"<td>{content}</td>"
+            f"<td>{attendance}</td></tr>"
+        )
+
+    for _ in range(blank_rows):
+        rows.append(
+            '<tr class="blank-row">' "<td>&nbsp;</td><td></td><td></td><td></td></tr>"
+        )
+
+    return "\n".join(rows)
+
+
 def generate_printable_export(
     db: Session,
     group: Group,
     start_date: date | None = None,
     end_date: date | None = None,
+    blank_rows: int = 10,
 ) -> str:
-    """Generate a printable HTML meeting log."""
+    """Generate a printable HTML meeting log with RD brand styling."""
     entries = _query_meeting_log(
         db, group, start_date, end_date, exclude_cancelled=True
     )
 
-    rows = []
-    for entry in entries:
-        content = ""
-        if entry.format_type == "Speaker":
-            content = entry.speaker_name or "_______________"
-        elif entry.format_type == "Topic" and entry.topic_id:
-            topic = db.query(Topic).filter(Topic.id == entry.topic_id).first()
-            content = topic.name if topic else ""
-        rows.append(
-            f"<tr><td>{entry.meeting_date}</td>"
-            f"<td>{entry.format_type}</td>"
-            f"<td>{content}</td></tr>"
-        )
+    table_rows = _build_export_rows(db, group, entries, blank_rows)
 
-    # Add blank rows for future weeks
-    for _ in range(10):
-        rows.append("<tr><td>&nbsp;</td><td></td><td></td></tr>")
+    date_range = _format_date_range(start_date, end_date)
+    date_range_html = f'<p class="date-range">{date_range}</p>' if date_range else ""
 
-    table_rows = "\n".join(rows)
+    font_url = (
+        "https://fonts.googleapis.com" "/css2?family=Lato:wght@400;700&display=swap"
+    )
 
     return f"""<!DOCTYPE html>
 <html>
 <head>
+<meta charset="utf-8">
 <title>Meeting Log - {group.name}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="{font_url}" rel="stylesheet">
 <style>
-body {{ font-family: serif; max-width: 700px; margin: 2em auto; }}
-h1 {{ text-align: center; border-bottom: 2px solid #333; padding-bottom: 0.5em; }}
-table {{ width: 100%; border-collapse: collapse; margin-top: 1em; }}
-th, td {{ border: 1px solid #999; padding: 6px 10px; text-align: left; }}
-th {{ background: #eee; }}
-@media print {{ body {{ margin: 0; }} }}
+body {{
+  font-family: 'Lato', sans-serif;
+  max-width: 750px;
+  margin: 2em auto;
+  color: #333;
+}}
+h1 {{
+  text-align: center;
+  color: #1b6b6d;
+  margin-bottom: 0.2em;
+  font-weight: 700;
+}}
+.header-rule {{
+  border: none;
+  border-top: 3px solid #c4922a;
+  margin: 0 auto 0.5em auto;
+  width: 60%;
+}}
+.date-range {{
+  text-align: center;
+  color: #666;
+  font-size: 0.95em;
+  margin-top: 0;
+}}
+table {{ width: 100%; border-collapse: collapse; margin-top: 1.2em; }}
+th, td {{ border: 1px solid #ccc; padding: 6px 10px; text-align: left; }}
+th {{
+  background: #1b6b6d;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.9em;
+}}
+tr:nth-child(even) {{ background: #f7f7f7; }}
+.blank-row td {{ height: 1.6em; }}
+.footer {{
+  text-align: center;
+  color: #aaa;
+  font-size: 0.8em;
+  margin-top: 2em;
+}}
+@media print {{
+  body {{ margin: 0; }}
+  .footer {{ color: #ccc; }}
+}}
 </style>
 </head>
 <body>
-<h1>{group.name} &mdash; Meeting Log</h1>
+<h1>{group.name}</h1>
+<hr class="header-rule">
+{date_range_html}
 <table>
-<thead><tr><th>Date</th><th>Format</th><th>Content</th></tr></thead>
+<thead><tr><th>Date</th><th>Format</th><th>Content</th><th>Attendance</th></tr></thead>
 <tbody>
 {table_rows}
 </tbody>
 </table>
+<p class="footer">Generated from RD Log</p>
 </body>
 </html>"""

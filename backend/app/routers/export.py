@@ -34,9 +34,12 @@ def export_csv(
 def export_printable(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
+    blank_rows: int = Query(default=10, ge=0, le=52),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> PlainTextResponse:
     """Export a printable HTML log template."""
-    html = generate_printable_export(db, current_user.group, start_date, end_date)
+    html = generate_printable_export(
+        db, current_user.group, start_date, end_date, blank_rows=blank_rows
+    )
     return PlainTextResponse(content=html, media_type="text/html")
