@@ -12,6 +12,9 @@ jest.mock("../src/api/index", () => ({
   getUpcomingMeetings: jest.fn(),
   getSpeakerNames: jest.fn(),
   getUpcomingSpeakerDates: jest.fn(),
+  getFormatOverrides: jest.fn(),
+  setFormatOverride: jest.fn(),
+  deleteFormatOverride: jest.fn(),
   drawTopic: jest.fn(),
   undoTopicDraw: jest.fn(),
   scheduleSpeaker: jest.fn(),
@@ -32,6 +35,9 @@ const getUpcomingMeeting = api.getUpcomingMeeting as jest.Mock;
 const getUpcomingMeetings = api.getUpcomingMeetings as jest.Mock;
 const getSpeakerNames = api.getSpeakerNames as jest.Mock;
 const getUpcomingSpeakerDates = api.getUpcomingSpeakerDates as jest.Mock;
+const getFormatOverrides = api.getFormatOverrides as jest.Mock;
+const setFormatOverride = api.setFormatOverride as jest.Mock;
+const deleteFormatOverride = api.deleteFormatOverride as jest.Mock;
 const drawTopic = api.drawTopic as jest.Mock;
 const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
@@ -110,6 +116,7 @@ describe("Landing", () => {
     getUpcomingMeetings.mockResolvedValue(lookaheadMeetings);
     getSpeakerNames.mockResolvedValue([]);
     getUpcomingSpeakerDates.mockResolvedValue(speakerScheduleData);
+    getFormatOverrides.mockResolvedValue([]);
   });
 
   it("renders formatted meeting date", async () => {
@@ -904,6 +911,216 @@ describe("Landing", () => {
         expect(screen.getByText("Upcoming Meetings")).toBeInTheDocument();
       });
       expect(screen.queryByText("Speaker Schedule")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("format overrides", () => {
+    it("shows format badges as clickable buttons in lookahead", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        const speakerBtn = screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        });
+        expect(speakerBtn).toBeInTheDocument();
+      });
+    });
+
+    it("opens override dropdown when format badge is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+    });
+
+    it("shows alternative format options (excludes current)", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      // March 1 is Speaker format, so dropdown should show Topic and Book Study
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        const menuItems = screen.getAllByRole("menuitem");
+        const labels = menuItems.map((item) => item.textContent);
+        expect(labels).toContain("Topic");
+        expect(labels).toContain("Book Study");
+        expect(labels).not.toContain("Speaker");
+      });
+    });
+
+    it("calls setFormatOverride when option is selected", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      setFormatOverride.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole("menuitem", { name: "Topic" }));
+
+      await waitFor(() => {
+        expect(setFormatOverride).toHaveBeenCalledWith("2026-03-01", "Topic");
+      });
+    });
+
+    it("shows Reset to rotation option when override exists", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      getFormatOverrides.mockResolvedValue([
+        { id: 1, meeting_date: "2026-03-01", format_type: "Topic" },
+      ]);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("menuitem", { name: "Reset to rotation" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("calls deleteFormatOverride when Reset to rotation is clicked", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      getFormatOverrides.mockResolvedValue([
+        { id: 1, meeting_date: "2026-03-01", format_type: "Topic" },
+      ]);
+      deleteFormatOverride.mockResolvedValue({});
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("menuitem", { name: "Reset to rotation" }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("menuitem", { name: "Reset to rotation" }),
+      );
+
+      await waitFor(() => {
+        expect(deleteFormatOverride).toHaveBeenCalledWith("2026-03-01");
+      });
+    });
+
+    it("closes dropdown when badge is clicked again", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      await waitFor(() => {
+        expect(screen.getByRole("menu")).toBeInTheDocument();
+      });
+
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: "Change format for Sunday, March 1",
+        }),
+      );
+
+      expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    });
+
+    it("disables format badge button when meeting is cancelled", async () => {
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      getUpcomingMeetings.mockResolvedValue([
+        lookaheadMeetings[0],
+        { ...lookaheadMeetings[1], is_cancelled: true },
+        lookaheadMeetings[2],
+        lookaheadMeetings[3],
+      ]);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", {
+            name: "Change format for Sunday, March 1",
+          }),
+        ).toBeDisabled();
+      });
     });
   });
 

@@ -10,7 +10,7 @@ from sqlalchemy.exc import OperationalError
 
 from app.config import settings
 from app.database import Base, engine
-from app.routers import activity, auth, book, export, meetings, speakers, topics
+from app.routers import activity, auth, book, export, meetings, overrides, speakers, topics
 from app.routers import settings as settings_router
 
 # Columns added after initial schema. Each entry is (table, column, type).
@@ -64,6 +64,7 @@ app.include_router(topics.router)
 app.include_router(book.router)
 app.include_router(speakers.router)
 app.include_router(settings_router.router)
+app.include_router(overrides.router)
 app.include_router(export.router)
 app.include_router(activity.router)
 

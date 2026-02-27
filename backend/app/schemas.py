@@ -238,3 +238,22 @@ class ExportResponse(BaseModel):
     content: str
     filename: str
     content_type: str
+
+
+# --- Format Overrides ---
+
+
+class FormatOverrideCreate(BaseModel):
+    """Request schema for creating/updating a format override."""
+
+    format_type: str
+
+
+class FormatOverrideResponse(BaseModel):
+    """Response schema for a format override."""
+
+    id: int
+    meeting_date: date
+    format_type: str
+
+    model_config = {"from_attributes": True}

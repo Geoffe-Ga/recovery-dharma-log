@@ -5,6 +5,7 @@ import type {
   ActivityLogEntry,
   AssignmentUpdate,
   BookChapter,
+  FormatOverride,
   GroupSettings,
   GroupSettingsUpdate,
   MeetingLogEntry,
@@ -177,6 +178,25 @@ export async function scheduleSpeaker(
 
 export async function unscheduleSpeaker(meetingDate: string): Promise<void> {
   await api.delete(`/speakers/schedule/${meetingDate}`);
+}
+
+// --- Overrides ---
+
+export async function getFormatOverrides(): Promise<FormatOverride[]> {
+  return api.get<FormatOverride[]>("/overrides/");
+}
+
+export async function setFormatOverride(
+  meetingDate: string,
+  formatType: string,
+): Promise<FormatOverride> {
+  return api.put<FormatOverride>(`/overrides/${meetingDate}`, {
+    format_type: formatType,
+  });
+}
+
+export async function deleteFormatOverride(meetingDate: string): Promise<void> {
+  await api.delete(`/overrides/${meetingDate}`);
 }
 
 // --- Settings ---
