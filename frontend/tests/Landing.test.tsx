@@ -1,6 +1,7 @@
 /** Tests for Landing page component with cancel/restore functionality. */
 
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import * as api from "../src/api/index";
 import { ToastProvider } from "../src/contexts/ToastContext";
 import { Landing } from "../src/pages/Landing";
@@ -279,6 +280,7 @@ describe("Landing", () => {
     });
 
     it("calls cancelMeeting with is_cancelled=true when Cancel clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       cancelMeeting.mockResolvedValue({});
       renderLanding();
@@ -289,7 +291,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Cancel Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Cancel Meeting" }));
 
       await waitFor(() => {
         expect(cancelMeeting).toHaveBeenCalledWith("2026-02-22", true);
@@ -302,6 +304,7 @@ describe("Landing", () => {
     });
 
     it("disables Cancel Meeting button during API call", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       let resolveCancel!: (value: unknown) => void;
       cancelMeeting.mockReturnValue(
@@ -317,7 +320,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Cancel Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Cancel Meeting" }));
 
       expect(
         screen.getByRole("button", { name: "Cancel Meeting" }),
@@ -400,6 +403,7 @@ describe("Landing", () => {
     });
 
     it("calls cancelMeeting with is_cancelled=false when Restore clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
       cancelMeeting.mockResolvedValue({});
       renderLanding();
@@ -410,7 +414,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Restore Meeting" }));
 
       await waitFor(() => {
         expect(cancelMeeting).toHaveBeenCalledWith("2026-02-22", false);
@@ -423,6 +427,7 @@ describe("Landing", () => {
     });
 
     it("disables Restore Meeting button during API call", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
       let resolveRestore!: (value: unknown) => void;
       cancelMeeting.mockReturnValue(
@@ -438,7 +443,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Restore Meeting" }));
 
       expect(
         screen.getByRole("button", { name: "Restore Meeting" }),
@@ -528,6 +533,7 @@ describe("Landing", () => {
     });
 
     it("calls undoTopicDraw when Undo is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       undoTopicDraw.mockResolvedValue({});
       renderLanding();
@@ -538,7 +544,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      await user.click(screen.getByRole("button", { name: "Undo" }));
 
       await waitFor(() => {
         expect(undoTopicDraw).toHaveBeenCalled();
@@ -546,6 +552,7 @@ describe("Landing", () => {
     });
 
     it("calls undoTopicDraw then drawTopic when Re-draw is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       undoTopicDraw.mockResolvedValue({});
       drawTopic.mockResolvedValue({});
@@ -557,7 +564,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Re-draw" }));
+      await user.click(screen.getByRole("button", { name: "Re-draw" }));
 
       await waitFor(() => {
         expect(undoTopicDraw).toHaveBeenCalled();
@@ -566,6 +573,7 @@ describe("Landing", () => {
     });
 
     it("shows toast when undo fails", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       undoTopicDraw.mockRejectedValue(new Error("Undo failed"));
       renderLanding();
@@ -576,7 +584,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      await user.click(screen.getByRole("button", { name: "Undo" }));
 
       await waitFor(() => {
         expect(screen.getByText("Undo failed")).toBeInTheDocument();
@@ -612,6 +620,7 @@ describe("Landing", () => {
     });
 
     it("opens edit form pre-filled with current speaker name", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(speakerMeeting);
       renderLanding();
 
@@ -621,7 +630,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Edit speaker" }));
+      await user.click(screen.getByRole("button", { name: "Edit speaker" }));
 
       const input = screen.getByPlaceholderText("Speaker name");
       expect(input).toHaveValue("Jane Doe");
@@ -629,6 +638,7 @@ describe("Landing", () => {
     });
 
     it("calls scheduleSpeaker with new name on edit submit", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(speakerMeeting);
       scheduleSpeaker.mockResolvedValue({});
       renderLanding();
@@ -639,11 +649,13 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Edit speaker" }));
-      fireEvent.change(screen.getByPlaceholderText("Speaker name"), {
-        target: { value: "John Smith" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await user.click(screen.getByRole("button", { name: "Edit speaker" }));
+      await user.clear(screen.getByPlaceholderText("Speaker name"));
+      await user.type(
+        screen.getByPlaceholderText("Speaker name"),
+        "John Smith",
+      );
+      await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
         expect(scheduleSpeaker).toHaveBeenCalledWith(
@@ -654,6 +666,7 @@ describe("Landing", () => {
     });
 
     it("calls unscheduleSpeaker when Remove is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(speakerMeeting);
       unscheduleSpeaker.mockResolvedValue({});
       renderLanding();
@@ -664,7 +677,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Remove speaker" }));
+      await user.click(screen.getByRole("button", { name: "Remove speaker" }));
 
       await waitFor(() => {
         expect(unscheduleSpeaker).toHaveBeenCalledWith("2026-02-22");
@@ -672,6 +685,7 @@ describe("Landing", () => {
     });
 
     it("renders datalist with speaker name options when form is shown", async () => {
+      const user = userEvent.setup();
       getSpeakerNames.mockResolvedValue(["Alice", "Bob", "Zara"]);
       getUpcomingMeeting.mockResolvedValue(speakerMeetingNoSpeaker);
       renderLanding();
@@ -682,7 +696,9 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Schedule Speaker" }));
+      await user.click(
+        screen.getByRole("button", { name: "Schedule Speaker" }),
+      );
 
       await waitFor(() => {
         expect(getSpeakerNames).toHaveBeenCalled();
@@ -700,6 +716,7 @@ describe("Landing", () => {
     });
 
     it("shows toast on remove failure", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(speakerMeeting);
       unscheduleSpeaker.mockRejectedValue(new Error("Remove failed"));
       renderLanding();
@@ -710,7 +727,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Remove speaker" }));
+      await user.click(screen.getByRole("button", { name: "Remove speaker" }));
 
       await waitFor(() => {
         expect(screen.getByText("Remove failed")).toBeInTheDocument();
@@ -746,6 +763,7 @@ describe("Landing", () => {
     });
 
     it("calls updateAttendance when saving attendance", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       updateAttendance.mockResolvedValue({});
       renderLanding();
@@ -756,13 +774,11 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", { name: "Record Attendance" }),
       );
-      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
-        target: { value: "20" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await user.type(screen.getByPlaceholderText("Attendance"), "20");
+      await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
         expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", 20);
@@ -770,6 +786,7 @@ describe("Landing", () => {
     });
 
     it("shows error toast for invalid attendance input", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
@@ -779,18 +796,17 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", { name: "Record Attendance" }),
       );
-      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
-        target: { value: "-5" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await user.type(screen.getByPlaceholderText("Attendance"), "-5");
+      await user.click(screen.getByRole("button", { name: "Save" }));
 
       expect(updateAttendance).not.toHaveBeenCalled();
     });
 
     it("clears attendance by saving empty input", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue({
         ...baseMeeting,
         attendance_count: 15,
@@ -802,11 +818,9 @@ describe("Landing", () => {
         expect(screen.getByText("Attendance: 15")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Edit attendance" }));
-      fireEvent.change(screen.getByPlaceholderText("Attendance"), {
-        target: { value: "" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await user.click(screen.getByRole("button", { name: "Edit attendance" }));
+      await user.clear(screen.getByPlaceholderText("Attendance"));
+      await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
         expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", null);
@@ -845,6 +859,7 @@ describe("Landing", () => {
     });
 
     it("opens inline form when Assign Speaker is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
@@ -854,12 +869,13 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Assign Speaker" }));
+      await user.click(screen.getByRole("button", { name: "Assign Speaker" }));
 
       expect(screen.getByPlaceholderText("Speaker name")).toBeInTheDocument();
     });
 
     it("calls scheduleSpeaker on form submit", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       scheduleSpeaker.mockResolvedValue({});
       renderLanding();
@@ -870,11 +886,9 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Assign Speaker" }));
-      fireEvent.change(screen.getByPlaceholderText("Speaker name"), {
-        target: { value: "Bob" },
-      });
-      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await user.click(screen.getByRole("button", { name: "Assign Speaker" }));
+      await user.type(screen.getByPlaceholderText("Speaker name"), "Bob");
+      await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
         expect(scheduleSpeaker).toHaveBeenCalledWith("2026-03-29", "Bob");
@@ -895,6 +909,7 @@ describe("Landing", () => {
 
   describe("error handling", () => {
     it("shows toast when cancel fails", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       cancelMeeting.mockRejectedValue(new Error("Cancel failed"));
       renderLanding();
@@ -905,7 +920,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Cancel Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Cancel Meeting" }));
 
       await waitFor(() => {
         expect(screen.getByText("Cancel failed")).toBeInTheDocument();
@@ -913,6 +928,7 @@ describe("Landing", () => {
     });
 
     it("shows toast when restore fails", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(cancelledMeeting);
       cancelMeeting.mockRejectedValue(new Error("Restore failed"));
       renderLanding();
@@ -923,7 +939,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("button", { name: "Restore Meeting" }));
+      await user.click(screen.getByRole("button", { name: "Restore Meeting" }));
 
       await waitFor(() => {
         expect(screen.getByText("Restore failed")).toBeInTheDocument();

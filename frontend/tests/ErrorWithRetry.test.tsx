@@ -1,6 +1,7 @@
 /** Tests for ErrorWithRetry component. */
 
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ErrorWithRetry } from "../src/components/ErrorWithRetry";
 
 describe("ErrorWithRetry", () => {
@@ -21,10 +22,11 @@ describe("ErrorWithRetry", () => {
     expect(screen.getByRole("button", { name: "Retry" })).toBeInTheDocument();
   });
 
-  it("calls onRetry when Retry button is clicked", () => {
+  it("calls onRetry when Retry button is clicked", async () => {
+    const user = userEvent.setup();
     const onRetry = jest.fn();
     render(<ErrorWithRetry message="Oops" onRetry={onRetry} />);
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await user.click(screen.getByRole("button", { name: "Retry" }));
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 });
