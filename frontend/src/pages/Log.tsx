@@ -10,6 +10,7 @@ import {
 import { useShowToast } from "../contexts/ToastContext";
 import { useLogFilters } from "../hooks/useLogFilters";
 import type { MeetingLogEntry, MeetingLogUpdate } from "../types/index";
+import { Skeleton } from "../components/Skeleton";
 import { formatLogDate } from "../utils/dates";
 
 const FORMAT_OPTIONS = ["", "Speaker", "Topic", "Book Study"];
@@ -66,7 +67,7 @@ export function Log(): React.ReactElement {
     }
   }
 
-  if (loading) return <p aria-busy="true">Loading...</p>;
+  if (loading) return <Skeleton lines={4} />;
   if (error) return <p role="alert">{error}</p>;
 
   return (

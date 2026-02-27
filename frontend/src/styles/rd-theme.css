@@ -574,6 +574,37 @@ p[role="alert"] {
   padding: var(--rd-space-2xl);
 }
 
+.rd-skeleton {
+  padding: var(--rd-space-xl);
+}
+
+.rd-skeleton__header {
+  height: 1.5rem;
+  width: 40%;
+  background: var(--rd-sand);
+  border-radius: var(--rd-radius-sm);
+  margin-bottom: var(--rd-space-md);
+  animation: rd-pulse 1.5s ease-in-out infinite;
+}
+
+.rd-skeleton__line {
+  height: 0.875rem;
+  background: var(--rd-sand);
+  border-radius: var(--rd-radius-sm);
+  margin-bottom: var(--rd-space-sm);
+  animation: rd-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes rd-pulse {
+  0%,
+  100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
 /* ===================================================================
    14. Login page
    =================================================================== */

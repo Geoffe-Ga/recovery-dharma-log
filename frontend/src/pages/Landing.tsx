@@ -19,6 +19,7 @@ import type {
   UpcomingMeeting,
   UpcomingMeetingBrief,
 } from "../types/index";
+import { Skeleton } from "../components/Skeleton";
 import { formatMeetingDate, formatMeetingTime } from "../utils/dates";
 
 export function Landing(): React.ReactElement {
@@ -199,7 +200,7 @@ export function Landing(): React.ReactElement {
     }
   }, [meeting, isCancelling, refresh, showToast]);
 
-  if (loading) return <p aria-busy="true">Loading...</p>;
+  if (loading) return <Skeleton lines={4} />;
   if (error) return <p role="alert">{error}</p>;
   if (!meeting) return <p>No upcoming meeting found.</p>;
 
