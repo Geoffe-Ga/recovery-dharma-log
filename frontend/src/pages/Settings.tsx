@@ -270,7 +270,22 @@ export function Settings(): React.ReactElement {
     <main className="rd-settings">
       <h1>Settings</h1>
 
-      <section>
+      <nav className="rd-section-nav" aria-label="Section navigation">
+        <a className="rd-section-nav__link" href="#meeting">
+          Meeting
+        </a>
+        <a className="rd-section-nav__link" href="#rotation">
+          Rotation
+        </a>
+        <a className="rd-section-nav__link" href="#topics">
+          Topics
+        </a>
+        <a className="rd-section-nav__link" href="#reading-plan">
+          Reading Plan
+        </a>
+      </nav>
+
+      <section id="meeting">
         <h2>Meeting Info</h2>
         <label>
           Group Name
@@ -301,7 +316,7 @@ export function Settings(): React.ReactElement {
         <p className="rd-meta">Start Date: {settings.start_date}</p>
       </section>
 
-      <section>
+      <section id="rotation">
         <h2>Format Rotation</h2>
         <div className="rd-rotation-list">
           {settings.format_rotation.map((format, i) => (
@@ -343,7 +358,7 @@ export function Settings(): React.ReactElement {
         />
       </section>
 
-      <section>
+      <section id="topics">
         <h2>Topic Deck</h2>
         <div className="rd-deck-counter">
           {inDeck.length} of {topics.length} remaining
@@ -410,7 +425,7 @@ export function Settings(): React.ReactElement {
       </section>
 
       {plan && (
-        <section>
+        <section id="reading-plan">
           <h2>Book Reading Plan</h2>
 
           {plan.total_chapters > 0 && (
