@@ -1,6 +1,7 @@
 /** Settings page - group configuration. */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { RotationCalendar } from "../components/RotationCalendar";
 import { Skeleton } from "../components/Skeleton";
 import {
@@ -61,7 +62,9 @@ export function Settings(): React.ReactElement {
     return JSON.stringify(settings) !== JSON.stringify(savedSettings);
   }, [settings, savedSettings]);
 
-  useEffect(() => {
+  const loadSettings = useCallback(() => {
+    setError(null);
+    setLoading(true);
     Promise.all([getSettings(), getTopics(), getReadingPlan(), getChapters()])
       .then(([s, t, p, c]) => {
         setSettings(s);
@@ -75,6 +78,10 @@ export function Settings(): React.ReactElement {
       )
       .finally(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   // Warn on navigation away with unsaved changes
   useEffect(() => {
@@ -254,7 +261,7 @@ export function Settings(): React.ReactElement {
   }, []);
 
   if (loading) return <Skeleton lines={4} />;
-  if (error) return <p role="alert">{error}</p>;
+  if (error) return <ErrorWithRetry message={error} onRetry={loadSettings} />;
   if (!settings) return <p>No settings found.</p>;
 
   const inDeck = topics.filter((t) => !t.is_drawn);
