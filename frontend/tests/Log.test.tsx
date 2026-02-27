@@ -49,12 +49,15 @@ const mockEntries: MeetingLogEntry[] = [
 
 import * as api from "../src/api/index";
 
-jest.mock("../src/api/index", () => ({
-  getMeetingLog: jest.fn(),
-  updateMeetingLogEntry: jest.fn(),
-  getCsvExportUrl: () => "/api/export/csv",
-  getPrintableExportUrl: () => "/api/export/printable",
-}));
+jest.mock("../src/api/index", () => {
+  const actual = jest.requireActual("../src/api/index");
+  return {
+    getMeetingLog: jest.fn(),
+    updateMeetingLogEntry: jest.fn(),
+    getCsvExportUrl: actual.getCsvExportUrl,
+    getPrintableExportUrl: actual.getPrintableExportUrl,
+  };
+});
 
 const getMeetingLog = api.getMeetingLog as jest.Mock;
 const updateMeetingLogEntry = api.updateMeetingLogEntry as jest.Mock;
@@ -242,6 +245,49 @@ describe("Log", () => {
       });
 
       expect(screen.getByText("Clear Filters")).toBeInTheDocument();
+    });
+
+    it("export links include date params when date filters are set", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Mindfulness")).toBeInTheDocument();
+      });
+
+      fireEvent.change(screen.getByLabelText("From"), {
+        target: { value: "2026-02-10" },
+      });
+      fireEvent.change(screen.getByLabelText("To"), {
+        target: { value: "2026-02-20" },
+      });
+
+      const csvLink = screen.getByText("Export CSV").closest("a");
+      const printLink = screen.getByText("Printable View").closest("a");
+
+      expect(csvLink).toHaveAttribute(
+        "href",
+        "/api/export/csv?start_date=2026-02-10&end_date=2026-02-20",
+      );
+      expect(printLink).toHaveAttribute(
+        "href",
+        "/api/export/printable?start_date=2026-02-10&end_date=2026-02-20",
+      );
+    });
+
+    it("export links have no date params when filters are empty", async () => {
+      getMeetingLog.mockResolvedValue(mockEntries);
+      renderLog();
+
+      await waitFor(() => {
+        expect(screen.getByText("Mindfulness")).toBeInTheDocument();
+      });
+
+      const csvLink = screen.getByText("Export CSV").closest("a");
+      const printLink = screen.getByText("Printable View").closest("a");
+
+      expect(csvLink).toHaveAttribute("href", "/api/export/csv");
+      expect(printLink).toHaveAttribute("href", "/api/export/printable");
     });
 
     it("clears all filters on clear button click", async () => {
