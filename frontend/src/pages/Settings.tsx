@@ -54,6 +54,7 @@ export function Settings(): React.ReactElement {
   const [editChapterIds, setEditChapterIds] = useState<number[]>([]);
   const [selectedChapterIds, setSelectedChapterIds] = useState<number[]>([]);
   const [addingChapters, setAddingChapters] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -156,20 +157,20 @@ export function Settings(): React.ReactElement {
   );
 
   const handleDeleteTopic = useCallback(async (topicId: number) => {
-    if (!window.confirm("Remove this topic from the deck?")) return;
     try {
       await deleteTopic(topicId);
       setTopics(await getTopics());
+      setConfirmAction(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete topic");
     }
   }, []);
 
   const handleReshuffle = useCallback(async () => {
-    if (!window.confirm("Reshuffle the deck? All drawn topics return.")) return;
     try {
       await reshuffleTopics();
       setTopics(await getTopics());
+      setConfirmAction(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to reshuffle");
     }
@@ -236,10 +237,10 @@ export function Settings(): React.ReactElement {
   }, []);
 
   const handleDeleteAssignment = useCallback(async (assignmentId: number) => {
-    if (!window.confirm("Delete this assignment?")) return;
     try {
       await deleteAssignment(assignmentId);
       setPlan(await getReadingPlan());
+      setConfirmAction(null);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to delete");
     }
@@ -283,6 +284,9 @@ export function Settings(): React.ReactElement {
         </a>
         <a className="rd-section-nav__link" href="#reading-plan">
           Reading Plan
+        </a>
+        <a className="rd-section-nav__link" href="#danger-zone">
+          Danger Zone
         </a>
       </nav>
 
@@ -386,13 +390,32 @@ export function Settings(): React.ReactElement {
                   </span>
                 )}
               </span>
-              <button
-                type="button"
-                className="rd-ghost"
-                onClick={() => handleDeleteTopic(t.id)}
-              >
-                Remove
-              </button>
+              {confirmAction === `delete-topic-${t.id}` ? (
+                <span className="rd-inline-confirm">
+                  <button
+                    type="button"
+                    className="rd-danger"
+                    onClick={() => handleDeleteTopic(t.id)}
+                  >
+                    Confirm Remove
+                  </button>
+                  <button
+                    type="button"
+                    className="outline"
+                    onClick={() => setConfirmAction(null)}
+                  >
+                    Cancel
+                  </button>
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="rd-ghost"
+                  onClick={() => setConfirmAction(`delete-topic-${t.id}`)}
+                >
+                  Remove
+                </button>
+              )}
             </li>
           ))}
         </ul>
@@ -427,10 +450,6 @@ export function Settings(): React.ReactElement {
           />
           <button type="submit">Add Topic</button>
         </form>
-
-        <button type="button" className="outline" onClick={handleReshuffle}>
-          Reshuffle Deck
-        </button>
       </section>
 
       {plan && (
@@ -598,13 +617,34 @@ export function Settings(): React.ReactElement {
                           >
                             Edit
                           </button>
-                          <button
-                            type="button"
-                            className="rd-ghost"
-                            onClick={() => handleDeleteAssignment(a.id)}
-                          >
-                            Delete
-                          </button>
+                          {confirmAction === `delete-assignment-${a.id}` ? (
+                            <>
+                              <button
+                                type="button"
+                                className="rd-danger"
+                                onClick={() => handleDeleteAssignment(a.id)}
+                              >
+                                Confirm Delete
+                              </button>
+                              <button
+                                type="button"
+                                className="outline"
+                                onClick={() => setConfirmAction(null)}
+                              >
+                                Cancel
+                              </button>
+                            </>
+                          ) : (
+                            <button
+                              type="button"
+                              className="rd-ghost"
+                              onClick={() =>
+                                setConfirmAction(`delete-assignment-${a.id}`)
+                              }
+                            >
+                              Delete
+                            </button>
+                          )}
                         </span>
                       </div>
                     )}
@@ -615,6 +655,37 @@ export function Settings(): React.ReactElement {
           )}
         </section>
       )}
+
+      <section id="danger-zone" className="rd-danger-zone">
+        <h2>Danger Zone</h2>
+        {confirmAction === "reshuffle" ? (
+          <div className="rd-danger-zone__confirm">
+            <p>Reshuffle the deck? All drawn topics will return.</p>
+            <button
+              type="button"
+              className="rd-danger"
+              onClick={handleReshuffle}
+            >
+              Confirm Reshuffle
+            </button>
+            <button
+              type="button"
+              className="outline"
+              onClick={() => setConfirmAction(null)}
+            >
+              Cancel
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="rd-danger-outline"
+            onClick={() => setConfirmAction("reshuffle")}
+          >
+            Reshuffle Deck
+          </button>
+        )}
+      </section>
 
       {isDirty && (
         <div className="rd-sticky-bar" role="status">

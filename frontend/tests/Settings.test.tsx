@@ -83,7 +83,7 @@ describe("Settings", () => {
     expect(nav).toBeInTheDocument();
 
     const links = nav.querySelectorAll("a");
-    expect(links).toHaveLength(4);
+    expect(links).toHaveLength(5);
 
     expect(links[0]).toHaveTextContent("Meeting");
     expect(links[0]).toHaveAttribute("href", "#meeting");
@@ -96,6 +96,9 @@ describe("Settings", () => {
 
     expect(links[3]).toHaveTextContent("Reading Plan");
     expect(links[3]).toHaveAttribute("href", "#reading-plan");
+
+    expect(links[4]).toHaveTextContent("Danger Zone");
+    expect(links[4]).toHaveAttribute("href", "#danger-zone");
   });
 
   it("renders settings page", async () => {
@@ -531,5 +534,261 @@ describe("Settings", () => {
     });
 
     expect(screen.queryByText(/Months with a 5th/)).not.toBeInTheDocument();
+  });
+
+  it("renders Danger Zone section with reshuffle button", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Danger Zone" }),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.getByRole("button", { name: "Reshuffle Deck" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows inline confirmation for reshuffle", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Reshuffle Deck" }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+
+    expect(
+      screen.getByText("Reshuffle the deck? All drawn topics will return."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Confirm Reshuffle" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("cancels reshuffle on cancel click", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Reshuffle Deck" }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(
+      screen.getByRole("button", { name: "Reshuffle Deck" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Reshuffle the deck? All drawn topics will return."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("executes reshuffle on confirm", async () => {
+    (api.reshuffleTopics as jest.Mock).mockResolvedValue(undefined);
+    (api.getTopics as jest.Mock).mockResolvedValue(mockTopics);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Reshuffle Deck" }),
+      ).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Reshuffle Deck" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Reshuffle" }));
+
+    await waitFor(() => {
+      expect(api.reshuffleTopics).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("shows inline confirmation when deleting a topic", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("Topic 1")).toBeInTheDocument();
+    });
+
+    const topicItem = screen.getByText("Topic 1").closest("li")!;
+    const removeBtn = topicItem.querySelector("button")!;
+    fireEvent.click(removeBtn);
+
+    expect(
+      screen.getByRole("button", { name: "Confirm Remove" }),
+    ).toBeInTheDocument();
+  });
+
+  it("cancels topic deletion on cancel click", async () => {
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("Topic 1")).toBeInTheDocument();
+    });
+
+    const topicItem = screen.getByText("Topic 1").closest("li")!;
+    const removeBtn = topicItem.querySelector("button")!;
+    fireEvent.click(removeBtn);
+
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(
+      screen.queryByRole("button", { name: "Confirm Remove" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("executes topic deletion on confirm", async () => {
+    (api.deleteTopic as jest.Mock).mockResolvedValue(undefined);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText("Topic 1")).toBeInTheDocument();
+    });
+
+    // Mock getTopics to return empty after deletion
+    (api.getTopics as jest.Mock).mockResolvedValue([]);
+
+    const topicItem = screen.getByText("Topic 1").closest("li")!;
+    const removeBtn = topicItem.querySelector("button")!;
+    fireEvent.click(removeBtn);
+
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Remove" }));
+
+    await waitFor(() => {
+      expect(api.deleteTopic).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it("shows inline confirmation when deleting an assignment", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 1,
+      completed_assignments: [
+        {
+          id: 10,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Preface",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+
+    expect(
+      screen.getByRole("button", { name: "Confirm Delete" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
+  });
+
+  it("cancels assignment deletion on cancel click", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 1,
+      completed_assignments: [
+        {
+          id: 10,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Preface",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("button", { name: "Delete" })).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Confirm Delete" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("executes assignment deletion on confirm", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 1,
+      completed_assignments: [
+        {
+          id: 10,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Preface",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock)
+      .mockResolvedValueOnce(planWithAssignment)
+      .mockResolvedValue({ ...mockPlan, completed_assignments: [] });
+    (api.deleteAssignment as jest.Mock).mockResolvedValue(undefined);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm Delete" }));
+
+    await waitFor(() => {
+      expect(api.deleteAssignment).toHaveBeenCalledWith(10);
+    });
   });
 });

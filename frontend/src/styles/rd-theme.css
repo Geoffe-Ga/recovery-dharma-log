@@ -1252,6 +1252,37 @@ button.rd-danger-outline:hover {
   font-size: var(--rd-font-size-sm);
 }
 
+/* Danger Zone */
+.rd-danger-zone {
+  border: 2px solid var(--rd-danger);
+  border-radius: var(--rd-radius-lg);
+  padding: var(--rd-space-lg) var(--rd-space-xl);
+  margin-bottom: var(--rd-space-lg);
+}
+
+.rd-danger-zone h2 {
+  color: var(--rd-danger);
+  border-bottom-color: var(--rd-danger);
+}
+
+.rd-danger-zone__confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--rd-space-sm);
+  flex-wrap: wrap;
+}
+
+.rd-danger-zone__confirm p {
+  flex: 1 1 100%;
+  margin-bottom: var(--rd-space-sm);
+}
+
+/* Inline confirmation for destructive actions */
+.rd-inline-confirm {
+  display: inline-flex;
+  gap: var(--rd-space-xs);
+}
+
 /* Sticky save bar */
 .rd-sticky-bar {
   position: sticky;
