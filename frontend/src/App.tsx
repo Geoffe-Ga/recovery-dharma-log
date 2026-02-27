@@ -31,13 +31,28 @@ function AuthenticatedApp({
 
   return (
     <>
-      <nav className="container">
+      <nav className="container rd-nav">
         <ul>
           <li>
             <strong>{groupName}</strong>
           </li>
         </ul>
-        <ul>
+        <input
+          type="checkbox"
+          id="rd-nav-toggle"
+          className="rd-nav__toggle"
+          aria-label="Toggle navigation"
+        />
+        <label
+          htmlFor="rd-nav-toggle"
+          className="rd-nav__hamburger"
+          aria-hidden="true"
+        >
+          <span />
+          <span />
+          <span />
+        </label>
+        <ul className="rd-nav__links">
           <li>
             <NavLink to="/" end>
               Home

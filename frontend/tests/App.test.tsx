@@ -165,4 +165,44 @@ describe("App", () => {
       expect(screen.getByText("RD Log")).toBeInTheDocument();
     });
   });
+
+  describe("hamburger navigation", () => {
+    beforeEach(() => {
+      mockUseAuth.mockReturnValue(authState);
+      (api.getSettings as jest.Mock).mockReturnValue(new Promise(() => {}));
+    });
+
+    it("renders hamburger toggle on mobile", () => {
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      const toggle = screen.getByLabelText("Toggle navigation");
+      expect(toggle).toBeInTheDocument();
+      expect(toggle).toHaveAttribute("type", "checkbox");
+
+      const hamburger = toggle.nextElementSibling;
+      expect(hamburger).toBeInTheDocument();
+      expect(hamburger?.tagName).toBe("LABEL");
+    });
+
+    it("nav links are still present", () => {
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Log" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Settings" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Log Out" }),
+      ).toBeInTheDocument();
+    });
+  });
 });

@@ -276,6 +276,79 @@ nav.container button.outline:hover {
 }
 
 /* ===================================================================
+   5a. Mobile hamburger navigation
+   =================================================================== */
+
+/* Hamburger toggle — hidden by default */
+.rd-nav__toggle {
+  display: none;
+}
+
+.rd-nav__hamburger {
+  display: none;
+  cursor: pointer;
+  padding: var(--rd-space-sm);
+  min-height: 44px;
+  min-width: 44px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rd-nav__hamburger span {
+  display: block;
+  width: 22px;
+  height: 2px;
+  background: var(--rd-text);
+  border-radius: 1px;
+  transition: all 0.3s var(--rd-ease);
+}
+
+@media (max-width: 768px) {
+  .rd-nav__hamburger {
+    display: flex;
+  }
+
+  .rd-nav__links {
+    display: none;
+    flex-direction: column;
+    width: 100%;
+    padding: var(--rd-space-sm) 0;
+  }
+
+  .rd-nav__toggle:checked ~ .rd-nav__links {
+    display: flex;
+  }
+
+  /* Hamburger animation */
+  .rd-nav__toggle:checked ~ .rd-nav__hamburger span:nth-child(1) {
+    transform: rotate(45deg) translate(5px, 5px);
+  }
+
+  .rd-nav__toggle:checked ~ .rd-nav__hamburger span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .rd-nav__toggle:checked ~ .rd-nav__hamburger span:nth-child(3) {
+    transform: rotate(-45deg) translate(5px, -5px);
+  }
+
+  /* Touch targets */
+  .rd-nav__links a,
+  .rd-nav__links button {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    padding: var(--rd-space-sm) var(--rd-space-md);
+  }
+
+  nav.container {
+    flex-wrap: wrap;
+  }
+}
+
+/* ===================================================================
    6. Buttons
    =================================================================== */
 
