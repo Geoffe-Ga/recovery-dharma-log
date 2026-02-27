@@ -12,6 +12,7 @@ from app.services import (
     get_deck_stats,
     get_format_for_date,
     get_next_meeting_date,
+    log_activity,
     reshuffle_deck,
     undo_topic_draw,
 )
@@ -138,6 +139,7 @@ def draw_topic(
 
     remaining, total = get_deck_stats(db, group)
     db.commit()
+    log_activity(db, group, current_user, "topic_drawn", topic.name)
     return {
         "topic": {
             "id": topic.id,
@@ -157,8 +159,10 @@ def reshuffle(
     db: Session = Depends(get_db),
 ) -> dict:
     """Manually reshuffle the topic deck."""
-    new_cycle = reshuffle_deck(db, current_user.group)
+    group = current_user.group
+    new_cycle = reshuffle_deck(db, group)
     db.commit()
+    log_activity(db, group, current_user, "deck_reshuffled")
     return {"detail": "Deck reshuffled", "deck_cycle": new_cycle}
 
 
@@ -178,4 +182,5 @@ def undo_draw(
             detail=str(e),
         ) from e
     db.commit()
+    log_activity(db, group, current_user, "topic_undo")
     return {"detail": "Topic draw undone"}

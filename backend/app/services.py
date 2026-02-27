@@ -7,6 +7,7 @@ import secrets
 from sqlalchemy.orm import Session
 
 from app.models import (
+    ActivityLog,
     BookChapter,
     FormatRotation,
     Group,
@@ -14,6 +15,7 @@ from app.models import (
     ReadingAssignment,
     Topic,
     TopicDeckState,
+    User,
 )
 
 # --- Page number helpers ---
@@ -43,6 +45,30 @@ def _chapter_to_dict(ch: BookChapter) -> dict:
         "title": ch.title,
         "page_count": page_count(ch.start_page, ch.end_page),
     }
+
+
+# --- Activity Logging ---
+
+
+def log_activity(
+    db: Session,
+    group: Group,
+    user: User,
+    action: str,
+    details: str | None = None,
+) -> None:
+    """Record an activity log entry. Failures are silently ignored."""
+    try:
+        entry = ActivityLog(
+            group_id=group.id,
+            user_id=user.id,
+            action=action,
+            details=details,
+        )
+        db.add(entry)
+        db.commit()
+    except Exception:
+        db.rollback()
 
 
 # --- Format Rotation Engine ---

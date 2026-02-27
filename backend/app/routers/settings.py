@@ -7,6 +7,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import FormatRotation, User
 from app.schemas import GroupSettings, GroupSettingsUpdate
+from app.services import log_activity
 
 router = APIRouter(prefix="/settings", tags=["settings"])
 
@@ -56,6 +57,7 @@ def update_settings(
             db.add(FormatRotation(group_id=group.id, position=i, format_type=fmt))
     db.commit()
     db.refresh(group)
+    log_activity(db, group, current_user, "settings_updated")
 
     rotations = (
         db.query(FormatRotation)

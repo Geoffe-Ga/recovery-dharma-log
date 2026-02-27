@@ -118,3 +118,11 @@ export interface SpeakerSchedule {
   meeting_date: string;
   speaker_name: string | null;
 }
+
+export interface ActivityLogEntry {
+  id: number;
+  action: string;
+  details: string | null;
+  created_at: string;
+  user_id: number;
+}
