@@ -126,3 +126,9 @@ export interface ActivityLogEntry {
   created_at: string;
   user_id: number;
 }
+
+export interface FormatOverride {
+  id: number;
+  meeting_date: string;
+  format_type: string;
+}

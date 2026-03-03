@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     ActivityLog,
     BookChapter,
+    FormatOverride,
     FormatRotation,
     Group,
     MeetingLog,
@@ -129,9 +130,20 @@ def get_format_for_date(
 ) -> str:
     """Determine the format type for a given meeting date.
 
-    Uses week-of-month position: the nth occurrence of the meeting weekday
-    within the month (0-indexed) selects the rotation slot.
+    Checks for a per-date override first; falls back to the week-of-month
+    rotation if no override exists.
     """
+    override = (
+        db.query(FormatOverride)
+        .filter(
+            FormatOverride.group_id == group.id,
+            FormatOverride.meeting_date == meeting_date,
+        )
+        .first()
+    )
+    if override:
+        return override.format_type
+
     rotation = get_rotation_for_group(db, group)
     if not rotation:
         return "Topic"

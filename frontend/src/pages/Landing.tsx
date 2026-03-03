@@ -3,18 +3,22 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   cancelMeeting,
+  deleteFormatOverride,
   drawTopic,
+  getFormatOverrides,
   getSpeakerNames,
   getUpcomingMeeting,
   getUpcomingMeetings,
   getUpcomingSpeakerDates,
   scheduleSpeaker,
+  setFormatOverride,
   undoTopicDraw,
   unscheduleSpeaker,
   updateAttendance,
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
 import type {
+  FormatOverride,
   SpeakerSchedule,
   UpcomingMeeting,
   UpcomingMeetingBrief,
@@ -37,19 +41,27 @@ export function Landing(): React.ReactElement {
   const [isCancelling, setIsCancelling] = useState(false);
   const [attendanceInput, setAttendanceInput] = useState("");
   const [showAttendanceForm, setShowAttendanceForm] = useState(false);
+  const [overrides, setOverrides] = useState<FormatOverride[]>([]);
+  const [overrideDropdownDate, setOverrideDropdownDate] = useState<
+    string | null
+  >(null);
   const showToast = useShowToast();
 
   const refresh = useCallback(async () => {
     try {
-      const [updated, upcoming, speakers] = await Promise.all([
-        getUpcomingMeeting(),
-        getUpcomingMeetings(4),
-        getUpcomingSpeakerDates(8),
-      ]);
+      const [updated, upcoming, speakers, fetchedOverrides] = await Promise.all(
+        [
+          getUpcomingMeeting(),
+          getUpcomingMeetings(4),
+          getUpcomingSpeakerDates(8),
+          getFormatOverrides(),
+        ],
+      );
       setMeeting(updated);
       // Exclude the first meeting (already shown as primary card)
       setLookahead(upcoming.slice(1));
       setSpeakerDates(speakers);
+      setOverrides(fetchedOverrides);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
@@ -181,6 +193,47 @@ export function Landing(): React.ReactElement {
       }
     },
     [scheduleFormDate, scheduleInput, refresh, showToast],
+  );
+
+  const handleSetOverride = useCallback(
+    async (meetingDate: string, formatType: string) => {
+      try {
+        await setFormatOverride(meetingDate, formatType);
+        setOverrideDropdownDate(null);
+        await refresh();
+        showToast("success", `Format changed to ${formatType}`);
+      } catch (err: unknown) {
+        showToast(
+          "error",
+          err instanceof Error ? err.message : "Failed to set override",
+        );
+      }
+    },
+    [refresh, showToast],
+  );
+
+  const handleRemoveOverride = useCallback(
+    async (meetingDate: string) => {
+      try {
+        await deleteFormatOverride(meetingDate);
+        setOverrideDropdownDate(null);
+        await refresh();
+        showToast("info", "Format override removed");
+      } catch (err: unknown) {
+        showToast(
+          "error",
+          err instanceof Error ? err.message : "Failed to remove override",
+        );
+      }
+    },
+    [refresh, showToast],
+  );
+
+  const hasOverride = useCallback(
+    (meetingDate: string): boolean => {
+      return overrides.some((o) => o.meeting_date === meetingDate);
+    },
+    [overrides],
   );
 
   const handleToggleCancel = useCallback(async () => {
@@ -478,10 +531,53 @@ export function Landing(): React.ReactElement {
                 <span className="rd-lookahead__date">
                   {formatMeetingDate(m.meeting_date)}
                 </span>
-                <span
-                  className={`rd-lookahead__badge${m.is_cancelled ? " rd-lookahead__badge--cancelled" : ""}`}
-                >
-                  {m.is_cancelled ? "Cancelled" : m.format_type}
+                <span className="rd-lookahead__badge-wrapper">
+                  <button
+                    type="button"
+                    className={`rd-lookahead__badge${m.is_cancelled ? " rd-lookahead__badge--cancelled" : ""}${hasOverride(m.meeting_date) ? " rd-lookahead__badge--override" : ""}`}
+                    onClick={() =>
+                      setOverrideDropdownDate(
+                        overrideDropdownDate === m.meeting_date
+                          ? null
+                          : m.meeting_date,
+                      )
+                    }
+                    aria-label={`Change format for ${formatMeetingDate(m.meeting_date)}`}
+                    disabled={m.is_cancelled}
+                  >
+                    {m.is_cancelled ? "Cancelled" : m.format_type}
+                  </button>
+                  {overrideDropdownDate === m.meeting_date && (
+                    <div
+                      className="rd-override-dropdown"
+                      role="menu"
+                      aria-label="Format override options"
+                    >
+                      {["Speaker", "Topic", "Book Study"]
+                        .filter((f) => f !== m.format_type)
+                        .map((f) => (
+                          <button
+                            key={f}
+                            type="button"
+                            role="menuitem"
+                            className="rd-override-dropdown__item"
+                            onClick={() => handleSetOverride(m.meeting_date, f)}
+                          >
+                            {f}
+                          </button>
+                        ))}
+                      {hasOverride(m.meeting_date) && (
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="rd-override-dropdown__item rd-override-dropdown__item--reset"
+                          onClick={() => handleRemoveOverride(m.meeting_date)}
+                        >
+                          Reset to rotation
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </span>
               </li>
             ))}

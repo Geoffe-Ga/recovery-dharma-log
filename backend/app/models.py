@@ -2,7 +2,17 @@
 
 from datetime import UTC, date, datetime, time
 
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String, Text, Time
+from sqlalchemy import (
+    Boolean,
+    Date,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    Time,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -34,6 +44,9 @@ class Group(Base):
 
     users: Mapped[list["User"]] = relationship(back_populates="group")
     format_rotations: Mapped[list["FormatRotation"]] = relationship(
+        back_populates="group",
+    )
+    format_overrides: Mapped[list["FormatOverride"]] = relationship(
         back_populates="group",
     )
     topics: Mapped[list["Topic"]] = relationship(back_populates="group")
@@ -260,3 +273,21 @@ class MeetingLog(Base):
     )
 
     group: Mapped["Group"] = relationship(back_populates="meeting_logs")
+
+
+class FormatOverride(Base):
+    """A per-date format override that takes precedence over the rotation."""
+
+    __tablename__ = "format_overrides"
+    __table_args__ = (UniqueConstraint("group_id", "meeting_date"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    group_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("groups.id"),
+        nullable=False,
+    )
+    meeting_date: Mapped[date] = mapped_column(Date, nullable=False)
+    format_type: Mapped[str] = mapped_column(String(50), nullable=False)
+
+    group: Mapped["Group"] = relationship(back_populates="format_overrides")

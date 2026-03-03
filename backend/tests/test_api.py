@@ -597,6 +597,155 @@ class TestSpeakersEndpoints:
         assert names == ["Alice", "Zara"]
 
 
+class TestOverridesEndpoints:
+    """Tests for format override endpoints."""
+
+    def test_list_overrides_empty(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """List overrides returns empty list when none exist."""
+        response = client.get("/overrides/", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_set_override(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT creates a new override for a date."""
+        response = client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Speaker"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert data["meeting_date"] == "2025-03-02"
+        assert data["format_type"] == "Speaker"
+        assert "id" in data
+
+    def test_set_override_updates_existing(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT updates an existing override for a date."""
+        client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Speaker"},
+            headers=auth_headers,
+        )
+        response = client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Topic"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["format_type"] == "Topic"
+
+    def test_set_override_invalid_format_type(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT with invalid format_type returns 422."""
+        response = client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Invalid"},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_list_overrides_after_create(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """List overrides returns created overrides."""
+        client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Speaker"},
+            headers=auth_headers,
+        )
+        client.put(
+            "/overrides/2025-03-09",
+            json={"format_type": "Topic"},
+            headers=auth_headers,
+        )
+        response = client.get("/overrides/", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data) == 2
+        assert data[0]["meeting_date"] == "2025-03-02"
+        assert data[1]["meeting_date"] == "2025-03-09"
+
+    def test_delete_override(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """DELETE removes an existing override."""
+        client.put(
+            "/overrides/2025-03-02",
+            json={"format_type": "Speaker"},
+            headers=auth_headers,
+        )
+        response = client.delete("/overrides/2025-03-02", headers=auth_headers)
+        assert response.status_code == 200
+        # Verify it's gone
+        response = client.get("/overrides/", headers=auth_headers)
+        assert response.json() == []
+
+    def test_delete_nonexistent_override(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """DELETE for a nonexistent override returns 404."""
+        response = client.delete("/overrides/2025-03-02", headers=auth_headers)
+        assert response.status_code == 404
+
+    def test_override_affects_upcoming_meetings(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Override changes the format shown in upcoming meetings."""
+        # Get upcoming meetings first
+        response = client.get(
+            "/meetings/upcoming/lookahead?weeks=4",
+            headers=auth_headers,
+        )
+        meetings = response.json()
+        target = meetings[0]
+        original_format = target["format_type"]
+
+        # Pick a different format
+        new_format = "Speaker" if original_format != "Speaker" else "Topic"
+        client.put(
+            f"/overrides/{target['meeting_date']}",
+            json={"format_type": new_format},
+            headers=auth_headers,
+        )
+
+        # Verify lookahead reflects the override
+        response = client.get(
+            "/meetings/upcoming/lookahead?weeks=4",
+            headers=auth_headers,
+        )
+        updated = response.json()
+        assert updated[0]["format_type"] == new_format
+
+    def test_overrides_require_auth(self, client: TestClient) -> None:
+        """Override endpoints return 401 without auth."""
+        assert client.get("/overrides/").status_code == 401
+        assert client.put("/overrides/2025-03-02").status_code == 401
+        assert client.delete("/overrides/2025-03-02").status_code == 401
+
+
 class TestSettingsEndpoints:
     """Tests for settings endpoints."""
 

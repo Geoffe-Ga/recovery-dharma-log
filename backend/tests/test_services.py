@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import (
     BookChapter,
+    FormatOverride,
     FormatRotation,
     Group,
     MeetingLog,
@@ -173,6 +174,66 @@ class TestFormatRotation:
         group = _create_group(db_session)
         count = count_meetings_since_start(db_session, group, date(2024, 12, 1))
         assert count == 0
+
+
+class TestFormatOverrides:
+    """Tests for per-date format overrides."""
+
+    def test_override_takes_precedence(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Jan 5, 2025 is normally Speaker (position 0)
+        assert get_format_for_date(db_session, group, date(2025, 1, 5)) == "Speaker"
+        # Add an override to make it Topic
+        db_session.add(
+            FormatOverride(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Topic",
+            )
+        )
+        db_session.flush()
+        assert get_format_for_date(db_session, group, date(2025, 1, 5)) == "Topic"
+
+    def test_override_does_not_affect_other_dates(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        db_session.add(
+            FormatOverride(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Book Study",
+            )
+        )
+        db_session.flush()
+        # Jan 12 should still follow the rotation (Topic)
+        assert get_format_for_date(db_session, group, date(2025, 1, 12)) == "Topic"
+
+    def test_override_does_not_shift_rotation(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Override Jan 5 from Speaker to Topic
+        db_session.add(
+            FormatOverride(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 5),
+                format_type="Topic",
+            )
+        )
+        db_session.flush()
+        # Other weeks still follow rotation by week-of-month
+        assert get_format_for_date(db_session, group, date(2025, 1, 19)) == "Book Study"
+        assert get_format_for_date(db_session, group, date(2025, 1, 26)) == "Topic"
+
+    def test_override_with_book_study(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        # Jan 12 is normally Topic, override to Book Study
+        db_session.add(
+            FormatOverride(
+                group_id=group.id,
+                meeting_date=date(2025, 1, 12),
+                format_type="Book Study",
+            )
+        )
+        db_session.flush()
+        assert get_format_for_date(db_session, group, date(2025, 1, 12)) == "Book Study"
 
 
 class TestNextMeetingDate:
