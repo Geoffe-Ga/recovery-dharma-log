@@ -1,6 +1,6 @@
 /** Root application component with routing. */
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import {
   BrowserRouter,
   NavLink,
@@ -15,6 +15,7 @@ import { Landing } from "./pages/Landing";
 import { Log } from "./pages/Log";
 import { Login } from "./pages/Login";
 import { Settings } from "./pages/Settings";
+import { Setup } from "./pages/Setup";
 
 function AuthenticatedApp({
   onLogout,
@@ -22,12 +23,42 @@ function AuthenticatedApp({
   onLogout: () => void;
 }): React.ReactElement {
   const [groupName, setGroupName] = useState("RD Log");
+  const [setupCompleted, setSetupCompleted] = useState<boolean | null>(null);
 
   useEffect(() => {
+    getSettings()
+      .then((settings) => {
+        setGroupName(settings.name);
+        setSetupCompleted(settings.setup_completed);
+      })
+      .catch(() => {
+        setSetupCompleted(true);
+      });
+  }, []);
+
+  const handleSetupComplete = useCallback(() => {
+    setSetupCompleted(true);
     getSettings()
       .then((settings) => setGroupName(settings.name))
       .catch(() => {});
   }, []);
+
+  if (setupCompleted === null) {
+    return <div className="container" aria-busy="true" />;
+  }
+
+  if (!setupCompleted) {
+    return (
+      <div className="container">
+        <Routes>
+          <Route
+            path="*"
+            element={<Setup onComplete={handleSetupComplete} />}
+          />
+        </Routes>
+      </div>
+    );
+  }
 
   return (
     <>

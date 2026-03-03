@@ -1,6 +1,7 @@
 /** Smoke tests for App component rendering. */
 
 import { render, screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { App } from "../src/App";
 import type { GroupSettings } from "../src/types/index";
@@ -22,6 +23,15 @@ jest.mock("../src/pages/Log", () => ({
 
 jest.mock("../src/pages/Settings", () => ({
   Settings: () => <div data-testid="settings-page">Settings</div>,
+}));
+
+jest.mock("../src/pages/Setup", () => ({
+  Setup: ({ onComplete }: { onComplete: () => void }) => (
+    <div data-testid="setup-page">
+      Setup
+      <button onClick={onComplete}>Finish</button>
+    </div>
+  ),
 }));
 
 // Override BrowserRouter with MemoryRouter for test control
@@ -51,6 +61,7 @@ const mockSettings: GroupSettings = {
   start_date: "2025-01-05",
   meeting_time: "18:00:00",
   format_rotation: ["Speaker", "Topic", "Book Study"],
+  setup_completed: true,
 };
 
 const unauthState = {
@@ -132,20 +143,20 @@ describe("App", () => {
       });
     });
 
-    it("shows fallback RD Log while settings are loading", () => {
+    it("shows loading state while settings are loading", () => {
       mockUseAuth.mockReturnValue(authState);
       (api.getSettings as jest.Mock).mockReturnValue(new Promise(() => {}));
 
-      render(
+      const { container } = render(
         <MemoryRouter>
           <App />
         </MemoryRouter>,
       );
 
-      expect(screen.getByText("RD Log")).toBeInTheDocument();
+      expect(container.querySelector('[aria-busy="true"]')).toBeInTheDocument();
     });
 
-    it("keeps fallback RD Log when settings fetch fails", async () => {
+    it("shows main app when settings fetch fails", async () => {
       mockUseAuth.mockReturnValue(authState);
       (api.getSettings as jest.Mock).mockRejectedValue(
         new Error("Network error"),
@@ -157,30 +168,31 @@ describe("App", () => {
         </MemoryRouter>,
       );
 
-      // Wait for the rejection to be handled
+      // On failure, setup_completed defaults to true, so main app shows
       await waitFor(() => {
-        expect(api.getSettings).toHaveBeenCalled();
+        expect(screen.getByTestId("landing-page")).toBeInTheDocument();
       });
-
-      expect(screen.getByText("RD Log")).toBeInTheDocument();
     });
   });
 
   describe("hamburger navigation", () => {
     beforeEach(() => {
       mockUseAuth.mockReturnValue(authState);
-      (api.getSettings as jest.Mock).mockReturnValue(new Promise(() => {}));
+      (api.getSettings as jest.Mock).mockResolvedValue(mockSettings);
     });
 
-    it("renders hamburger toggle on mobile", () => {
+    it("renders hamburger toggle on mobile", async () => {
       render(
         <MemoryRouter>
           <App />
         </MemoryRouter>,
       );
 
+      await waitFor(() => {
+        expect(screen.getByLabelText("Toggle navigation")).toBeInTheDocument();
+      });
+
       const toggle = screen.getByLabelText("Toggle navigation");
-      expect(toggle).toBeInTheDocument();
       expect(toggle).toHaveAttribute("type", "checkbox");
 
       const hamburger = toggle.nextElementSibling;
@@ -188,14 +200,17 @@ describe("App", () => {
       expect(hamburger?.tagName).toBe("LABEL");
     });
 
-    it("nav links are still present", () => {
+    it("nav links are still present", async () => {
       render(
         <MemoryRouter>
           <App />
         </MemoryRouter>,
       );
 
-      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+      await waitFor(() => {
+        expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+      });
+
       expect(screen.getByRole("link", { name: "Log" })).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: "Settings" }),
@@ -203,6 +218,71 @@ describe("App", () => {
       expect(
         screen.getByRole("button", { name: "Log Out" }),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("setup redirect", () => {
+    it("shows setup wizard when setup_completed is false", async () => {
+      mockUseAuth.mockReturnValue(authState);
+      (api.getSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        setup_completed: false,
+      });
+
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("setup-page")).toBeInTheDocument();
+      });
+    });
+
+    it("shows main app when setup_completed is true", async () => {
+      mockUseAuth.mockReturnValue(authState);
+      (api.getSettings as jest.Mock).mockResolvedValue(mockSettings);
+
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("landing-page")).toBeInTheDocument();
+      });
+    });
+
+    it("transitions from setup to main app after completion", async () => {
+      mockUseAuth.mockReturnValue(authState);
+      let callCount = 0;
+      (api.getSettings as jest.Mock).mockImplementation(() => {
+        callCount++;
+        return Promise.resolve({
+          ...mockSettings,
+          setup_completed: callCount > 1,
+        });
+      });
+
+      render(
+        <MemoryRouter>
+          <App />
+        </MemoryRouter>,
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId("setup-page")).toBeInTheDocument();
+      });
+
+      // Click the Finish button in the mock Setup component
+      const user = userEvent.setup();
+      await user.click(screen.getByRole("button", { name: "Finish" }));
+
+      await waitFor(() => {
+        expect(screen.getByTestId("landing-page")).toBeInTheDocument();
+      });
     });
   });
 });

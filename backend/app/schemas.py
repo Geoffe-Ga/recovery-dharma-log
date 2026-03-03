@@ -42,6 +42,7 @@ class GroupSettings(BaseModel):
     meeting_time: time | None = None
     start_date: date
     format_rotation: list[str]
+    setup_completed: bool = True
 
 
 class GroupSettingsUpdate(BaseModel):
@@ -279,3 +280,28 @@ class FormatOverrideResponse(BaseModel):
     format_type: str
 
     model_config = {"from_attributes": True}
+
+
+# --- Setup Wizard ---
+
+
+class SetupBasics(BaseModel):
+    """Request schema for wizard step 1: group basics."""
+
+    name: str
+    meeting_day: int = Field(ge=0, le=6)
+    meeting_time: time
+    start_date: date
+
+
+class SetupRotation(BaseModel):
+    """Request schema for wizard step 2: format rotation."""
+
+    format_rotation: list[str] = Field(min_length=1)
+
+
+class SetupTopics(BaseModel):
+    """Request schema for wizard step 3: topic selection."""
+
+    keep_topics: list[str] = []
+    new_topics: list[str] = []

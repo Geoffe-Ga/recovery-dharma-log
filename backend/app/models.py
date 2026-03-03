@@ -55,6 +55,11 @@ class Group(Base):
         Integer,
         nullable=True,
     )
+    setup_completed: Mapped[bool] = mapped_column(
+        Boolean,
+        nullable=False,
+        default=False,
+    )
 
     users: Mapped[list["User"]] = relationship(back_populates="group")
     format_rotations: Mapped[list["FormatRotation"]] = relationship(

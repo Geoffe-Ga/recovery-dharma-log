@@ -17,6 +17,7 @@ from app.routers import (
     export,
     meetings,
     overrides,
+    setup,
     speakers,
     topics,
 )
@@ -31,6 +32,14 @@ _MIGRATIONS: list[tuple[str, str, str]] = [
     ("groups", "current_book_assignment_index", "INTEGER DEFAULT 0"),
     ("groups", "book_cycle", "INTEGER DEFAULT 1"),
     ("groups", "current_chapter_marker", "INTEGER"),
+    ("groups", "setup_completed", "BOOLEAN DEFAULT 0"),
+]
+
+
+_DATA_MIGRATIONS: list[str] = [
+    # Existing groups should be treated as already set up
+    "UPDATE groups SET setup_completed = 1 WHERE setup_completed = 0"
+    " AND id IN (SELECT group_id FROM users)",
 ]
 
 
@@ -52,6 +61,14 @@ def _run_migrations() -> None:
                     conn.commit()
             except OperationalError:
                 pass  # Column already exists (race or stale inspector cache)
+
+    for sql in _DATA_MIGRATIONS:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(sql))
+                conn.commit()
+        except OperationalError:
+            pass
 
 
 @asynccontextmanager
@@ -81,6 +98,7 @@ app.include_router(settings_router.router)
 app.include_router(overrides.router)
 app.include_router(export.router)
 app.include_router(activity.router)
+app.include_router(setup.router)
 
 
 @app.get("/health")

@@ -31,6 +31,7 @@ def get_settings(
         "start_date": group.start_date,
         "meeting_time": group.meeting_time,
         "format_rotation": [r.format_type for r in rotations],
+        "setup_completed": group.setup_completed,
     }
 
 
@@ -71,4 +72,5 @@ def update_settings(
         "start_date": group.start_date,
         "meeting_time": group.meeting_time,
         "format_rotation": [r.format_type for r in rotations],
+        "setup_completed": group.setup_completed,
     }
