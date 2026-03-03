@@ -928,6 +928,7 @@ describe("Landing", () => {
     });
 
     it("opens override dropdown when format badge is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
@@ -939,7 +940,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -951,6 +952,7 @@ describe("Landing", () => {
     });
 
     it("shows alternative format options (excludes current)", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
@@ -963,7 +965,7 @@ describe("Landing", () => {
       });
 
       // March 1 is Speaker format, so dropdown should show Topic and Book Study
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -979,6 +981,7 @@ describe("Landing", () => {
     });
 
     it("calls setFormatOverride when option is selected", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       setFormatOverride.mockResolvedValue({});
       renderLanding();
@@ -991,7 +994,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -1001,7 +1004,7 @@ describe("Landing", () => {
         expect(screen.getByRole("menu")).toBeInTheDocument();
       });
 
-      fireEvent.click(screen.getByRole("menuitem", { name: "Topic" }));
+      await user.click(screen.getByRole("menuitem", { name: "Topic" }));
 
       await waitFor(() => {
         expect(setFormatOverride).toHaveBeenCalledWith("2026-03-01", "Topic");
@@ -1009,6 +1012,7 @@ describe("Landing", () => {
     });
 
     it("shows Reset to rotation option when override exists", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       getFormatOverrides.mockResolvedValue([
         { id: 1, meeting_date: "2026-03-01", format_type: "Topic" },
@@ -1023,7 +1027,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -1037,6 +1041,7 @@ describe("Landing", () => {
     });
 
     it("calls deleteFormatOverride when Reset to rotation is clicked", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       getFormatOverrides.mockResolvedValue([
         { id: 1, meeting_date: "2026-03-01", format_type: "Topic" },
@@ -1052,7 +1057,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -1064,7 +1069,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("menuitem", { name: "Reset to rotation" }),
       );
 
@@ -1074,6 +1079,7 @@ describe("Landing", () => {
     });
 
     it("closes dropdown when badge is clicked again", async () => {
+      const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
@@ -1085,7 +1091,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
@@ -1095,7 +1101,7 @@ describe("Landing", () => {
         expect(screen.getByRole("menu")).toBeInTheDocument();
       });
 
-      fireEvent.click(
+      await user.click(
         screen.getByRole("button", {
           name: "Change format for Sunday, March 1",
         }),
