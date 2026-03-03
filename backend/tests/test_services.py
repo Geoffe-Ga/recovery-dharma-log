@@ -1383,3 +1383,71 @@ class TestBookPositionTracking:
         assert summary is not None
         assert "The Fifth Fold" in summary
         assert "chapter marker" in summary
+
+
+class TestInviteCodes:
+    """Tests for invite code service functions."""
+
+    def test_generate_invite_code_is_8_chars(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Generated code is 8 alphanumeric characters."""
+        group = _create_group(db_session)
+        from app.services import generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        assert len(code) == 8
+        assert code.isalnum()
+        assert group.invite_code == code
+
+    def test_revoke_clears_code(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Revoking sets invite_code to None."""
+        group = _create_group(db_session)
+        from app.services import generate_invite_code, revoke_invite_code
+
+        generate_invite_code(db_session, group)
+        assert group.invite_code is not None
+        revoke_invite_code(db_session, group)
+        assert group.invite_code is None
+
+    def test_find_group_by_invite_code(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Can look up a group by its invite code."""
+        group = _create_group(db_session)
+        from app.services import find_group_by_invite_code, generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        db_session.flush()
+        found = find_group_by_invite_code(db_session, code)
+        assert found is not None
+        assert found.id == group.id
+
+    def test_find_group_by_invite_code_case_insensitive(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Invite code lookup is case-insensitive."""
+        group = _create_group(db_session)
+        from app.services import find_group_by_invite_code, generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        db_session.flush()
+        found = find_group_by_invite_code(db_session, code.lower())
+        assert found is not None
+        assert found.id == group.id
+
+    def test_find_nonexistent_code_returns_none(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Looking up a nonexistent code returns None."""
+        from app.services import find_group_by_invite_code
+
+        found = find_group_by_invite_code(db_session, "NOTACODE")
+        assert found is None

@@ -790,6 +790,33 @@ def restart_book(db: Session, group: Group) -> dict:
     return get_book_position(db, group)
 
 
+# --- Invite Codes ---
+
+
+def generate_invite_code(db: Session, group: Group) -> str:
+    """Generate a unique 8-character alphanumeric invite code."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    for _ in range(10):
+        code = "".join(secrets.choice(alphabet) for _ in range(8))
+        existing = db.query(Group).filter(Group.invite_code == code).first()
+        if not existing:
+            group.invite_code = code
+            db.flush()
+            return code
+    raise ValueError("Could not generate unique invite code")
+
+
+def revoke_invite_code(db: Session, group: Group) -> None:
+    """Revoke the current invite code."""
+    group.invite_code = None
+    db.flush()
+
+
+def find_group_by_invite_code(db: Session, code: str) -> Group | None:
+    """Look up a group by its invite code."""
+    return db.query(Group).filter(Group.invite_code == code.upper()).first()
+
+
 def get_speaker_banners(db: Session, group: Group) -> list[str]:
     """Check for Speaker weeks within 30 days that lack an assigned speaker."""
     banners: list[str] = []

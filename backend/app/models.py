@@ -60,6 +60,11 @@ class Group(Base):
         nullable=False,
         default=False,
     )
+    invite_code: Mapped[str | None] = mapped_column(
+        String(8),
+        nullable=True,
+        unique=True,
+    )
 
     users: Mapped[list["User"]] = relationship(back_populates="group")
     format_rotations: Mapped[list["FormatRotation"]] = relationship(

@@ -10,6 +10,7 @@ import {
   deleteAssignment,
   deleteTopic,
   finalizePlan,
+  generateInviteCode,
   getBookPosition,
   getChapters,
   getReadingPlan,
@@ -17,6 +18,7 @@ import {
   getTopics,
   reshuffleTopics,
   restartBook,
+  revokeInviteCode,
   setBookPosition,
   updateAssignment,
   updateSettings,
@@ -755,6 +757,74 @@ export function Settings(): React.ReactElement {
           )}
         </section>
       )}
+
+      <section id="invite">
+        <h2>Invite Members</h2>
+        {settings?.invite_code ? (
+          <div>
+            <p>Share this code with others so they can join your group:</p>
+            <div
+              style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}
+            >
+              <code style={{ fontSize: "1.2rem", letterSpacing: "0.1em" }}>
+                {settings.invite_code}
+              </code>
+              <button
+                type="button"
+                className="outline"
+                onClick={() => {
+                  navigator.clipboard
+                    .writeText(settings.invite_code ?? "")
+                    .then(() => showToast("success", "Code copied!"))
+                    .catch(() => {});
+                }}
+              >
+                Copy
+              </button>
+              <button
+                type="button"
+                className="outline"
+                onClick={() => {
+                  revokeInviteCode()
+                    .then(() => {
+                      setSettings((prev) =>
+                        prev ? { ...prev, invite_code: null } : prev,
+                      );
+                      setSavedSettings((prev) =>
+                        prev ? { ...prev, invite_code: null } : prev,
+                      );
+                      showToast("success", "Invite code revoked");
+                    })
+                    .catch(() => showToast("error", "Failed to revoke"));
+                }}
+              >
+                Revoke
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              generateInviteCode()
+                .then((res) => {
+                  setSettings((prev) =>
+                    prev ? { ...prev, invite_code: res.invite_code } : prev,
+                  );
+                  setSavedSettings((prev) =>
+                    prev ? { ...prev, invite_code: res.invite_code } : prev,
+                  );
+                  showToast("success", "Invite code generated!");
+                })
+                .catch(() =>
+                  showToast("error", "Failed to generate invite code"),
+                );
+            }}
+          >
+            Generate Invite Code
+          </button>
+        )}
+      </section>
 
       <section id="danger-zone" className="rd-danger-zone">
         <h2>Danger Zone</h2>

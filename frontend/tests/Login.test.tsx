@@ -76,4 +76,45 @@ describe("Login", () => {
       ).toBeInTheDocument();
     });
   });
+
+  it("calls onRegister without invite code by default", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.click(screen.getByText("Need an account? Register"));
+    await user.type(screen.getByLabelText("Username"), "newuser");
+    await user.type(screen.getByLabelText("Password"), "newpass");
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(mockRegister).toHaveBeenCalledWith("newuser", "newpass", undefined);
+  });
+
+  it("shows invite code input when checkbox is checked", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.click(screen.getByText("Need an account? Register"));
+    expect(screen.queryByLabelText("Invite Code")).not.toBeInTheDocument();
+    await user.click(screen.getByLabelText("I have an invite code"));
+    expect(screen.getByLabelText("Invite Code")).toBeInTheDocument();
+  });
+
+  it("passes invite code to onRegister when provided", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.click(screen.getByText("Need an account? Register"));
+    await user.click(screen.getByLabelText("I have an invite code"));
+    await user.type(screen.getByLabelText("Username"), "newuser");
+    await user.type(screen.getByLabelText("Password"), "newpass");
+    await user.type(screen.getByLabelText("Invite Code"), "abcd1234");
+    await user.click(screen.getByRole("button", { name: "Create Account" }));
+    expect(mockRegister).toHaveBeenCalledWith("newuser", "newpass", "ABCD1234");
+  });
+
+  it("hides invite code input when unchecking checkbox", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.click(screen.getByText("Need an account? Register"));
+    await user.click(screen.getByLabelText("I have an invite code"));
+    expect(screen.getByLabelText("Invite Code")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("I have an invite code"));
+    expect(screen.queryByLabelText("Invite Code")).not.toBeInTheDocument();
+  });
 });

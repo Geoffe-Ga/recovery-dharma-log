@@ -18,7 +18,11 @@ interface AuthState {
 
 interface AuthActions {
   login: (username: string, password: string) => Promise<void>;
-  register: (username: string, password: string) => Promise<void>;
+  register: (
+    username: string,
+    password: string,
+    inviteCode?: string,
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -42,19 +46,22 @@ export function useAuth(): AuthState & AuthActions {
     }
   }, []);
 
-  const register = useCallback(async (username: string, password: string) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const newUser = await apiRegister(username, password);
-      await apiLogin(username, password);
-      setUser(newUser);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const register = useCallback(
+    async (username: string, password: string, inviteCode?: string) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const newUser = await apiRegister(username, password, inviteCode);
+        await apiLogin(username, password);
+        setUser(newUser);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Registration failed");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   const logout = useCallback(() => {
     apiLogout();

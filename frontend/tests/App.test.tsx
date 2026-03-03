@@ -62,6 +62,7 @@ const mockSettings: GroupSettings = {
   meeting_time: "18:00:00",
   format_rotation: ["Speaker", "Topic", "Book Study"],
   setup_completed: true,
+  invite_code: null,
 };
 
 const unauthState = {

@@ -18,6 +18,7 @@ export interface GroupSettings {
   meeting_time: string | null;
   format_rotation: string[];
   setup_completed: boolean;
+  invite_code: string | null;
 }
 
 export interface GroupSettingsUpdate {

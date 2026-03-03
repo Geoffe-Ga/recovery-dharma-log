@@ -6,7 +6,11 @@ import { useShowToast } from "../contexts/ToastContext";
 
 interface LoginProps {
   onLogin: (username: string, password: string) => Promise<void>;
-  onRegister: (username: string, password: string) => Promise<void>;
+  onRegister: (
+    username: string,
+    password: string,
+    inviteCode?: string,
+  ) => Promise<void>;
   error: string | null;
   loading: boolean;
 }
@@ -20,6 +24,8 @@ export function Login({
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isRegister, setIsRegister] = useState(false);
+  const [hasInviteCode, setHasInviteCode] = useState(false);
+  const [inviteCode, setInviteCode] = useState("");
   const [searchParams] = useSearchParams();
   const showToast = useShowToast();
 
@@ -32,7 +38,11 @@ export function Login({
   const handleSubmit = async (e: FormEvent): Promise<void> => {
     e.preventDefault();
     if (isRegister) {
-      await onRegister(username, password);
+      await onRegister(
+        username,
+        password,
+        hasInviteCode ? inviteCode.toUpperCase() : undefined,
+      );
     } else {
       await onLogin(username, password);
     }
@@ -64,6 +74,33 @@ export function Login({
             autoComplete={isRegister ? "new-password" : "current-password"}
           />
         </label>
+        {isRegister && (
+          <>
+            <label>
+              <input
+                type="checkbox"
+                checked={hasInviteCode}
+                onChange={(e) => setHasInviteCode(e.target.checked)}
+              />
+              I have an invite code
+            </label>
+            {hasInviteCode && (
+              <label>
+                Invite Code
+                <input
+                  type="text"
+                  value={inviteCode}
+                  onChange={(e) =>
+                    setInviteCode(e.target.value.toUpperCase().slice(0, 8))
+                  }
+                  placeholder="Enter 8-character code"
+                  maxLength={8}
+                  style={{ textTransform: "uppercase" }}
+                />
+              </label>
+            )}
+          </>
+        )}
         <button type="submit" disabled={loading}>
           {loading
             ? "Please wait..."
