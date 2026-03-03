@@ -5,6 +5,7 @@ import type {
   ActivityLogEntry,
   AssignmentUpdate,
   BookChapter,
+  BookPosition,
   FormatOverride,
   GroupSettings,
   GroupSettingsUpdate,
@@ -148,6 +149,34 @@ export async function updateAssignment(
 
 export async function deleteAssignment(assignmentId: number): Promise<void> {
   await api.delete(`/book/assignments/${assignmentId}`);
+}
+
+export async function getBookPosition(): Promise<BookPosition> {
+  return api.get<BookPosition>("/book/position");
+}
+
+export async function setBookPosition(
+  assignmentIndex: number,
+): Promise<BookPosition> {
+  return api.put<BookPosition>("/book/position", {
+    assignment_index: assignmentIndex,
+  });
+}
+
+export async function setChapterMarker(
+  chapterOrder: number,
+): Promise<BookPosition> {
+  return api.put<BookPosition>("/book/chapter-marker", {
+    chapter_order: chapterOrder,
+  });
+}
+
+export async function advanceBook(): Promise<BookPosition> {
+  return api.post<BookPosition>("/book/advance");
+}
+
+export async function restartBook(): Promise<BookPosition> {
+  return api.post<BookPosition>("/book/restart");
 }
 
 // --- Speakers ---

@@ -11,15 +11,23 @@ from app.models import BookChapter, ReadingAssignment, User
 from app.schemas import (
     AssignmentUpdate,
     BookChapterResponse,
+    BookPositionResponse,
+    BookPositionUpdate,
+    ChapterMarkerUpdate,
     ReadingAssignmentResponse,
     ReadingPlanStatus,
 )
 from app.services import (
     add_chapter_to_current_assignment,
+    advance_book_position,
     delete_assignment,
     finalize_current_assignment,
+    get_book_position,
     get_plan_status,
     page_count,
+    restart_book,
+    set_book_position,
+    set_chapter_marker,
     update_assignment_chapters,
 )
 
@@ -173,3 +181,79 @@ def remove_assignment(
             detail=str(exc),
         ) from exc
     db.commit()
+
+
+# --- Book Position Tracking ---
+
+
+@router.get("/position", response_model=BookPositionResponse)
+def get_position(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Get the current book position."""
+    return get_book_position(db, current_user.group)
+
+
+@router.put("/position", response_model=BookPositionResponse)
+def update_position(
+    body: BookPositionUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Set the current book assignment index."""
+    try:
+        set_book_position(db, current_user.group, body.assignment_index)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    db.commit()
+    return get_book_position(db, current_user.group)
+
+
+@router.put("/chapter-marker", response_model=BookPositionResponse)
+def update_chapter_marker(
+    body: ChapterMarkerUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Set the chapter marker for pre-assignment tracking."""
+    try:
+        set_chapter_marker(db, current_user.group, body.chapter_order)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    db.commit()
+    return get_book_position(db, current_user.group)
+
+
+@router.post("/advance", response_model=BookPositionResponse)
+def advance_position(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Advance to the next book assignment."""
+    try:
+        result = advance_book_position(db, current_user.group)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    db.commit()
+    return result
+
+
+@router.post("/restart", response_model=BookPositionResponse)
+def restart_position(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Restart the book from the beginning, incrementing the cycle."""
+    result = restart_book(db, current_user.group)
+    db.commit()
+    return result

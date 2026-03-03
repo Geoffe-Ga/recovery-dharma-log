@@ -102,6 +102,18 @@ export interface AssignmentUpdate {
   chapter_ids: number[];
 }
 
+export interface BookPosition {
+  current_assignment_index: number;
+  book_cycle: number;
+  total_assignments: number;
+  current_assignment: ReadingAssignment | null;
+  chapter_marker: number | null;
+}
+
+export interface BookPositionUpdate {
+  assignment_index: number;
+}
+
 export interface ReadingPlanStatus {
   current_assignment_chapters: BookChapter[];
   current_assignment_total_pages: number;

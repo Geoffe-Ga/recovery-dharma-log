@@ -183,6 +183,28 @@ class AssignmentUpdate(BaseModel):
     chapter_ids: list[int]
 
 
+class BookPositionUpdate(BaseModel):
+    """Request schema for setting the current book assignment index."""
+
+    assignment_index: int = Field(ge=0)
+
+
+class ChapterMarkerUpdate(BaseModel):
+    """Request schema for setting the current chapter marker."""
+
+    chapter_order: int = Field(ge=1)
+
+
+class BookPositionResponse(BaseModel):
+    """Response schema for the current book position."""
+
+    current_assignment_index: int
+    book_cycle: int
+    total_assignments: int
+    current_assignment: ReadingAssignmentResponse | None = None
+    chapter_marker: int | None = None
+
+
 class ReadingPlanStatus(BaseModel):
     """Response schema for reading plan builder state."""
 

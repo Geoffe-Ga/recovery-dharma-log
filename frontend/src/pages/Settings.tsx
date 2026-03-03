@@ -10,17 +10,21 @@ import {
   deleteAssignment,
   deleteTopic,
   finalizePlan,
+  getBookPosition,
   getChapters,
   getReadingPlan,
   getSettings,
   getTopics,
   reshuffleTopics,
+  restartBook,
+  setBookPosition,
   updateAssignment,
   updateSettings,
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
 import type {
   BookChapter,
+  BookPosition,
   GroupSettings,
   ReadingPlanStatus,
   Topic,
@@ -56,6 +60,7 @@ export function Settings(): React.ReactElement {
   const [selectedChapterIds, setSelectedChapterIds] = useState<number[]>([]);
   const [addingChapters, setAddingChapters] = useState(false);
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
+  const [position, setPosition] = useState<BookPosition | null>(null);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -66,13 +71,20 @@ export function Settings(): React.ReactElement {
   const loadSettings = useCallback(() => {
     setError(null);
     setLoading(true);
-    Promise.all([getSettings(), getTopics(), getReadingPlan(), getChapters()])
-      .then(([s, t, p, c]) => {
+    Promise.all([
+      getSettings(),
+      getTopics(),
+      getReadingPlan(),
+      getChapters(),
+      getBookPosition(),
+    ])
+      .then(([s, t, p, c, pos]) => {
         setSettings(s);
         setSavedSettings(s);
         setTopics(t);
         setPlan(p);
         setAllChapters(c);
+        setPosition(pos);
       })
       .catch((err: unknown) =>
         setError(err instanceof Error ? err.message : "Failed to load"),
@@ -242,6 +254,36 @@ export function Settings(): React.ReactElement {
     setEditingAssignmentId(null);
     setEditChapterIds([]);
   }, []);
+
+  const handleSetAsCurrent = useCallback(
+    async (assignmentIndex: number) => {
+      try {
+        const updated = await setBookPosition(assignmentIndex);
+        setPosition(updated);
+        showToast("success", "Current assignment updated");
+      } catch (err: unknown) {
+        showToast(
+          "error",
+          err instanceof Error ? err.message : "Failed to set position",
+        );
+      }
+    },
+    [showToast],
+  );
+
+  const handleRestartBook = useCallback(async () => {
+    try {
+      const updated = await restartBook();
+      setPosition(updated);
+      setConfirmAction(null);
+      showToast("success", "Book restarted");
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to restart book",
+      );
+    }
+  }, [showToast]);
 
   const handleDeleteAssignment = useCallback(async (assignmentId: number) => {
     try {
@@ -565,8 +607,11 @@ export function Settings(): React.ReactElement {
           {plan.completed_assignments.length > 0 && (
             <>
               <h3>Completed Assignments</h3>
+              {position && (
+                <p className="rd-meta">Cycle {position.book_cycle}</p>
+              )}
               <ol>
-                {plan.completed_assignments.map((a) => (
+                {plan.completed_assignments.map((a, i) => (
                   <li key={a.id}>
                     {editingAssignmentId === a.id ? (
                       <div>
@@ -600,8 +645,16 @@ export function Settings(): React.ReactElement {
                         </div>
                       </div>
                     ) : (
-                      <div className="rd-assignment-item">
+                      <div
+                        className={`rd-assignment-item${position && position.current_assignment_index === i ? " rd-assignment-item--current" : ""}`}
+                      >
                         <span>
+                          {position &&
+                            position.current_assignment_index === i && (
+                              <strong className="rd-current-marker">
+                                Current:{" "}
+                              </strong>
+                            )}
                           {a.chapters.map((c) => c.title).join(", ")} (
                           {a.total_pages} pages)
                           {a.meeting_date && (
@@ -612,6 +665,16 @@ export function Settings(): React.ReactElement {
                           )}
                         </span>
                         <span className="rd-assignment-item__actions">
+                          {position &&
+                            position.current_assignment_index !== i && (
+                              <button
+                                type="button"
+                                className="rd-ghost"
+                                onClick={() => handleSetAsCurrent(i)}
+                              >
+                                Set as Current
+                              </button>
+                            )}
                           <button
                             type="button"
                             className="rd-ghost"
@@ -658,6 +721,36 @@ export function Settings(): React.ReactElement {
                   </li>
                 ))}
               </ol>
+              {plan.unassigned_chapters.length === 0 && (
+                <div className="rd-button-row">
+                  {confirmAction === "restart-book" ? (
+                    <>
+                      <button
+                        type="button"
+                        className="rd-danger"
+                        onClick={handleRestartBook}
+                      >
+                        Confirm Restart
+                      </button>
+                      <button
+                        type="button"
+                        className="outline"
+                        onClick={() => setConfirmAction(null)}
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      className="rd-danger-outline"
+                      onClick={() => setConfirmAction("restart-book")}
+                    >
+                      Restart Book
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
         </section>

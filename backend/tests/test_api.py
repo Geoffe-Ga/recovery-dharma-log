@@ -949,3 +949,105 @@ class TestExportEndpoints:
             headers=auth_headers,
         )
         assert response.status_code == 422
+
+
+class TestBookPositionEndpoints:
+    """Tests for book position tracking endpoints."""
+
+    def _finalize_assignments(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+        count: int = 3,
+    ) -> None:
+        """Helper to create finalized assignments."""
+        for _ in range(count):
+            client.post("/book/plan/add-chapter", headers=auth_headers)
+            client.post("/book/plan/finalize", headers=auth_headers)
+
+    def test_get_position_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """GET /book/position returns valid response."""
+        response = client.get("/book/position", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert "current_assignment_index" in data
+        assert "book_cycle" in data
+        assert "total_assignments" in data
+
+    def test_get_position_after_finalize(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Position shows correct total after finalization."""
+        self._finalize_assignments(client, auth_headers, 2)
+        response = client.get("/book/position", headers=auth_headers)
+        data = response.json()
+        assert data["total_assignments"] == 2
+        assert data["current_assignment"] is not None
+
+    def test_set_position_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /book/position updates index."""
+        self._finalize_assignments(client, auth_headers, 3)
+        response = client.put(
+            "/book/position",
+            json={"assignment_index": 2},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        assert response.json()["current_assignment_index"] == 2
+
+    def test_set_position_out_of_range(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """PUT /book/position with invalid index returns 400."""
+        self._finalize_assignments(client, auth_headers, 2)
+        response = client.put(
+            "/book/position",
+            json={"assignment_index": 10},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_advance_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /book/advance moves to next assignment."""
+        self._finalize_assignments(client, auth_headers, 3)
+        response = client.post("/book/advance", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["current_assignment_index"] == 1
+
+    def test_restart_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /book/restart resets index and increments cycle."""
+        self._finalize_assignments(client, auth_headers, 3)
+        # Move forward first
+        client.post("/book/advance", headers=auth_headers)
+        response = client.post("/book/restart", headers=auth_headers)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["current_assignment_index"] == 0
+        assert data["book_cycle"] == 2
+
+    def test_position_requires_auth(self, client: TestClient) -> None:
+        """Position endpoints return 401 without auth."""
+        assert client.get("/book/position").status_code == 401
+        assert client.put("/book/position").status_code == 401
+        assert client.post("/book/advance").status_code == 401
+        assert client.post("/book/restart").status_code == 401

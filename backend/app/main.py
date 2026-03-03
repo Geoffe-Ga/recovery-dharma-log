@@ -28,6 +28,9 @@ from app.routers import (
 _MIGRATIONS: list[tuple[str, str, str]] = [
     ("meeting_logs", "attendance_count", "INTEGER"),
     ("reading_assignments", "meeting_date", "DATE"),
+    ("groups", "current_book_assignment_index", "INTEGER DEFAULT 0"),
+    ("groups", "book_cycle", "INTEGER DEFAULT 1"),
+    ("groups", "current_chapter_marker", "INTEGER"),
 ]
 
 
