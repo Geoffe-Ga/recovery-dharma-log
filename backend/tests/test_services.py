@@ -1159,18 +1159,14 @@ class TestBookPositionTracking:
         # Default index is 0 -> first assignment
         from app.services import _get_book_chapter_summary
 
-        summary = _get_book_chapter_summary(
-            db_session, group, date(2025, 3, 1)
-        )
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
         assert summary is not None
         assert "Chapter 1" in summary
 
         # Move to index 2 -> third assignment
         group.current_book_assignment_index = 2
         db_session.flush()
-        summary = _get_book_chapter_summary(
-            db_session, group, date(2025, 3, 1)
-        )
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
         assert summary is not None
         assert "Chapter 3" in summary
 
@@ -1298,16 +1294,25 @@ class TestBookPositionTracking:
         group = _create_group(db_session)
         # Create chapters
         ch1 = BookChapter(
-            group_id=group.id, order=1,
-            start_page="1", end_page="10", title="Ch 1",
+            group_id=group.id,
+            order=1,
+            start_page="1",
+            end_page="10",
+            title="Ch 1",
         )
         ch2 = BookChapter(
-            group_id=group.id, order=2,
-            start_page="11", end_page="20", title="Ch 2",
+            group_id=group.id,
+            order=2,
+            start_page="11",
+            end_page="20",
+            title="Ch 2",
         )
         ch3 = BookChapter(
-            group_id=group.id, order=3,
-            start_page="21", end_page="30", title="Ch 3",
+            group_id=group.id,
+            order=3,
+            start_page="21",
+            end_page="30",
+            title="Ch 3",
         )
         db_session.add_all([ch1, ch2, ch3])
         db_session.flush()
@@ -1318,14 +1323,16 @@ class TestBookPositionTracking:
 
         # Create first assignment with ch1, finalize it
         ra1 = ReadingAssignment(
-            group_id=group.id, assignment_order=1,
+            group_id=group.id,
+            assignment_order=1,
             chapters_json=json.dumps([ch1.id]),
             meeting_date=date(2025, 2, 1),
         )
         db_session.add(ra1)
         # Create draft assignment with ch2+ch3
         draft = ReadingAssignment(
-            group_id=group.id, assignment_order=2,
+            group_id=group.id,
+            assignment_order=2,
             chapters_json=json.dumps([ch2.id, ch3.id]),
         )
         db_session.add(draft)
@@ -1344,8 +1351,11 @@ class TestBookPositionTracking:
         """When no finalized assignments, show chapter marker info."""
         group = _create_group(db_session)
         ch = BookChapter(
-            group_id=group.id, order=5,
-            start_page="41", end_page="50", title="The Fifth Fold",
+            group_id=group.id,
+            order=5,
+            start_page="41",
+            end_page="50",
+            title="The Fifth Fold",
         )
         db_session.add(ch)
         db_session.flush()
@@ -1354,9 +1364,7 @@ class TestBookPositionTracking:
 
         from app.services import _get_book_chapter_summary
 
-        summary = _get_book_chapter_summary(
-            db_session, group, date(2025, 3, 1)
-        )
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
         assert summary is not None
         assert "The Fifth Fold" in summary
         assert "chapter marker" in summary

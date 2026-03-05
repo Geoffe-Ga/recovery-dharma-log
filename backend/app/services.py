@@ -1007,7 +1007,7 @@ def _build_export_rows(
 
     for _ in range(blank_rows):
         rows.append(
-            '<tr class="blank-row">' "<td>&nbsp;</td><td></td><td></td><td></td></tr>"
+            '<tr class="blank-row"><td>&nbsp;</td><td></td><td></td><td></td></tr>'
         )
 
     return "\n".join(rows)
@@ -1030,9 +1030,7 @@ def generate_printable_export(
     date_range = _format_date_range(start_date, end_date)
     date_range_html = f'<p class="date-range">{date_range}</p>' if date_range else ""
 
-    font_url = (
-        "https://fonts.googleapis.com" "/css2?family=Lato:wght@400;700&display=swap"
-    )
+    font_url = "https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap"
 
     return f"""<!DOCTYPE html>
 <html>
