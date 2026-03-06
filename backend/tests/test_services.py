@@ -1268,6 +1268,21 @@ class TestBookPositionTracking:
         assert result["current_assignment_index"] == 0
         assert result["book_cycle"] == 2
 
+    def test_restart_from_start_does_not_increment_cycle(
+        self,
+        db_session: Session,
+    ) -> None:
+        """restart_book is a no-op on cycle when already at index 0."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        group.current_book_assignment_index = 0
+        group.book_cycle = 1
+        db_session.flush()
+
+        result = restart_book(db_session, group)
+        assert group.current_book_assignment_index == 0
+        assert group.book_cycle == 1
+        assert result["book_cycle"] == 1
+
     def test_set_chapter_marker_valid(
         self,
         db_session: Session,

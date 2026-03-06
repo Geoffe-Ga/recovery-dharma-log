@@ -696,6 +696,8 @@ def _get_book_chapter_summary(
                 return f"{chapter.title} (chapter marker)"
         return None
 
+    # Modulo wrap handles stale index (e.g. if an assignment was deleted
+    # after the position was set), falling back to a valid assignment.
     idx = group.current_book_assignment_index % len(finalized)
     assignment = finalized[idx]
     return _format_assignment_summary(db, assignment)
@@ -776,9 +778,14 @@ def advance_book_position(db: Session, group: Group) -> dict:
 
 
 def restart_book(db: Session, group: Group) -> dict:
-    """Reset the book to the beginning and increment the cycle."""
+    """Reset the book to the beginning and increment the cycle.
+
+    Only increments the cycle counter if the group has progressed past
+    index 0, so restarting from the beginning is a no-op on the cycle.
+    """
+    if group.current_book_assignment_index > 0:
+        group.book_cycle += 1
     group.current_book_assignment_index = 0
-    group.book_cycle += 1
     db.flush()
     return get_book_position(db, group)
 
