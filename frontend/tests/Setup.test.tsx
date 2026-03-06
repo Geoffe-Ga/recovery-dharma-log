@@ -56,6 +56,14 @@ function renderSetup(
   return user;
 }
 
+/** Fill the start date on step 1 so the Next button is enabled. */
+async function fillStartDate(
+  user: ReturnType<typeof userEvent.setup>,
+): Promise<void> {
+  const dateInput = screen.getByLabelText("Start Date");
+  await user.type(dateInput, "2026-03-01");
+}
+
 describe("Setup wizard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -99,8 +107,14 @@ describe("Setup wizard", () => {
     expect(api.setupBasics).toHaveBeenCalledTimes(1);
   });
 
+  it("disables Next button when start date is empty", () => {
+    renderSetup();
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+  });
+
   it("shows Previous button on step 2", async () => {
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(
@@ -111,6 +125,7 @@ describe("Setup wizard", () => {
 
   it("navigates back to step 1 from step 2", async () => {
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(
@@ -125,6 +140,7 @@ describe("Setup wizard", () => {
 
   it("renders step 2 with rotation dropdowns", async () => {
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(
@@ -138,6 +154,7 @@ describe("Setup wizard", () => {
 
   it("can add and remove rotation slots", async () => {
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(
@@ -153,6 +170,7 @@ describe("Setup wizard", () => {
   it("renders step 3 with topic checkboxes", async () => {
     const user = renderSetup();
     // Navigate to step 3
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(api.setupBasics).toHaveBeenCalled();
@@ -169,6 +187,7 @@ describe("Setup wizard", () => {
 
   it("can add a new topic on step 3", async () => {
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(api.setupBasics).toHaveBeenCalled();
@@ -187,6 +206,7 @@ describe("Setup wizard", () => {
   it("renders step 4 with chapter selection", async () => {
     const user = renderSetup();
     // Navigate through all steps
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(api.setupBasics).toHaveBeenCalled();
@@ -212,6 +232,7 @@ describe("Setup wizard", () => {
     const onComplete = jest.fn();
     const user = renderSetup(onComplete);
     // Step 1 -> 2
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(api.setupBasics).toHaveBeenCalled();
@@ -240,6 +261,7 @@ describe("Setup wizard", () => {
       new Error("Network error"),
     );
     const user = renderSetup();
+    await fillStartDate(user);
     await user.click(screen.getByRole("button", { name: "Next" }));
     await waitFor(() => {
       expect(screen.getByRole("alert")).toHaveTextContent("Network error");

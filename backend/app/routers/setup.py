@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_user
 from app.database import get_db
 from app.models import FormatRotation, Topic, User
-from app.schemas import SetupBasics, SetupRotation, SetupTopics
+from app.schemas import SetupBasics, SetupBookPosition, SetupRotation, SetupTopics
 from app.services import set_chapter_marker
 
 router = APIRouter(prefix="/setup", tags=["setup"])
@@ -69,19 +69,13 @@ def setup_topics(
 
 @router.post("/book-position")
 def setup_book_position(
-    data: dict,
+    data: SetupBookPosition,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
     """Wizard step 4: set initial book position via chapter marker."""
-    chapter_order = data.get("chapter_order")
-    if chapter_order is None or not isinstance(chapter_order, int):
-        raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="chapter_order is required",
-        )
     try:
-        set_chapter_marker(db, current_user.group, chapter_order)
+        set_chapter_marker(db, current_user.group, data.chapter_order)
         db.commit()
     except ValueError as e:
         raise HTTPException(

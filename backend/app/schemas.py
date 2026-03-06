@@ -305,3 +305,9 @@ class SetupTopics(BaseModel):
 
     keep_topics: list[str] = []
     new_topics: list[str] = []
+
+
+class SetupBookPosition(BaseModel):
+    """Request schema for wizard step 4: book position."""
+
+    chapter_order: int = Field(ge=1)

@@ -98,7 +98,9 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
           addedTopics.filter((t) => t.trim()),
         );
       } else if (step === 4) {
-        await setupBookPosition(selectedChapter);
+        if (chapters.length > 0) {
+          await setupBookPosition(selectedChapter);
+        }
         await setupComplete();
         onComplete();
         return;
@@ -119,6 +121,7 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
     selectedTopics,
     addedTopics,
     selectedChapter,
+    chapters,
     onComplete,
   ]);
 
@@ -313,20 +316,26 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
       {step === 4 && (
         <section aria-label="Book Position">
           <h2>Book Position</h2>
-          <p>What chapter is your group currently on?</p>
-          <label>
-            Current Chapter
-            <select
-              value={selectedChapter}
-              onChange={(e) => setSelectedChapter(Number(e.target.value))}
-            >
-              {chapters.map((ch) => (
-                <option key={ch.order} value={ch.order}>
-                  {ch.order}. {ch.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          {chapters.length > 0 ? (
+            <>
+              <p>What chapter is your group currently on?</p>
+              <label>
+                Current Chapter
+                <select
+                  value={selectedChapter}
+                  onChange={(e) => setSelectedChapter(Number(e.target.value))}
+                >
+                  {chapters.map((ch) => (
+                    <option key={ch.order} value={ch.order}>
+                      {ch.order}. {ch.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          ) : (
+            <p>No book chapters available. You can configure this later.</p>
+          )}
         </section>
       )}
 
@@ -344,7 +353,11 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
         ) : (
           <span />
         )}
-        <button type="button" onClick={handleNext} disabled={saving}>
+        <button
+          type="button"
+          onClick={handleNext}
+          disabled={saving || (step === 1 && !startDate)}
+        >
           {saving ? "Saving..." : step === 4 ? "Finish Setup" : "Next"}
         </button>
       </div>
