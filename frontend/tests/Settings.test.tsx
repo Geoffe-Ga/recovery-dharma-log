@@ -38,6 +38,7 @@ const mockSettings: GroupSettings = {
   start_date: "2025-01-05",
   meeting_time: "18:00:00",
   format_rotation: ["Speaker", "Topic", "Book Study"],
+  setup_completed: true,
 };
 
 const mockTopics: Topic[] = [

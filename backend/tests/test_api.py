@@ -1051,3 +1051,144 @@ class TestBookPositionEndpoints:
         assert client.put("/book/position").status_code == 401
         assert client.post("/book/advance").status_code == 401
         assert client.post("/book/restart").status_code == 401
+
+
+class TestSetupWizardEndpoints:
+    """Tests for setup wizard endpoints."""
+
+    def test_setup_basics_saves_group_settings(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/basics updates group name, day, time, start date."""
+        response = client.post(
+            "/setup/basics",
+            json={
+                "name": "Dharma Group",
+                "meeting_day": 3,
+                "meeting_time": "19:30:00",
+                "start_date": "2026-01-07",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        # Verify via settings
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["name"] == "Dharma Group"
+        assert settings["meeting_day"] == 3
+
+    def test_setup_rotation_replaces_formats(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/rotation replaces format rotation."""
+        response = client.post(
+            "/setup/rotation",
+            json={"format_rotation": ["Topic", "Book Study"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["format_rotation"] == ["Topic", "Book Study"]
+
+    def test_setup_topics_deactivates_unchecked(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/topics deactivates topics not in keep list."""
+        # Verify we start with 10 default topics
+        before = client.get("/topics/", headers=auth_headers).json()
+        assert len(before) == 10
+        response = client.post(
+            "/setup/topics",
+            json={"keep_topics": ["Karma", "Mindfulness"], "new_topics": []},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        # GET /topics/ only returns active topics
+        after = client.get("/topics/", headers=auth_headers).json()
+        names = [t["name"] for t in after]
+        assert "Karma" in names
+        assert "Mindfulness" in names
+        assert len(after) == 2
+
+    def test_setup_topics_adds_new_topics(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/topics adds new custom topics."""
+        response = client.post(
+            "/setup/topics",
+            json={
+                "keep_topics": ["Karma"],
+                "new_topics": ["Compassion", "Equanimity"],
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        topics = client.get("/topics/", headers=auth_headers).json()
+        names = [t["name"] for t in topics]
+        assert "Compassion" in names
+        assert "Equanimity" in names
+
+    def test_setup_book_position_sets_marker(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position sets chapter marker."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 5},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        pos = client.get("/book/position", headers=auth_headers).json()
+        assert pos["chapter_marker"] == 5
+
+    def test_setup_book_position_invalid_chapter(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position with invalid chapter returns 400."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 999},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_setup_complete_sets_flag(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/complete marks setup as done."""
+        response = client.post("/setup/complete", headers=auth_headers)
+        assert response.status_code == 200
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["setup_completed"] is True
+
+    def test_settings_shows_setup_completed(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """GET /settings/ includes setup_completed field."""
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert "setup_completed" in settings
+        # New registration defaults to False
+        assert settings["setup_completed"] is False
+
+    def test_setup_requires_auth(self, client: TestClient) -> None:
+        """Setup endpoints return 401 without auth."""
+        assert client.post("/setup/basics").status_code == 401
+        assert client.post("/setup/rotation").status_code == 401
+        assert client.post("/setup/topics").status_code == 401
+        assert client.post("/setup/book-position").status_code == 401
+        assert client.post("/setup/complete").status_code == 401

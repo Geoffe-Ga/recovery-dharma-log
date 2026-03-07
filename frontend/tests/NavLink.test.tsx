@@ -1,6 +1,6 @@
 /** Tests for active navigation link highlighting. */
 
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { App } from "../src/App";
 
@@ -30,9 +30,16 @@ jest.mock("../src/pages/Settings", () => ({
   Settings: () => <div data-testid="settings-page">Settings</div>,
 }));
 
+jest.mock("../src/pages/Setup", () => ({
+  Setup: () => <div data-testid="setup-page">Setup</div>,
+}));
+
 // Mock API to handle getSettings call in AuthenticatedApp
 jest.mock("../src/api/index", () => ({
-  getSettings: jest.fn().mockResolvedValue({ name: "RD Log" }),
+  getSettings: jest.fn().mockResolvedValue({
+    name: "RD Log",
+    setup_completed: true,
+  }),
   isLoggedIn: jest.fn(() => true),
   login: jest.fn(),
   logout: jest.fn(),
@@ -59,8 +66,11 @@ function renderWithRoute(route: string): void {
 }
 
 describe("NavLink active state", () => {
-  it("marks Home link as active on root route", () => {
+  it("marks Home link as active on root route", async () => {
     renderWithRoute("/");
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+    });
     const homeLink = screen.getByRole("link", { name: "Home" });
     expect(homeLink).toHaveClass("active");
 
@@ -71,8 +81,11 @@ describe("NavLink active state", () => {
     expect(settingsLink).not.toHaveClass("active");
   });
 
-  it("marks Log link as active on /log route", () => {
+  it("marks Log link as active on /log route", async () => {
     renderWithRoute("/log");
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+    });
     const homeLink = screen.getByRole("link", { name: "Home" });
     expect(homeLink).not.toHaveClass("active");
 
@@ -80,8 +93,11 @@ describe("NavLink active state", () => {
     expect(logLink).toHaveClass("active");
   });
 
-  it("marks Settings link as active on /settings route", () => {
+  it("marks Settings link as active on /settings route", async () => {
     renderWithRoute("/settings");
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+    });
     const homeLink = screen.getByRole("link", { name: "Home" });
     expect(homeLink).not.toHaveClass("active");
 
@@ -89,8 +105,11 @@ describe("NavLink active state", () => {
     expect(settingsLink).toHaveClass("active");
   });
 
-  it("does not mark Home as active on nested routes", () => {
+  it("does not mark Home as active on nested routes", async () => {
     renderWithRoute("/log");
+    await waitFor(() => {
+      expect(screen.getByRole("link", { name: "Home" })).toBeInTheDocument();
+    });
     const homeLink = screen.getByRole("link", { name: "Home" });
     expect(homeLink).not.toHaveClass("active");
   });
