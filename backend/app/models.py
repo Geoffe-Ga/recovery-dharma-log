@@ -41,6 +41,20 @@ class Group(Base):
         nullable=False,
         default=lambda: datetime.now(UTC),
     )
+    current_book_assignment_index: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+    )
+    book_cycle: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=1,
+    )
+    current_chapter_marker: Mapped[int | None] = mapped_column(
+        Integer,
+        nullable=True,
+    )
 
     users: Mapped[list["User"]] = relationship(back_populates="group")
     format_rotations: Mapped[list["FormatRotation"]] = relationship(
