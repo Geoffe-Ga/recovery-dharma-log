@@ -101,7 +101,12 @@ export function Login({
             )}
           </>
         )}
-        <button type="submit" disabled={loading}>
+        <button
+          type="submit"
+          disabled={
+            loading || (isRegister && hasInviteCode && inviteCode.length < 8)
+          }
+        >
           {loading
             ? "Please wait..."
             : isRegister

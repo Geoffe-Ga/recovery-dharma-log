@@ -108,6 +108,27 @@ describe("Login", () => {
     expect(mockRegister).toHaveBeenCalledWith("newuser", "newpass", "ABCD1234");
   });
 
+  it("disables submit when invite code checkbox checked but code is short", async () => {
+    const user = userEvent.setup();
+    renderLogin();
+    await user.click(screen.getByText("Need an account? Register"));
+    await user.click(screen.getByLabelText("I have an invite code"));
+    // Code field is empty, submit should be disabled
+    expect(
+      screen.getByRole("button", { name: "Create Account" }),
+    ).toBeDisabled();
+    // Type partial code
+    await user.type(screen.getByLabelText("Invite Code"), "ABC");
+    expect(
+      screen.getByRole("button", { name: "Create Account" }),
+    ).toBeDisabled();
+    // Full 8-char code enables it
+    await user.type(screen.getByLabelText("Invite Code"), "D1234");
+    expect(
+      screen.getByRole("button", { name: "Create Account" }),
+    ).toBeEnabled();
+  });
+
   it("hides invite code input when unchecking checkbox", async () => {
     const user = userEvent.setup();
     renderLogin();

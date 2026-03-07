@@ -1252,9 +1252,17 @@ class TestInviteFlowEndpoints:
             },
         )
         assert resp2.status_code == 200
-        invited_data = resp2.json()
-        # The invited user should share the same group
-        assert invited_data["group_id"] == 1  # Both in same group
+        # Log in as invited user and verify they see the same group settings
+        invited_token = client.post(
+            "/auth/login",
+            data={"username": "invited_user", "password": "pass123"},
+        ).json()["access_token"]
+        invited_headers = {"Authorization": f"Bearer {invited_token}"}
+        invited_settings = client.get("/settings/", headers=invited_headers).json()
+        original_settings = client.get("/settings/", headers=auth_headers).json()
+        # Same group = same settings (name, start_date, rotation, etc.)
+        assert invited_settings["name"] == original_settings["name"]
+        assert invited_settings["start_date"] == original_settings["start_date"]
 
     def test_register_with_invalid_invite_returns_400(
         self,
