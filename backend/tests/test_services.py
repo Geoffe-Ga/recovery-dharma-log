@@ -1451,3 +1451,25 @@ class TestInviteCodes:
 
         found = find_group_by_invite_code(db_session, "NOTACODE")
         assert found is None
+
+    def test_generate_invite_code_raises_after_retries(
+        self,
+        db_session: Session,
+    ) -> None:
+        """generate_invite_code raises ValueError when all retries collide."""
+        from unittest.mock import patch
+
+        from app.services import generate_invite_code
+
+        group1 = _create_group(db_session)
+        # Manually set a known code on group1
+        group1.invite_code = "AAAAAAAA"
+        db_session.flush()
+
+        group2 = _create_group(db_session)
+        # Mock secrets.choice to always return "A" → code is always "AAAAAAAA"
+        with (
+            patch("app.services.secrets.choice", return_value="A"),
+            pytest.raises(ValueError, match="Could not generate unique"),
+        ):
+            generate_invite_code(db_session, group2)

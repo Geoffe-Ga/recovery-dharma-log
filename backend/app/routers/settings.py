@@ -1,6 +1,6 @@
 """Settings router: group configuration."""
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.auth import get_current_user
@@ -82,7 +82,13 @@ def create_invite_code(
 ) -> dict:
     """Generate an invite code for the group."""
     group = current_user.group
-    code = generate_invite_code(db, group)
+    try:
+        code = generate_invite_code(db, group)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
     db.commit()
     return {"invite_code": code}
 
