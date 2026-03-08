@@ -776,7 +776,7 @@ export function Settings(): React.ReactElement {
                   navigator.clipboard
                     .writeText(settings.invite_code ?? "")
                     .then(() => showToast("success", "Code copied!"))
-                    .catch(() => {});
+                    .catch(() => showToast("error", "Failed to copy code"));
                 }}
               >
                 Copy

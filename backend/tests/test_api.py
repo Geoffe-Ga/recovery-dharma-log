@@ -1294,6 +1294,26 @@ class TestInviteFlowEndpoints:
         assert response.status_code == 400
         assert "Invalid invite code" in response.json()["detail"]
 
+    def test_revoked_code_cannot_be_used_to_register(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Registering with a revoked invite code returns 400."""
+        resp = client.post("/settings/invite-code", headers=auth_headers)
+        code = resp.json()["invite_code"]
+        client.delete("/settings/invite-code", headers=auth_headers)
+        response = client.post(
+            "/auth/register",
+            json={
+                "username": "revoked_user",
+                "password": "pass123",
+                "invite_code": code,
+            },
+        )
+        assert response.status_code == 400
+        assert "Invalid invite code" in response.json()["detail"]
+
     def test_invited_user_skips_setup(
         self,
         client: TestClient,
