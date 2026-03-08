@@ -39,6 +39,7 @@ jest.mock("../src/api/index", () => ({
   getSettings: jest.fn().mockResolvedValue({
     name: "RD Log",
     setup_completed: true,
+    invite_code: null,
   }),
   isLoggedIn: jest.fn(() => true),
   login: jest.fn(),

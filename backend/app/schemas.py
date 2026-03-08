@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
 
     username: str
     password: str
+    invite_code: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -43,6 +44,7 @@ class GroupSettings(BaseModel):
     start_date: date
     format_rotation: list[str]
     setup_completed: bool = True
+    invite_code: str | None = None
 
 
 class GroupSettingsUpdate(BaseModel):
@@ -311,3 +313,12 @@ class SetupBookPosition(BaseModel):
     """Request schema for wizard step 4: book position."""
 
     chapter_order: int = Field(ge=1)
+
+
+# --- Invite ---
+
+
+class InviteCodeResponse(BaseModel):
+    """Response schema for invite code operations."""
+
+    invite_code: str | None = None
