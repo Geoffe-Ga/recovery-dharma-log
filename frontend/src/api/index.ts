@@ -1,6 +1,6 @@
 /** API functions for each backend endpoint. */
 
-import { api, getToken, postForm, setToken } from "./client";
+import { TOKEN_KEY, api, getToken, postForm, setToken } from "./client";
 import type {
   ActivityLogEntry,
   AssignmentUpdate,
@@ -22,6 +22,8 @@ import type {
 } from "../types/index";
 
 // --- Auth ---
+
+export { TOKEN_KEY };
 
 export async function register(
   username: string,

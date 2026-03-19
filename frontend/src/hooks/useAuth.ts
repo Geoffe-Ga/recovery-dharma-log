@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  TOKEN_KEY,
   isLoggedIn,
   login as apiLogin,
   logout as apiLogout,
@@ -31,7 +32,7 @@ export function useAuth(): AuthState & AuthActions {
 
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === "rd_log_token" && e.newValue === null) {
+      if (e.key === TOKEN_KEY && e.newValue === null) {
         setUser(null);
       }
     };
@@ -61,6 +62,9 @@ export function useAuth(): AuthState & AuthActions {
     try {
       const newUser = await apiRegister(username, password);
       await apiLogin(username, password);
+      if (!isLoggedIn()) {
+        throw new Error("Login failed — token was not stored");
+      }
       setUser(newUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

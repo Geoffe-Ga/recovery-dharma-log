@@ -5,6 +5,7 @@ import { useAuth } from "../src/hooks/useAuth";
 
 // Mock the API module
 jest.mock("../src/api/index", () => ({
+  TOKEN_KEY: "rd_log_token",
   isLoggedIn: jest.fn(() => false),
   login: jest.fn(),
   logout: jest.fn(),

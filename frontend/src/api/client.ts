@@ -1,7 +1,7 @@
 /** API client for communicating with the backend. */
 
 const API_BASE = "/api";
-const TOKEN_KEY = "rd_log_token";
+export const TOKEN_KEY = "rd_log_token";
 
 export function setToken(token: string | null): void {
   if (token) {
