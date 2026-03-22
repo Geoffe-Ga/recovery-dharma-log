@@ -1,7 +1,8 @@
 /** Authentication hook for managing login state. */
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
+  TOKEN_KEY,
   isLoggedIn,
   login as apiLogin,
   logout as apiLogout,
@@ -29,11 +30,24 @@ export function useAuth(): AuthState & AuthActions {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === TOKEN_KEY && e.newValue === null) {
+        setUser(null);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
   const login = useCallback(async (username: string, password: string) => {
     setLoading(true);
     setError(null);
     try {
       await apiLogin(username, password);
+      if (!isLoggedIn()) {
+        throw new Error("Login failed — token was not stored");
+      }
       setUser({ id: 0, username, group_id: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -48,6 +62,9 @@ export function useAuth(): AuthState & AuthActions {
     try {
       const newUser = await apiRegister(username, password);
       await apiLogin(username, password);
+      if (!isLoggedIn()) {
+        throw new Error("Login failed — token was not stored");
+      }
       setUser(newUser);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");

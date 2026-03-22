@@ -1,7 +1,7 @@
 /** API client for communicating with the backend. */
 
 const API_BASE = "/api";
-const TOKEN_KEY = "rd_log_token";
+export const TOKEN_KEY = "rd_log_token";
 
 export function setToken(token: string | null): void {
   if (token) {
@@ -34,7 +34,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (!response.ok) {
     if (response.status === 401 && !path.startsWith("/auth/")) {
       setToken(null);
-      window.location.href = "/login?expired=1";
+      window.dispatchEvent(
+        new StorageEvent("storage", {
+          key: TOKEN_KEY,
+          newValue: null,
+        }),
+      );
       throw new Error("Session expired");
     }
     const errorBody = await response.json().catch(() => null);
