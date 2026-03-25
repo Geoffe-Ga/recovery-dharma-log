@@ -19,4 +19,4 @@ if [[ "${1:-}" == "--no-reload" ]]; then
 fi
 
 echo "Starting backend server at http://localhost:8000"
-uvicorn app.main:app --host 0.0.0.0 --port 8000 $RELOAD_FLAG
+uvicorn app.main:application --host 0.0.0.0 --port 8000 $RELOAD_FLAG

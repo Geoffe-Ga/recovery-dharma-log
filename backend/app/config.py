@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     secret_key: str = "dev-secret-key-change-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 1440  # 24 hours
+    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    environment: str = "development"
 
     model_config = {"env_prefix": "RD_LOG_"}
 
