@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -63,7 +64,7 @@ def _run_migrations() -> None:
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
+async def lifespan(_app: Any) -> AsyncGenerator[None, None]:
     """Create database tables on startup; guard against dev secrets in prod."""
     if settings.environment != "development" and settings.secret_key == _DEV_SECRET_KEY:
         raise RuntimeError(
@@ -130,6 +131,7 @@ _static_dir = Path(__file__).resolve().parent.parent / "static" / "dist"
 if _static_dir.is_dir():
     logger.info("Serving static files from %s", _static_dir)
     application = Starlette(
+        lifespan=lifespan,
         routes=[
             Mount("/api", app=app),
             Mount("/", app=SPAStaticFiles(directory=str(_static_dir), html=True)),

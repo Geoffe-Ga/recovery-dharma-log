@@ -4,6 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import pytest
+from starlette.applications import Starlette
 from starlette.testclient import TestClient
 
 from app.config import Settings
@@ -126,18 +127,15 @@ class TestStaticServingAndApiMount:
         # In test env there's no static/dist, so application == app
         assert application is app
 
-    def test_application_with_static_dir(self, tmp_path: Path) -> None:
-        """With static/dist/, application wraps API at /api and serves SPA."""
-        dist_dir = tmp_path / "dist"
-        dist_dir.mkdir()
-        (dist_dir / "index.html").write_text("<html><body>SPA</body></html>")
-
-        from starlette.applications import Starlette
+    @staticmethod
+    def _make_wrapper(dist_dir: Path) -> Starlette:
+        """Build a Starlette wrapper matching production code."""
         from starlette.routing import Mount
 
-        from app.main import SPAStaticFiles, app
+        from app.main import SPAStaticFiles, app, lifespan
 
-        starlette_app = Starlette(
+        return Starlette(
+            lifespan=lifespan,  # type: ignore[arg-type]
             routes=[
                 Mount("/api", app=app),
                 Mount(
@@ -146,6 +144,14 @@ class TestStaticServingAndApiMount:
                 ),
             ],
         )
+
+    def test_application_with_static_dir(self, tmp_path: Path) -> None:
+        """With static/dist/, application wraps API at /api and serves SPA."""
+        dist_dir = tmp_path / "dist"
+        dist_dir.mkdir()
+        (dist_dir / "index.html").write_text("<html><body>SPA</body></html>")
+
+        starlette_app = self._make_wrapper(dist_dir)
 
         with TestClient(starlette_app) as client:
             # API routes should work under /api prefix
@@ -170,23 +176,29 @@ class TestStaticServingAndApiMount:
         dist_dir.mkdir()
         (dist_dir / "index.html").write_text("<html></html>")
 
-        from starlette.applications import Starlette
-        from starlette.routing import Mount
-
-        from app.main import SPAStaticFiles, app
-
-        starlette_app = Starlette(
-            routes=[
-                Mount("/api", app=app),
-                Mount(
-                    "/",
-                    app=SPAStaticFiles(directory=str(dist_dir), html=True),
-                ),
-            ],
-        )
+        starlette_app = self._make_wrapper(dist_dir)
 
         with TestClient(starlette_app) as client:
             # /api/health should route to app's /health endpoint
             response = client.get("/api/health")
             assert response.status_code == 200
             assert response.json()["status"] == "healthy"
+
+    def test_wrapper_lifespan_creates_tables(self, tmp_path: Path) -> None:
+        """Starlette wrapper must run lifespan to create DB tables."""
+        dist_dir = tmp_path / "dist"
+        dist_dir.mkdir()
+        (dist_dir / "index.html").write_text("<html></html>")
+
+        starlette_app = self._make_wrapper(dist_dir)
+
+        from sqlalchemy import inspect as sa_inspect
+
+        from app.database import engine
+
+        with TestClient(starlette_app):
+            # If lifespan ran, tables should exist
+            inspector = sa_inspect(engine)
+            table_names = inspector.get_table_names()
+            assert "users" in table_names
+            assert "meeting_logs" in table_names
