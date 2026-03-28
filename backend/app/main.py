@@ -106,14 +106,17 @@ def _run_migrations() -> None:
                     column,
                 )
 
+    _run_data_migrations()
+
+
+def _run_data_migrations() -> None:
+    """Run one-off data migrations, suppressing only missing-table errors."""
     for sql in _DATA_MIGRATIONS:
         try:
             with engine.connect() as conn:
                 conn.execute(text(sql))
                 conn.commit()
         except OperationalError as exc:
-            # Suppress "no such table/column" during first-run before schema
-            # exists; re-raise anything else (constraint violations, etc.)
             msg = str(exc).lower()
             if "no such table" in msg or "no such column" in msg:
                 logger.debug("Data migration skipped (table not ready): %s", sql)

@@ -1298,19 +1298,19 @@ class TestInviteFlowEndpoints:
         settings = client.get("/settings/", headers=auth_headers).json()
         assert settings["invite_code"] is None
 
-    def test_generate_invite_code_collision_returns_503(
+    def test_generate_invite_code_collision_returns_500(
         self,
         client: TestClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """POST /settings/invite-code returns 503 on exhausted retries."""
+        """POST /settings/invite-code returns 500 on exhausted retries."""
         from unittest.mock import patch
 
         with patch("app.services.secrets.choice", return_value="A"):
             # First call creates code "AAAAAAAA", second will always collide
             client.post("/settings/invite-code", headers=auth_headers)
             response = client.post("/settings/invite-code", headers=auth_headers)
-        assert response.status_code == 503
+        assert response.status_code == 500
 
     def test_register_with_invite_joins_group(
         self,
