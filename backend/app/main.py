@@ -111,8 +111,14 @@ def _run_migrations() -> None:
             with engine.connect() as conn:
                 conn.execute(text(sql))
                 conn.commit()
-        except OperationalError:
-            logger.warning("Data migration failed: %s", sql, exc_info=True)
+        except OperationalError as exc:
+            # Suppress "no such table/column" during first-run before schema
+            # exists; re-raise anything else (constraint violations, etc.)
+            msg = str(exc).lower()
+            if "no such table" in msg or "no such column" in msg:
+                logger.debug("Data migration skipped (table not ready): %s", sql)
+            else:
+                raise
 
 
 @asynccontextmanager

@@ -86,7 +86,7 @@ def create_invite_code(
         code = generate_invite_code(db, group)
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(exc),
         ) from exc
     db.commit()
