@@ -4,10 +4,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { Setup } from "../src/pages/Setup";
-import type { BookChapter } from "../src/types/index";
+import type { BookChapter, Topic } from "../src/types/index";
 
 jest.mock("../src/api/index", () => ({
   getChapters: jest.fn(),
+  getTopics: jest.fn(),
   setupBasics: jest.fn(),
   setupRotation: jest.fn(),
   setupTopics: jest.fn(),
@@ -44,6 +45,24 @@ const mockChapters: BookChapter[] = [
   },
 ];
 
+const mockTopics: Topic[] = [
+  { id: 1, name: "Karma", is_active: true, is_drawn: false, last_used: null },
+  {
+    id: 2,
+    name: "Mindfulness",
+    is_active: true,
+    is_drawn: false,
+    last_used: null,
+  },
+  {
+    id: 3,
+    name: "Lovingkindness",
+    is_active: true,
+    is_drawn: false,
+    last_used: null,
+  },
+];
+
 function renderSetup(
   onComplete = jest.fn(),
 ): ReturnType<typeof userEvent.setup> {
@@ -68,6 +87,7 @@ describe("Setup wizard", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (api.getChapters as jest.Mock).mockResolvedValue(mockChapters);
+    (api.getTopics as jest.Mock).mockResolvedValue(mockTopics);
     (api.setupBasics as jest.Mock).mockResolvedValue(undefined);
     (api.setupRotation as jest.Mock).mockResolvedValue(undefined);
     (api.setupTopics as jest.Mock).mockResolvedValue(undefined);
@@ -167,7 +187,7 @@ describe("Setup wizard", () => {
     expect(screen.getAllByRole("combobox").length).toBe(5);
   });
 
-  it("renders step 3 with topic checkboxes", async () => {
+  it("renders step 3 with topics fetched from API", async () => {
     const user = renderSetup();
     // Navigate to step 3
     await fillStartDate(user);
@@ -181,6 +201,7 @@ describe("Setup wizard", () => {
         screen.getByRole("heading", { name: "Discussion Topics" }),
       ).toBeInTheDocument();
     });
+    expect(api.getTopics).toHaveBeenCalled();
     expect(screen.getByLabelText("Karma")).toBeInTheDocument();
     expect(screen.getByLabelText("Mindfulness")).toBeInTheDocument();
   });

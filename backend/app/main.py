@@ -2,6 +2,7 @@
 
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+import logging
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -25,6 +26,8 @@ from app.routers import (
     settings as settings_router,
 )
 
+logger = logging.getLogger(__name__)
+
 # Columns added after initial schema. Each entry is (table, column, type).
 _MIGRATIONS: list[tuple[str, str, str]] = [
     ("meeting_logs", "attendance_count", "INTEGER"),
@@ -39,8 +42,10 @@ _MIGRATIONS: list[tuple[str, str, str]] = [
 
 _DATA_MIGRATIONS: list[str] = [
     # Existing groups should be treated as already set up
-    "UPDATE groups SET setup_completed = 1 WHERE setup_completed = 0"
-    " AND id IN (SELECT group_id FROM users)",
+    (
+        "UPDATE groups SET setup_completed = 1 WHERE setup_completed = 0"
+        " AND id IN (SELECT group_id FROM users)"
+    ),
 ]
 
 
@@ -69,7 +74,7 @@ def _run_migrations() -> None:
                 conn.execute(text(sql))
                 conn.commit()
         except OperationalError:
-            pass
+            logger.warning("Data migration failed: %s", sql, exc_info=True)
 
 
 @asynccontextmanager

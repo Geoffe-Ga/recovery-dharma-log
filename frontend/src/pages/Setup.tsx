@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import {
   getChapters,
+  getTopics,
   setupBasics,
   setupBookPosition,
   setupComplete,
@@ -10,18 +11,10 @@ import {
   setupTopics,
 } from "../api/index";
 import type { BookChapter } from "../types/index";
-
-const DAY_NAMES = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-];
-
-const FORMAT_OPTIONS = ["Speaker", "Topic", "Book Study"];
+import { StepBasics } from "./setup/StepBasics";
+import { StepBookPosition } from "./setup/StepBookPosition";
+import { StepRotation } from "./setup/StepRotation";
+import { StepTopics } from "./setup/StepTopics";
 
 const DEFAULT_ROTATION = [
   "Speaker",
@@ -29,19 +22,6 @@ const DEFAULT_ROTATION = [
   "Book Study",
   "Topic",
   "Book Study",
-];
-
-const DEFAULT_TOPICS = [
-  "Karma",
-  "Lovingkindness",
-  "Mindfulness of the Body Using Elements",
-  "Mindfulness of Feeling Tones",
-  "Mindfulness",
-  "Spiritual Maturity",
-  "What We Mean When We Say Suffering",
-  "Mindfulness of the Body Using Breath",
-  "Renunciation",
-  "5 Precepts",
 ];
 
 interface SetupProps {
@@ -62,10 +42,9 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
   // Step 2: Rotation
   const [rotation, setRotation] = useState<string[]>([...DEFAULT_ROTATION]);
 
-  // Step 3: Topics
-  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(
-    new Set(DEFAULT_TOPICS),
-  );
+  // Step 3: Topics (fetched from backend seed data)
+  const [seedTopics, setSeedTopics] = useState<string[]>([]);
+  const [selectedTopics, setSelectedTopics] = useState<Set<string>>(new Set());
   const [newTopicInput, setNewTopicInput] = useState("");
   const [addedTopics, setAddedTopics] = useState<string[]>([]);
 
@@ -76,6 +55,13 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
   useEffect(() => {
     getChapters()
       .then(setChapters)
+      .catch(() => {});
+    getTopics()
+      .then((topics) => {
+        const names = topics.map((t) => t.name);
+        setSeedTopics(names);
+        setSelectedTopics(new Set(names));
+      })
       .catch(() => {});
   }, []);
 
@@ -177,166 +163,45 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
       {error && <p role="alert">{error}</p>}
 
       {step === 1 && (
-        <section aria-label="Group Basics">
-          <h2>Group Basics</h2>
-          <label>
-            Meeting Name
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
-          </label>
-          <label>
-            Meeting Day
-            <select
-              value={meetingDay}
-              onChange={(e) => setMeetingDay(Number(e.target.value))}
-            >
-              {DAY_NAMES.map((day, i) => (
-                <option key={day} value={i}>
-                  {day}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Meeting Time
-            <input
-              type="time"
-              value={meetingTime}
-              onChange={(e) => setMeetingTime(e.target.value)}
-            />
-          </label>
-          <label>
-            Start Date
-            <input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-          </label>
-        </section>
+        <StepBasics
+          name={name}
+          onNameChange={setName}
+          meetingDay={meetingDay}
+          onMeetingDayChange={setMeetingDay}
+          meetingTime={meetingTime}
+          onMeetingTimeChange={setMeetingTime}
+          startDate={startDate}
+          onStartDateChange={setStartDate}
+        />
       )}
 
       {step === 2 && (
-        <section aria-label="Format Rotation">
-          <h2>Format Rotation</h2>
-          <p>Set the weekly format rotation for your meeting.</p>
-          {rotation.map((fmt, i) => (
-            <div
-              key={i}
-              style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}
-            >
-              <label style={{ flex: 1 }}>
-                Week {i + 1}
-                <select
-                  value={fmt}
-                  onChange={(e) => handleRotationChange(i, e.target.value)}
-                >
-                  {FORMAT_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {rotation.length > 1 && (
-                <button
-                  type="button"
-                  className="outline"
-                  onClick={() => handleRemoveSlot(i)}
-                  aria-label={`Remove week ${i + 1}`}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          ))}
-          <button type="button" className="outline" onClick={handleAddSlot}>
-            Add Week
-          </button>
-        </section>
+        <StepRotation
+          rotation={rotation}
+          onRotationChange={handleRotationChange}
+          onAddSlot={handleAddSlot}
+          onRemoveSlot={handleRemoveSlot}
+        />
       )}
 
       {step === 3 && (
-        <section aria-label="Discussion Topics">
-          <h2>Discussion Topics</h2>
-          <p>Select which default topics to keep and add any new ones.</p>
-          <fieldset>
-            <legend>Default Topics</legend>
-            {DEFAULT_TOPICS.map((topic) => (
-              <label key={topic}>
-                <input
-                  type="checkbox"
-                  checked={selectedTopics.has(topic)}
-                  onChange={() => handleToggleTopic(topic)}
-                />
-                {topic}
-              </label>
-            ))}
-          </fieldset>
-          {addedTopics.length > 0 && (
-            <fieldset>
-              <legend>Added Topics</legend>
-              {addedTopics.map((topic) => (
-                <label key={topic}>
-                  <input
-                    type="checkbox"
-                    checked={selectedTopics.has(topic)}
-                    onChange={() => handleToggleTopic(topic)}
-                  />
-                  {topic}
-                </label>
-              ))}
-            </fieldset>
-          )}
-          <div style={{ display: "flex", gap: "0.5rem" }}>
-            <input
-              type="text"
-              value={newTopicInput}
-              onChange={(e) => setNewTopicInput(e.target.value)}
-              placeholder="Add a new topic"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleAddTopic();
-                }
-              }}
-            />
-            <button type="button" className="outline" onClick={handleAddTopic}>
-              Add
-            </button>
-          </div>
-        </section>
+        <StepTopics
+          seedTopics={seedTopics}
+          selectedTopics={selectedTopics}
+          onToggleTopic={handleToggleTopic}
+          addedTopics={addedTopics}
+          newTopicInput={newTopicInput}
+          onNewTopicInputChange={setNewTopicInput}
+          onAddTopic={handleAddTopic}
+        />
       )}
 
       {step === 4 && (
-        <section aria-label="Book Position">
-          <h2>Book Position</h2>
-          {chapters.length > 0 ? (
-            <>
-              <p>What chapter is your group currently on?</p>
-              <label>
-                Current Chapter
-                <select
-                  value={selectedChapter}
-                  onChange={(e) => setSelectedChapter(Number(e.target.value))}
-                >
-                  {chapters.map((ch) => (
-                    <option key={ch.order} value={ch.order}>
-                      {ch.order}. {ch.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </>
-          ) : (
-            <p>No book chapters available. You can configure this later.</p>
-          )}
-        </section>
+        <StepBookPosition
+          chapters={chapters}
+          selectedChapter={selectedChapter}
+          onSelectedChapterChange={setSelectedChapter}
+        />
       )}
 
       <div

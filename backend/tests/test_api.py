@@ -1163,6 +1163,19 @@ class TestSetupWizardEndpoints:
         )
         assert response.status_code == 400
 
+    def test_setup_book_position_zero_rejected(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position with chapter_order 0 returns 422."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 0},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
     def test_setup_complete_sets_flag(
         self,
         client: TestClient,
