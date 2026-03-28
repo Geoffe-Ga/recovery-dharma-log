@@ -40,7 +40,7 @@ export interface UpcomingMeeting {
   topics_remaining: number;
   topics_total: number;
   banners: string[];
-  attendance_count: number | null;
+  dana_amount: number | null;
 }
 
 export interface UpcomingMeetingBrief {
@@ -59,7 +59,7 @@ export interface MeetingLogEntry {
   topic_name: string | null;
   reading_assignment_summary: string | null;
   is_cancelled: boolean;
-  attendance_count: number | null;
+  dana_amount: number | null;
 }
 
 export interface MeetingLogUpdate {

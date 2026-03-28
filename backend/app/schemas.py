@@ -71,7 +71,7 @@ class MeetingResponse(BaseModel):
     topic_name: str | None = None
     reading_assignment_summary: str | None = None
     is_cancelled: bool = False
-    attendance_count: int | None = None
+    dana_amount: float | None = None
 
     model_config = {"from_attributes": True}
 
@@ -89,7 +89,7 @@ class UpcomingMeeting(BaseModel):
     topics_remaining: int = 0
     topics_total: int = 0
     banners: list[str] = []
-    attendance_count: int | None = None
+    dana_amount: float | None = None
 
 
 class UpcomingMeetingBrief(BaseModel):
@@ -116,10 +116,10 @@ class MeetingCancel(BaseModel):
     is_cancelled: bool = True
 
 
-class AttendanceUpdate(BaseModel):
-    """Request schema for updating attendance count."""
+class DanaUpdate(BaseModel):
+    """Request schema for updating dana amount."""
 
-    attendance_count: int | None = Field(default=None, ge=0)
+    dana_amount: float | None = Field(default=None, ge=0)
 
 
 # --- Topics ---

@@ -2,6 +2,7 @@ import {
   formatMeetingDate,
   formatLogDate,
   formatMeetingTime,
+  meetingStatus,
 } from "../src/utils/dates";
 
 describe("formatMeetingDate", () => {
@@ -63,5 +64,23 @@ describe("formatMeetingTime", () => {
 
   it("returns null for non-time string", () => {
     expect(formatMeetingTime("not-a-time")).toBeNull();
+  });
+});
+
+describe("meetingStatus", () => {
+  it("returns Cancelled when is_cancelled is true", () => {
+    expect(meetingStatus("2020-01-01", true)).toBe("Cancelled");
+  });
+
+  it("returns Cancelled for future cancelled meetings", () => {
+    expect(meetingStatus("2099-12-31", true)).toBe("Cancelled");
+  });
+
+  it("returns Held for past non-cancelled meetings", () => {
+    expect(meetingStatus("2020-01-01", false)).toBe("Held");
+  });
+
+  it("returns Scheduled for future non-cancelled meetings", () => {
+    expect(meetingStatus("2099-12-31", false)).toBe("Scheduled");
   });
 });

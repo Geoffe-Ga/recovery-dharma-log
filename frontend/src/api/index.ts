@@ -1,6 +1,6 @@
 /** API functions for each backend endpoint. */
 
-import { api, getToken, postForm, setToken } from "./client";
+import { TOKEN_KEY, api, getToken, postForm, setToken } from "./client";
 import type {
   ActivityLogEntry,
   AssignmentUpdate,
@@ -23,6 +23,8 @@ import type {
 } from "../types/index";
 
 // --- Auth ---
+
+export { TOKEN_KEY };
 
 export async function register(
   username: string,
@@ -92,12 +94,12 @@ export async function cancelMeeting(
   });
 }
 
-export async function updateAttendance(
+export async function updateDana(
   meetingDate: string,
-  count: number | null,
+  amount: number | null,
 ): Promise<MeetingLogEntry> {
-  return api.put<MeetingLogEntry>(`/meetings/${meetingDate}/attendance`, {
-    attendance_count: count,
+  return api.put<MeetingLogEntry>(`/meetings/${meetingDate}/dana`, {
+    dana_amount: amount,
   });
 }
 
@@ -139,6 +141,14 @@ export async function getReadingPlan(): Promise<ReadingPlanStatus> {
 
 export async function addChapterToPlan(): Promise<ReadingPlanStatus> {
   return api.post<ReadingPlanStatus>("/book/plan/add-chapter");
+}
+
+export async function addChaptersToPlan(
+  chapterIds: number[],
+): Promise<ReadingPlanStatus> {
+  return api.post<ReadingPlanStatus>("/book/plan/add-chapters", {
+    chapter_ids: chapterIds,
+  });
 }
 
 export async function finalizePlan(): Promise<ReadingPlanStatus> {

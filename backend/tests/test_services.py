@@ -17,6 +17,7 @@ from app.models import (
 )
 from app.services import (
     add_chapter_to_current_assignment,
+    add_chapters_to_current_assignment,
     advance_book_position,
     count_meetings_since_start,
     delete_assignment,
@@ -398,6 +399,42 @@ class TestBookReadingPlan:
         status = add_chapter_to_current_assignment(db_session, group)
         assert len(status["current_assignment_chapters"]) == 2
         assert status["current_assignment_total_pages"] == 4  # 1 + 3
+
+    def test_batch_add_creates_draft(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        chapters = _create_chapters(db_session, group)
+        ids = [chapters[0].id, chapters[1].id]
+        status = add_chapters_to_current_assignment(db_session, group, ids)
+        assert len(status["current_assignment_chapters"]) == 2
+        titles = [c["title"] for c in status["current_assignment_chapters"]]
+        assert "Preface" in titles
+        assert "What is Recovery Dharma?" in titles
+
+    def test_batch_add_extends_existing_draft(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        chapters = _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        status = add_chapters_to_current_assignment(db_session, group, [chapters[1].id])
+        assert len(status["current_assignment_chapters"]) == 2
+
+    def test_batch_add_deduplicates_input(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        chapters = _create_chapters(db_session, group)
+        cid = chapters[0].id
+        status = add_chapters_to_current_assignment(db_session, group, [cid, cid, cid])
+        assert len(status["current_assignment_chapters"]) == 1
+
+    def test_batch_add_invalid_group_raises(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        with pytest.raises(ValueError, match="Invalid chapter IDs"):
+            add_chapters_to_current_assignment(db_session, group, [9999])
+
+    def test_batch_add_empty_returns_status(self, db_session: Session) -> None:
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        status = add_chapters_to_current_assignment(db_session, group, [])
+        assert status["current_assignment_chapters"] == []
 
     def test_finalize_assignment(self, db_session: Session) -> None:
         group = _create_group(db_session)
@@ -927,7 +964,7 @@ class TestExport:
         assert "Preface" in csv
         assert "pp." in csv
 
-    def test_csv_export_includes_attendance(self, db_session: Session) -> None:
+    def test_csv_export_includes_dana(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(
             MeetingLog(
@@ -935,7 +972,7 @@ class TestExport:
                 meeting_date=date(2025, 1, 5),
                 format_type="Speaker",
                 speaker_name="Dave",
-                attendance_count=15,
+                dana_amount=15.50,
             )
         )
         db_session.add(
@@ -943,15 +980,15 @@ class TestExport:
                 group_id=group.id,
                 meeting_date=date(2025, 1, 12),
                 format_type="Topic",
-                attendance_count=None,
+                dana_amount=None,
             )
         )
         db_session.flush()
 
         csv = generate_csv_export(db_session, group)
-        assert "attendance" in csv.split("\n")[0]
-        assert "15" in csv
-        # Null attendance renders as empty, not "None"
+        assert "dana" in csv.split("\n")[0]
+        assert "15.50" in csv
+        # Null dana renders as empty, not "None"
         assert "None" not in csv
 
     def test_printable_export(self, db_session: Session) -> None:
@@ -1038,7 +1075,7 @@ class TestExport:
         html = generate_printable_export(db_session, group)
         assert "Generated from RD Log" in html
 
-    def test_printable_export_shows_attendance(self, db_session: Session) -> None:
+    def test_printable_export_shows_dana(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(
             MeetingLog(
@@ -1046,14 +1083,14 @@ class TestExport:
                 meeting_date=date(2025, 1, 5),
                 format_type="Speaker",
                 speaker_name="Clare",
-                attendance_count=15,
+                dana_amount=15.50,
             )
         )
         db_session.flush()
 
         html = generate_printable_export(db_session, group)
-        assert "15" in html
-        assert "Attendance" in html
+        assert "$15.50" in html
+        assert "Dana" in html
 
     def test_printable_export_shows_topic(self, db_session: Session) -> None:
         group = _create_group(db_session)

@@ -12,7 +12,7 @@ import { useLogFilters } from "../hooks/useLogFilters";
 import type { MeetingLogEntry, MeetingLogUpdate } from "../types/index";
 import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { Skeleton } from "../components/Skeleton";
-import { formatLogDate } from "../utils/dates";
+import { formatLogDate, meetingStatus } from "../utils/dates";
 
 const FORMAT_OPTIONS = ["", "Speaker", "Topic", "Book Study"];
 
@@ -154,7 +154,7 @@ export function Log(): React.ReactElement {
                 <th>Format</th>
                 <th>Content</th>
                 <th>Status</th>
-                <th>Attendance</th>
+                <th>Dana</th>
                 <th>Actions</th>
               </tr>
             </thead>
@@ -170,8 +170,14 @@ export function Log(): React.ReactElement {
                         entry.content_summary ??
                         "\u2014"}
                     </td>
-                    <td>{entry.is_cancelled ? "Cancelled" : "Held"}</td>
-                    <td>{entry.attendance_count ?? "\u2014"}</td>
+                    <td>
+                      {meetingStatus(entry.meeting_date, entry.is_cancelled)}
+                    </td>
+                    <td>
+                      {entry.dana_amount != null
+                        ? `$${entry.dana_amount.toFixed(2)}`
+                        : "\u2014"}
+                    </td>
                     <td>
                       {editingId !== entry.id && (
                         <button

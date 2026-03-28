@@ -22,7 +22,7 @@ jest.mock("../src/api/index", () => ({
   createTopic: jest.fn(),
   deleteTopic: jest.fn(),
   reshuffleTopics: jest.fn(),
-  addChapterToPlan: jest.fn(),
+  addChaptersToPlan: jest.fn(),
   finalizePlan: jest.fn(),
   updateAssignment: jest.fn(),
   deleteAssignment: jest.fn(),
@@ -345,7 +345,7 @@ describe("Settings", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Add Chapters" }),
+        screen.getByRole("heading", { name: "Unassigned Chapters" }),
       ).toBeInTheDocument();
     });
 
@@ -355,7 +355,7 @@ describe("Settings", () => {
     ).toBeInTheDocument();
   });
 
-  it("enables Add Selected button only when chapters are checked", async () => {
+  it("enables Add to This Week button only when chapters are checked", async () => {
     const user = userEvent.setup();
     const planWithChapters: ReadingPlanStatus = {
       ...mockPlan,
@@ -375,20 +375,20 @@ describe("Settings", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Add Selected/)).toBeInTheDocument();
+      expect(screen.getByText(/Add to This Week/)).toBeInTheDocument();
     });
 
     // Button should be disabled when no chapters selected
-    expect(screen.getByText(/Add Selected/)).toBeDisabled();
+    expect(screen.getByText(/Add to This Week/)).toBeDisabled();
 
     // Check a chapter
     await user.click(screen.getByLabelText(/Preface/));
 
     // Button should now be enabled
-    expect(screen.getByText(/Add Selected \(1\)/)).toBeEnabled();
+    expect(screen.getByText(/Add to This Week \(1\)/)).toBeEnabled();
   });
 
-  it("calls addChapterToPlan for each selected chapter", async () => {
+  it("calls addChaptersToPlan with selected chapter IDs", async () => {
     const user = userEvent.setup();
     const planWithChapters: ReadingPlanStatus = {
       ...mockPlan,
@@ -413,7 +413,7 @@ describe("Settings", () => {
       ],
     };
     (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
-    (api.addChapterToPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(planWithChapters);
     renderSettings();
 
     await waitFor(() => {
@@ -424,10 +424,10 @@ describe("Settings", () => {
     await user.click(screen.getByLabelText(/Preface/));
     await user.click(screen.getByLabelText(/Introduction/));
 
-    await user.click(screen.getByText(/Add Selected \(2\)/));
+    await user.click(screen.getByText(/Add to This Week \(2\)/));
 
     await waitFor(() => {
-      expect(api.addChapterToPlan).toHaveBeenCalledTimes(2);
+      expect(api.addChaptersToPlan).toHaveBeenCalledWith([1, 2]);
     });
 
     expect(api.getReadingPlan).toHaveBeenCalledTimes(2); // initial + after add

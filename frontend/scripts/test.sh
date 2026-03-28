@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/test.sh - Run tests with Jest
-# Usage: ./scripts/test.sh [--coverage] [--watch] [--verbose] [--help]
+# Usage: ./scripts/test.sh [OPTIONS] [FILE...]
 
 set -euo pipefail
 
@@ -10,6 +10,7 @@ PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 COVERAGE=false
 WATCH=false
 VERBOSE=false
+FILES=()
 
 while [[ $# -gt 0 ]]; do
     case $1 in
@@ -27,7 +28,7 @@ while [[ $# -gt 0 ]]; do
             ;;
         --help)
             cat << EOF
-Usage: $(basename "$0") [OPTIONS]
+Usage: $(basename "$0") [OPTIONS] [FILE...]
 
 Run tests using Jest.
 
@@ -37,6 +38,9 @@ OPTIONS:
     --verbose   Show detailed output
     --help      Display this help message
 
+ARGUMENTS:
+    FILE...     Optional test file path(s) to run specific tests
+
 EXIT CODES:
     0           All tests passed
     1           Test failures
@@ -45,8 +49,8 @@ EOF
             exit 0
             ;;
         *)
-            echo "Error: Unknown option: $1" >&2
-            exit 2
+            FILES+=("$1")
+            shift
             ;;
     esac
 done
@@ -69,7 +73,7 @@ if $WATCH; then
     JEST_ARGS+=(--watch)
 fi
 
-npx jest ${JEST_ARGS[@]+"${JEST_ARGS[@]}"} || { echo "✗ Tests failed" >&2; exit 1; }
+npx jest ${JEST_ARGS[@]+"${JEST_ARGS[@]}"} ${FILES[@]+"${FILES[@]}"} || { echo "✗ Tests failed" >&2; exit 1; }
 
 echo "✓ Tests passed"
 exit 0

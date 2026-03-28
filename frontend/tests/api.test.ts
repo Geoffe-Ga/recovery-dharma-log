@@ -64,8 +64,9 @@ describe("API client", () => {
     await expect(api.get("/test")).rejects.toThrow("Bad request");
   });
 
-  it("clears token and redirects on 401 for non-auth paths", async () => {
+  it("clears token and dispatches storage event on 401 for non-auth paths", async () => {
     setToken("my-jwt");
+    const dispatchSpy = jest.spyOn(window, "dispatchEvent");
     mockFetch.mockResolvedValueOnce({
       ok: false,
       status: 401,
@@ -74,6 +75,14 @@ describe("API client", () => {
 
     await expect(api.get("/test")).rejects.toThrow("Session expired");
     expect(getToken()).toBeNull();
+    expect(dispatchSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: "storage",
+        key: "rd_log_token",
+        newValue: null,
+      }),
+    );
+    dispatchSpy.mockRestore();
   });
 
   it("does not redirect on 401 for auth paths", async () => {

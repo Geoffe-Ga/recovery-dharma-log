@@ -5,7 +5,7 @@ import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { RotationCalendar } from "../components/RotationCalendar";
 import { Skeleton } from "../components/Skeleton";
 import {
-  addChapterToPlan,
+  addChaptersToPlan,
   createTopic,
   deleteAssignment,
   deleteTopic,
@@ -201,9 +201,7 @@ export function Settings(): React.ReactElement {
     if (selectedChapterIds.length === 0) return;
     setAddingChapters(true);
     try {
-      for (let i = 0; i < selectedChapterIds.length; i++) {
-        await addChapterToPlan();
-      }
+      await addChaptersToPlan(selectedChapterIds);
       setPlan(await getReadingPlan());
       setSelectedChapterIds([]);
     } catch (err: unknown) {
@@ -553,9 +551,14 @@ export function Settings(): React.ReactElement {
             </div>
           )}
 
+          <p className="rd-meta">
+            Select chapters below to build the current week&rsquo;s reading,
+            then save it when you&rsquo;re done to move on to the next week.
+          </p>
+
           {plan.unassigned_chapters.length > 0 && (
             <div>
-              <h3>Add Chapters</h3>
+              <h3>Unassigned Chapters</h3>
               <ul className="rd-chapter-picker">
                 {plan.unassigned_chapters.map((ch) => (
                   <li key={ch.id}>
@@ -579,7 +582,7 @@ export function Settings(): React.ReactElement {
                 >
                   {addingChapters
                     ? "Adding..."
-                    : `Add Selected (${selectedChapterIds.length})`}
+                    : `Add to This Week (${selectedChapterIds.length})`}
                 </button>
                 <button
                   type="button"
@@ -587,7 +590,7 @@ export function Settings(): React.ReactElement {
                   onClick={handleFinalize}
                   disabled={plan.current_assignment_chapters.length === 0}
                 >
-                  Finalize Assignment
+                  Save Week &amp; Start Next
                 </button>
               </div>
             </div>
@@ -601,7 +604,7 @@ export function Settings(): React.ReactElement {
                 onClick={handleFinalize}
                 disabled={plan.current_assignment_chapters.length === 0}
               >
-                Finalize Assignment
+                Save Week &amp; Start Next
               </button>
             </div>
           )}

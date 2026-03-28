@@ -20,7 +20,7 @@ jest.mock("../src/api/index", () => ({
   scheduleSpeaker: jest.fn(),
   unscheduleSpeaker: jest.fn(),
   cancelMeeting: jest.fn(),
-  updateAttendance: jest.fn(),
+  updateDana: jest.fn(),
   getBookPosition: jest.fn(),
   advanceBook: jest.fn(),
 }));
@@ -45,7 +45,7 @@ const undoTopicDraw = api.undoTopicDraw as jest.Mock;
 const cancelMeeting = api.cancelMeeting as jest.Mock;
 const scheduleSpeaker = api.scheduleSpeaker as jest.Mock;
 const unscheduleSpeaker = api.unscheduleSpeaker as jest.Mock;
-const updateAttendance = api.updateAttendance as jest.Mock;
+const updateDana = api.updateDana as jest.Mock;
 const getBookPosition = api.getBookPosition as jest.Mock;
 const advanceBook = api.advanceBook as jest.Mock;
 
@@ -87,7 +87,7 @@ const baseMeeting: UpcomingMeeting = {
   banners: [],
   meeting_time: "18:00:00",
   is_cancelled: false,
-  attendance_count: null,
+  dana_amount: null,
 };
 
 const cancelledMeeting: UpcomingMeeting = {
@@ -770,95 +770,91 @@ describe("Landing", () => {
     });
   });
 
-  describe("attendance tracking", () => {
-    it("renders Record Attendance button when no attendance recorded", async () => {
+  describe("dana tracking", () => {
+    it("renders Record Dana button when no dana recorded", async () => {
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Record Attendance" }),
+          screen.getByRole("button", { name: "Record Dana" }),
         ).toBeInTheDocument();
       });
     });
 
-    it("shows attendance count when already recorded", async () => {
+    it("shows dana amount when already recorded", async () => {
       getUpcomingMeeting.mockResolvedValue({
         ...baseMeeting,
-        attendance_count: 15,
+        dana_amount: 15.5,
       });
       renderLanding();
 
       await waitFor(() => {
-        expect(screen.getByText("Attendance: 15")).toBeInTheDocument();
+        expect(screen.getByText("Dana: $15.50")).toBeInTheDocument();
       });
       expect(
-        screen.getByRole("button", { name: "Edit attendance" }),
+        screen.getByRole("button", { name: "Edit dana" }),
       ).toBeInTheDocument();
     });
 
-    it("calls updateAttendance when saving attendance", async () => {
+    it("calls updateDana when saving dana", async () => {
       const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
-      updateAttendance.mockResolvedValue({});
+      updateDana.mockResolvedValue({});
       renderLanding();
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Record Attendance" }),
+          screen.getByRole("button", { name: "Record Dana" }),
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: "Record Attendance" }),
-      );
-      await user.type(screen.getByPlaceholderText("Attendance"), "20");
+      await user.click(screen.getByRole("button", { name: "Record Dana" }));
+      await user.type(screen.getByPlaceholderText("0.00"), "20.00");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", 20);
+        expect(updateDana).toHaveBeenCalledWith("2026-02-22", 20);
       });
     });
 
-    it("shows error toast for invalid attendance input", async () => {
+    it("shows error toast for invalid dana input", async () => {
       const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(baseMeeting);
       renderLanding();
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Record Attendance" }),
+          screen.getByRole("button", { name: "Record Dana" }),
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: "Record Attendance" }),
-      );
-      await user.type(screen.getByPlaceholderText("Attendance"), "-5");
+      await user.click(screen.getByRole("button", { name: "Record Dana" }));
+      await user.type(screen.getByPlaceholderText("0.00"), "-5");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
-      expect(updateAttendance).not.toHaveBeenCalled();
+      expect(updateDana).not.toHaveBeenCalled();
     });
 
-    it("clears attendance by saving empty input", async () => {
+    it("clears dana by saving empty input", async () => {
       const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue({
         ...baseMeeting,
-        attendance_count: 15,
+        dana_amount: 15.5,
       });
-      updateAttendance.mockResolvedValue({});
+      updateDana.mockResolvedValue({});
       renderLanding();
 
       await waitFor(() => {
-        expect(screen.getByText("Attendance: 15")).toBeInTheDocument();
+        expect(screen.getByText("Dana: $15.50")).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole("button", { name: "Edit attendance" }));
-      await user.clear(screen.getByPlaceholderText("Attendance"));
+      await user.click(screen.getByRole("button", { name: "Edit dana" }));
+      await user.clear(screen.getByPlaceholderText("0.00"));
       await user.click(screen.getByRole("button", { name: "Save" }));
 
       await waitFor(() => {
-        expect(updateAttendance).toHaveBeenCalledWith("2026-02-22", null);
+        expect(updateDana).toHaveBeenCalledWith("2026-02-22", null);
       });
     });
   });

@@ -19,6 +19,7 @@ from app.schemas import (
 )
 from app.services import (
     add_chapter_to_current_assignment,
+    add_chapters_to_current_assignment,
     advance_book_position,
     delete_assignment,
     finalize_current_assignment,
@@ -122,6 +123,26 @@ def add_chapter_to_assignment(
 ) -> dict:
     """Add the next chapter to the current reading assignment."""
     result = add_chapter_to_current_assignment(db, current_user.group)
+    db.commit()
+    return result
+
+
+@router.post("/plan/add-chapters", response_model=ReadingPlanStatus)
+def add_chapters_to_assignment(
+    body: AssignmentUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Add multiple specific chapters to the current reading assignment."""
+    try:
+        result = add_chapters_to_current_assignment(
+            db, current_user.group, body.chapter_ids
+        )
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
     db.commit()
     return result
 

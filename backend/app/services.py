@@ -491,6 +491,47 @@ def add_chapter_to_current_assignment(db: Session, group: Group) -> dict:
     return get_plan_status(db, group)
 
 
+def add_chapters_to_current_assignment(
+    db: Session, group: Group, chapter_ids_to_add: list[int]
+) -> dict:
+    """Add multiple chapters to the current draft assignment."""
+    if not chapter_ids_to_add:
+        return get_plan_status(db, group)
+
+    # Deduplicate while preserving order
+    chapter_ids_to_add = list(dict.fromkeys(chapter_ids_to_add))
+
+    # Validate that all chapter IDs belong to this group
+    valid_count = (
+        db.query(BookChapter)
+        .filter(
+            BookChapter.id.in_(chapter_ids_to_add),
+            BookChapter.group_id == group.id,
+        )
+        .count()
+    )
+    if valid_count != len(chapter_ids_to_add):
+        raise ValueError("Invalid chapter IDs")
+
+    draft = get_current_draft_assignment(db, group)
+    if draft is None:
+        draft = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=1,
+            chapters_json="[]",
+        )
+        db.add(draft)
+        db.flush()
+
+    existing_ids = json.loads(draft.chapters_json)
+    new_ids = [i for i in chapter_ids_to_add if i not in existing_ids]
+    existing_ids.extend(new_ids)
+    draft.chapters_json = json.dumps(existing_ids)
+    db.flush()
+
+    return get_plan_status(db, group)
+
+
 def finalize_current_assignment(db: Session, group: Group) -> dict | None:
     """Finalize the current draft and prepare for the next assignment."""
     draft = get_current_draft_assignment(db, group)
@@ -881,7 +922,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
 
     banners = get_speaker_banners(db, group)
     is_cancelled = bool(log_entry and log_entry.is_cancelled)
-    attendance_count = log_entry.attendance_count if log_entry else None
+    dana_amount = log_entry.dana_amount if log_entry else None
 
     return {
         "meeting_date": meeting_date,
@@ -894,7 +935,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
         "topics_remaining": topics_remaining,
         "topics_total": topics_total,
         "banners": banners,
-        "attendance_count": attendance_count,
+        "dana_amount": dana_amount,
     }
 
 
@@ -968,12 +1009,10 @@ def _format_csv_row(db: Session, group: Group, entry: MeetingLog) -> str:
             book_section = summary
     cancelled = "Yes" if entry.is_cancelled else ""
     speaker = entry.speaker_name or ""
-    attendance = (
-        str(entry.attendance_count) if entry.attendance_count is not None else ""
-    )
+    dana = f"{entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
     return (
         f"{entry.meeting_date},{entry.format_type},"
-        f'"{speaker}","{topic_name}","{book_section}",{cancelled},{attendance}'
+        f'"{speaker}","{topic_name}","{book_section}",{cancelled},{dana}'
     )
 
 
@@ -985,7 +1024,7 @@ def generate_csv_export(
 ) -> str:
     """Generate CSV content from the meeting log."""
     entries = _query_meeting_log(db, group, start_date, end_date)
-    lines = ["date,format,speaker,topic,book_section,cancelled,attendance"]
+    lines = ["date,format,speaker,topic,book_section,cancelled,dana"]
     for entry in entries:
         lines.append(_format_csv_row(db, group, entry))
     return "\n".join(lines) + "\n"
@@ -1029,14 +1068,12 @@ def _build_export_rows(
     rows = []
     for entry in entries:
         content = _get_entry_content(db, group, entry)
-        attendance = (
-            str(entry.attendance_count) if entry.attendance_count is not None else ""
-        )
+        dana = f"${entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
         rows.append(
             f"<tr><td>{entry.meeting_date}</td>"
             f"<td>{entry.format_type}</td>"
             f"<td>{content}</td>"
-            f"<td>{attendance}</td></tr>"
+            f"<td>{dana}</td></tr>"
         )
 
     for _ in range(blank_rows):
@@ -1126,7 +1163,7 @@ tr:nth-child(even) {{ background: #f7f7f7; }}
 <hr class="header-rule">
 {date_range_html}
 <table>
-<thead><tr><th>Date</th><th>Format</th><th>Content</th><th>Attendance</th></tr></thead>
+<thead><tr><th>Date</th><th>Format</th><th>Content</th><th>Dana</th></tr></thead>
 <tbody>
 {table_rows}
 </tbody>
