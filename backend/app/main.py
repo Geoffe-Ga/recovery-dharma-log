@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 import logging
 from pathlib import Path
 from typing import Any
@@ -28,9 +28,7 @@ from app.routers import (
     speakers,
     topics,
 )
-from app.routers import (
-    settings as settings_router,
-)
+from app.routers import settings as settings_router
 
 logger = logging.getLogger(__name__)
 
@@ -59,31 +57,25 @@ def _run_migrations() -> None:
     for table, column, col_type in _MIGRATIONS:
         existing = [c["name"] for c in inspector.get_columns(table)]
         if column not in existing:
-            try:
-                with engine.connect() as conn:
-                    conn.execute(
-                        text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
-                    )
-                    conn.commit()
-            except OperationalError:
-                pass  # Column already exists (race or stale inspector cache)
+            with suppress(OperationalError), engine.connect() as conn:
+                conn.execute(
+                    text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                )
+                conn.commit()
 
     # Apply column type changes (PostgreSQL only; SQLite ignores column types)
     dialect = engine.dialect.name
     if dialect == "postgresql":
         for table, column, new_type in _TYPE_MIGRATIONS:
-            try:
-                with engine.connect() as conn:
-                    conn.execute(
-                        text(
-                            f"ALTER TABLE {table} "
-                            f"ALTER COLUMN {column} TYPE {new_type} "
-                            f"USING {column}::double precision"
-                        )
+            with suppress(OperationalError), engine.connect() as conn:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE {table} "
+                        f"ALTER COLUMN {column} TYPE {new_type} "
+                        f"USING {column}::double precision"
                     )
-                    conn.commit()
-            except OperationalError:
-                pass  # Already the right type or column doesn't exist
+                )
+                conn.commit()
 
 
 @asynccontextmanager
