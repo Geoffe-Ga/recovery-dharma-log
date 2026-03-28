@@ -145,6 +145,7 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
   };
 
   const handleAddSlot = (): void => {
+    if (rotation.length >= 5) return;
     setRotation((prev) => [...prev, "Topic"]);
   };
 
@@ -178,6 +179,7 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
       {step === 2 && (
         <StepRotation
           rotation={rotation}
+          meetingDay={meetingDay}
           onRotationChange={handleRotationChange}
           onAddSlot={handleAddSlot}
           onRemoveSlot={handleRemoveSlot}
