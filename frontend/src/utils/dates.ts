@@ -42,6 +42,19 @@ export function formatShortDate(isoDate: string): string {
 }
 
 /**
+ * Derive meeting status from the date and cancellation flag.
+ * Future meetings are "Scheduled", past meetings are "Held", cancelled is "Cancelled".
+ */
+export function meetingStatus(isoDate: string, isCancelled: boolean): string {
+  if (isCancelled) return "Cancelled";
+  const [year, month, day] = isoDate.split("-").map(Number);
+  const meetingDate = new Date(year, month - 1, day);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return meetingDate >= today ? "Scheduled" : "Held";
+}
+
+/**
  * Format a time string (HH:MM or HH:MM:SS) as "6:00 PM".
  * Returns null if the input is null or empty.
  */

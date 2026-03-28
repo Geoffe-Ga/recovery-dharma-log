@@ -14,7 +14,7 @@ import {
   setFormatOverride,
   undoTopicDraw,
   unscheduleSpeaker,
-  updateAttendance,
+  updateDana,
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
 import type {
@@ -39,8 +39,8 @@ export function Landing(): React.ReactElement {
   const [scheduleFormDate, setScheduleFormDate] = useState<string | null>(null);
   const [scheduleInput, setScheduleInput] = useState("");
   const [isCancelling, setIsCancelling] = useState(false);
-  const [attendanceInput, setAttendanceInput] = useState("");
-  const [showAttendanceForm, setShowAttendanceForm] = useState(false);
+  const [danaInput, setDanaInput] = useState("");
+  const [showDanaForm, setShowDanaForm] = useState(false);
   const [overrides, setOverrides] = useState<FormatOverride[]>([]);
   const [overrideDropdownDate, setOverrideDropdownDate] = useState<
     string | null
@@ -151,29 +151,26 @@ export function Landing(): React.ReactElement {
     }
   }, [meeting, refresh, showToast]);
 
-  const handleSaveAttendance = useCallback(async () => {
+  const handleSaveDana = useCallback(async () => {
     if (!meeting) return;
-    const value = attendanceInput.trim();
-    const count = value === "" ? null : parseInt(value, 10);
-    if (value !== "" && (isNaN(count as number) || (count as number) < 0)) {
-      showToast("error", "Please enter a valid number");
+    const value = danaInput.trim();
+    const amount = value === "" ? null : parseFloat(value);
+    if (value !== "" && (isNaN(amount as number) || (amount as number) < 0)) {
+      showToast("error", "Please enter a valid amount");
       return;
     }
     try {
-      await updateAttendance(meeting.meeting_date, count);
-      setShowAttendanceForm(false);
+      await updateDana(meeting.meeting_date, amount);
+      setShowDanaForm(false);
       await refresh();
-      showToast(
-        "success",
-        count === null ? "Attendance cleared" : "Attendance saved",
-      );
+      showToast("success", amount === null ? "Dana cleared" : "Dana saved");
     } catch (err: unknown) {
       showToast(
         "error",
-        err instanceof Error ? err.message : "Failed to save attendance",
+        err instanceof Error ? err.message : "Failed to save dana",
       );
     }
-  }, [meeting, attendanceInput, refresh, showToast]);
+  }, [meeting, danaInput, refresh, showToast]);
 
   const handleScheduleFromList = useCallback(
     async (e: React.FormEvent) => {
@@ -455,43 +452,46 @@ export function Landing(): React.ReactElement {
               </section>
             )}
 
-            <section className="rd-attendance">
-              {meeting.attendance_count != null && !showAttendanceForm ? (
-                <div className="rd-attendance__display">
-                  <span>Attendance: {meeting.attendance_count}</span>
+            <section className="rd-dana">
+              {meeting.dana_amount != null && !showDanaForm ? (
+                <div className="rd-dana__display">
+                  <span>Dana: ${meeting.dana_amount.toFixed(2)}</span>
                   <button
                     type="button"
                     className="outline rd-icon-btn"
-                    aria-label="Edit attendance"
+                    aria-label="Edit dana"
                     onClick={() => {
-                      setAttendanceInput(
-                        String(meeting.attendance_count ?? ""),
+                      setDanaInput(
+                        meeting.dana_amount != null
+                          ? meeting.dana_amount.toFixed(2)
+                          : "",
                       );
-                      setShowAttendanceForm(true);
+                      setShowDanaForm(true);
                     }}
                   >
                     Edit
                   </button>
                 </div>
-              ) : showAttendanceForm ? (
-                <div className="rd-attendance__form">
+              ) : showDanaForm ? (
+                <div className="rd-dana__form">
                   <input
                     type="number"
                     min="0"
-                    aria-label="Attendance count"
-                    placeholder="Attendance"
-                    value={attendanceInput}
-                    onChange={(e) => setAttendanceInput(e.target.value)}
+                    step="0.01"
+                    aria-label="Dana amount"
+                    placeholder="0.00"
+                    value={danaInput}
+                    onChange={(e) => setDanaInput(e.target.value)}
                   />
-                  <button type="button" onClick={handleSaveAttendance}>
+                  <button type="button" onClick={handleSaveDana}>
                     Save
                   </button>
                   <button
                     type="button"
                     className="outline"
                     onClick={() => {
-                      setShowAttendanceForm(false);
-                      setAttendanceInput("");
+                      setShowDanaForm(false);
+                      setDanaInput("");
                     }}
                   >
                     Cancel
@@ -501,9 +501,9 @@ export function Landing(): React.ReactElement {
                 <button
                   type="button"
                   className="outline"
-                  onClick={() => setShowAttendanceForm(true)}
+                  onClick={() => setShowDanaForm(true)}
                 >
-                  Record Attendance
+                  Record Dana
                 </button>
               )}
             </section>

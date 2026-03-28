@@ -6,6 +6,7 @@ from sqlalchemy import (
     Boolean,
     Date,
     DateTime,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -267,8 +268,9 @@ class MeetingLog(Base):
         nullable=False,
         default=False,
     )
-    attendance_count: Mapped[int | None] = mapped_column(
-        Integer,
+    dana_amount: Mapped[float | None] = mapped_column(
+        "attendance_count",
+        Float,
         nullable=True,
     )
 
