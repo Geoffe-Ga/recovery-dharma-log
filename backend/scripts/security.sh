@@ -72,7 +72,9 @@ echo "=== Security Checks (pip-audit) ==="
 if $VERBOSE; then
     echo "Running pip-audit dependency checker..."
 fi
-pip-audit || { echo "✗ pip-audit found issues" >&2; exit 1; }
+# CVE-2026-4539: ReDoS in pygments AdlLexer — transitive test dep, not in prod.
+# Tracked in issue #90; remove --ignore-vuln once pygments patches.
+pip-audit --ignore-vuln CVE-2026-4539 || { echo "✗ pip-audit found issues" >&2; exit 1; }
 
 if $FULL; then
     echo "=== Comprehensive Security Scan ==="
