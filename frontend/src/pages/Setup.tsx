@@ -55,14 +55,14 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
   useEffect(() => {
     getChapters()
       .then(setChapters)
-      .catch(() => {});
+      .catch(() => setError("Failed to load chapters"));
     getTopics()
       .then((topics) => {
         const names = topics.map((t) => t.name);
         setSeedTopics(names);
         setSelectedTopics(new Set(names));
       })
-      .catch(() => {});
+      .catch(() => setError("Failed to load topics"));
   }, []);
 
   const handleNext = useCallback(async () => {
