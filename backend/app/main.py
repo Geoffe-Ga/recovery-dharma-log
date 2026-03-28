@@ -1,7 +1,7 @@
 """FastAPI application entry point."""
 
 from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 import logging
 from pathlib import Path
 from typing import Any
@@ -57,25 +57,39 @@ def _run_migrations() -> None:
     for table, column, col_type in _MIGRATIONS:
         existing = [c["name"] for c in inspector.get_columns(table)]
         if column not in existing:
-            with suppress(OperationalError), engine.connect() as conn:
-                conn.execute(
-                    text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
+                    )
+                    conn.commit()
+            except OperationalError:
+                logger.debug(
+                    "Column %s.%s already exists or migration skipped",
+                    table,
+                    column,
                 )
-                conn.commit()
 
     # Apply column type changes (PostgreSQL only; SQLite ignores column types)
     dialect = engine.dialect.name
     if dialect == "postgresql":
         for table, column, new_type in _TYPE_MIGRATIONS:
-            with suppress(OperationalError), engine.connect() as conn:
-                conn.execute(
-                    text(
-                        f"ALTER TABLE {table} "
-                        f"ALTER COLUMN {column} TYPE {new_type} "
-                        f"USING {column}::double precision"
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE {table} "
+                            f"ALTER COLUMN {column} TYPE {new_type} "
+                            f"USING {column}::double precision"
+                        )
                     )
+                    conn.commit()
+            except OperationalError:
+                logger.debug(
+                    "Column %s.%s type migration skipped",
+                    table,
+                    column,
                 )
-                conn.commit()
 
 
 @asynccontextmanager
