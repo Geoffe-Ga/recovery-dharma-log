@@ -1,6 +1,7 @@
 /** Landing page - shows the next upcoming meeting. */
 
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import {
   advanceBook,
   cancelMeeting,
@@ -464,26 +465,36 @@ export function Landing(): React.ReactElement {
 
             {meeting.format_type === "Book Study" && (
               <section>
-                {meeting.book_chapter && (
-                  <p>
-                    <strong>{meeting.book_chapter}</strong>
-                  </p>
-                )}
-                {bookPosition && bookPosition.total_assignments > 0 && (
+                {meeting.book_chapter ? (
                   <>
-                    <p className="rd-meta">
-                      Cycle {bookPosition.book_cycle} — Assignment{" "}
-                      {bookPosition.current_assignment_index + 1} of{" "}
-                      {bookPosition.total_assignments}
+                    <p>
+                      <strong>{meeting.book_chapter}</strong>
                     </p>
-                    <button
-                      type="button"
-                      className="outline"
-                      onClick={handleAdvanceBook}
-                    >
-                      Next Assignment
-                    </button>
+                    {bookPosition && bookPosition.total_assignments > 0 && (
+                      <>
+                        <p className="rd-meta">
+                          Cycle {bookPosition.book_cycle} — Reading{" "}
+                          {bookPosition.current_assignment_index + 1} of{" "}
+                          {bookPosition.total_assignments}
+                        </p>
+                        <button
+                          type="button"
+                          className="outline"
+                          onClick={handleAdvanceBook}
+                        >
+                          Next Reading
+                        </button>
+                      </>
+                    )}
                   </>
+                ) : (
+                  <p className="rd-meta">
+                    No reading queued for next time &mdash;{" "}
+                    <Link to="/settings#reading-plan">
+                      set one up in Settings
+                    </Link>
+                    .
+                  </p>
                 )}
               </section>
             )}

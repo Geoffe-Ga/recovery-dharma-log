@@ -6,6 +6,7 @@ import { RotationCalendar } from "../components/RotationCalendar";
 import { Skeleton } from "../components/Skeleton";
 import {
   addChaptersToPlan,
+  advanceBook,
   createTopic,
   deleteAssignment,
   deleteTopic,
@@ -32,6 +33,7 @@ import type {
   Topic,
 } from "../types/index";
 import { formatLogDate, formatShortDate } from "../utils/dates";
+import { formatChapterRange, suggestChapterCount } from "../utils/reading";
 
 const DAYS_OF_WEEK = [
   "Monday",
@@ -59,8 +61,11 @@ export function Settings(): React.ReactElement {
     null,
   );
   const [editChapterIds, setEditChapterIds] = useState<number[]>([]);
-  const [selectedChapterIds, setSelectedChapterIds] = useState<number[]>([]);
-  const [addingChapters, setAddingChapters] = useState(false);
+  const [queueMode, setQueueMode] = useState(false);
+  const [suggestedCount, setSuggestedCount] = useState(0);
+  const [expandedHistoryId, setExpandedHistoryId] = useState<number | null>(
+    null,
+  );
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [position, setPosition] = useState<BookPosition | null>(null);
   const showToast = useShowToast();
@@ -197,36 +202,67 @@ export function Settings(): React.ReactElement {
     }
   }, []);
 
-  const handleAddSelectedChapters = useCallback(async () => {
-    if (selectedChapterIds.length === 0) return;
-    setAddingChapters(true);
-    try {
-      await addChaptersToPlan(selectedChapterIds);
-      setPlan(await getReadingPlan());
-      setSelectedChapterIds([]);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add chapters");
-    } finally {
-      setAddingChapters(false);
-    }
-  }, [selectedChapterIds]);
+  const enterQueueMode = useCallback(() => {
+    if (!plan || plan.unassigned_chapters.length === 0) return;
+    setSuggestedCount(suggestChapterCount(plan.unassigned_chapters));
+    setQueueMode(true);
+  }, [plan]);
 
-  const toggleSelectedChapter = useCallback((chapterId: number) => {
-    setSelectedChapterIds((prev) =>
-      prev.includes(chapterId)
-        ? prev.filter((id) => id !== chapterId)
-        : [...prev, chapterId],
-    );
+  const cancelQueueMode = useCallback(() => {
+    setQueueMode(false);
+    setSuggestedCount(0);
   }, []);
 
-  const handleFinalize = useCallback(async () => {
+  const handleMarkDone = useCallback(async () => {
+    if (!position || !plan) return;
+
+    const atEnd =
+      position.total_assignments > 0 &&
+      position.current_assignment_index >= position.total_assignments - 1;
+
+    if (atEnd) {
+      enterQueueMode();
+      return;
+    }
+
     try {
+      const updated = await advanceBook();
+      setPosition(updated);
+      setPlan(await getReadingPlan());
+      showToast("success", "Advanced to next reading");
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to advance",
+      );
+    }
+  }, [position, plan, enterQueueMode, showToast]);
+
+  const handleConfirmQueue = useCallback(async () => {
+    if (suggestedCount === 0 || !plan) return;
+    const ids = plan.unassigned_chapters
+      .slice(0, suggestedCount)
+      .map((ch) => ch.id);
+    try {
+      await addChaptersToPlan(ids);
       await finalizePlan();
+      if (position && position.total_assignments > 0) {
+        const updated = await advanceBook();
+        setPosition(updated);
+      } else {
+        setPosition(await getBookPosition());
+      }
       setPlan(await getReadingPlan());
+      setQueueMode(false);
+      setSuggestedCount(0);
+      showToast("success", "Reading queued");
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to finalize");
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to queue reading",
+      );
     }
-  }, []);
+  }, [suggestedCount, plan, position, showToast]);
 
   const handleEditAssignment = useCallback(
     (assignmentId: number, currentChapterIds: number[]) => {
@@ -306,6 +342,23 @@ export function Settings(): React.ReactElement {
   if (loading) return <Skeleton lines={4} />;
   if (error) return <ErrorWithRetry message={error} onRetry={loadSettings} />;
   if (!settings) return <p>No settings found.</p>;
+
+  const currentReading = position?.current_assignment ?? null;
+  const isLastAssignment =
+    position != null &&
+    position.total_assignments > 0 &&
+    position.current_assignment_index >= position.total_assignments - 1;
+  const bookComplete =
+    plan != null &&
+    plan.unassigned_chapters.length === 0 &&
+    plan.current_assignment_chapters.length === 0;
+  const suggestedChapters = plan
+    ? plan.unassigned_chapters.slice(0, suggestedCount)
+    : [];
+  const suggestedTotalPages = suggestedChapters.reduce(
+    (sum, ch) => sum + ch.page_count,
+    0,
+  );
 
   const inDeck = topics.filter((t) => !t.is_drawn);
   const drawn = topics
@@ -507,117 +560,135 @@ export function Settings(): React.ReactElement {
 
           {plan.total_chapters > 0 && (
             <div className="rd-plan-progress">
-              <p className="rd-plan-progress__label">
-                {plan.assigned_chapters} of {plan.total_chapters} chapters
-                assigned &middot; {plan.assigned_pages} of {plan.total_pages}{" "}
-                pages assigned
-              </p>
               <div className="rd-plan-progress__bar">
                 <div
                   className="rd-plan-progress__fill"
                   role="progressbar"
-                  aria-valuenow={plan.assigned_chapters}
+                  aria-valuenow={plan.assigned_pages}
                   aria-valuemin={0}
-                  aria-valuemax={plan.total_chapters}
+                  aria-valuemax={plan.total_pages}
                   aria-label="Reading plan progress"
                   style={{
-                    width: `${(plan.assigned_chapters / plan.total_chapters) * 100}%`,
+                    width: `${plan.total_pages > 0 ? (plan.assigned_pages / plan.total_pages) * 100 : 0}%`,
                   }}
                 />
               </div>
-              {plan.total_chapters - plan.assigned_chapters > 0 && (
-                <p className="rd-plan-progress__label">
-                  ~{plan.total_chapters - plan.assigned_chapters} weeks
-                  remaining
-                </p>
-              )}
-            </div>
-          )}
-
-          {plan.current_assignment_chapters.length > 0 && (
-            <div>
-              <h3>Current Assignment</h3>
-              <ul>
-                {plan.current_assignment_chapters.map((ch) => (
-                  <li key={ch.id}>
-                    {ch.title} (pp. {ch.start_page}&ndash;{ch.end_page},{" "}
-                    {ch.page_count} pages)
-                  </li>
-                ))}
-              </ul>
-              <p className="rd-meta">
-                Total: {plan.current_assignment_total_pages} pages
+              <p className="rd-plan-progress__label">
+                {plan.assigned_pages} of {plan.total_pages} pages
+                {plan.total_chapters - plan.assigned_chapters > 0 &&
+                  ` · ~${plan.total_chapters - plan.assigned_chapters} weeks left`}
               </p>
             </div>
           )}
 
-          <p className="rd-meta">
-            Select chapters below to build the current week&rsquo;s reading,
-            then save it when you&rsquo;re done to move on to the next week.
-          </p>
+          {!queueMode && (
+            <div className="rd-reading-card">
+              {currentReading ? (
+                <>
+                  <h3>This Week&#8217;s Reading</h3>
+                  <p className="rd-reading-card__chapters">
+                    {formatChapterRange(currentReading.chapters)}
+                  </p>
+                  <p className="rd-reading-card__pages">
+                    {currentReading.total_pages} pages
+                  </p>
+                  {bookComplete && isLastAssignment ? (
+                    <p className="rd-meta">
+                      You&#8217;ve completed the book! Open the history below to
+                      start a new cycle.
+                    </p>
+                  ) : isLastAssignment ? (
+                    <button type="button" onClick={handleMarkDone}>
+                      Mark Done &amp; Queue Next
+                    </button>
+                  ) : (
+                    <button type="button" onClick={handleMarkDone}>
+                      Mark Done
+                    </button>
+                  )}
+                </>
+              ) : plan.unassigned_chapters.length > 0 ? (
+                <>
+                  <h3>Start Reading</h3>
+                  <p>Queue the first chapters to get started.</p>
+                  <button type="button" onClick={enterQueueMode}>
+                    Queue First Reading
+                  </button>
+                </>
+              ) : null}
+            </div>
+          )}
 
-          {plan.unassigned_chapters.length > 0 && (
-            <div>
-              <h3>Unassigned Chapters</h3>
-              <ul className="rd-chapter-picker">
-                {plan.unassigned_chapters.map((ch) => (
-                  <li key={ch.id}>
-                    <label>
-                      <input
-                        type="checkbox"
-                        checked={selectedChapterIds.includes(ch.id)}
-                        onChange={() => toggleSelectedChapter(ch.id)}
-                      />
-                      {ch.title} (pp. {ch.start_page}&ndash;{ch.end_page},{" "}
-                      {ch.page_count} pages)
-                    </label>
-                  </li>
-                ))}
-              </ul>
-              <div className="rd-button-row">
+          {queueMode && plan.unassigned_chapters.length > 0 && (
+            <div className="rd-queue-next">
+              <h3>Next Up</h3>
+              <p className="rd-queue-next__preview">
+                {formatChapterRange(suggestedChapters)}
+              </p>
+              <p className="rd-queue-next__pages">
+                {suggestedTotalPages} pages
+              </p>
+              <div className="rd-queue-stepper">
                 <button
                   type="button"
-                  onClick={handleAddSelectedChapters}
-                  disabled={selectedChapterIds.length === 0 || addingChapters}
+                  className="outline"
+                  onClick={() => setSuggestedCount((c) => Math.max(1, c - 1))}
+                  disabled={suggestedCount <= 1}
+                  aria-label="Remove chapter"
                 >
-                  {addingChapters
-                    ? "Adding..."
-                    : `Add to This Week (${selectedChapterIds.length})`}
+                  &minus;
+                </button>
+                <span className="rd-queue-stepper__label">
+                  {suggestedCount}{" "}
+                  {suggestedCount === 1 ? "chapter" : "chapters"}
+                </span>
+                <button
+                  type="button"
+                  className="outline"
+                  onClick={() =>
+                    setSuggestedCount((c) =>
+                      Math.min(plan.unassigned_chapters.length, c + 1),
+                    )
+                  }
+                  disabled={suggestedCount >= plan.unassigned_chapters.length}
+                  aria-label="Add chapter"
+                >
+                  +
+                </button>
+              </div>
+              <div className="rd-button-row">
+                <button type="button" onClick={handleConfirmQueue}>
+                  Confirm
                 </button>
                 <button
                   type="button"
                   className="outline"
-                  onClick={handleFinalize}
-                  disabled={plan.current_assignment_chapters.length === 0}
+                  onClick={cancelQueueMode}
                 >
-                  Save Week &amp; Start Next
+                  Cancel
                 </button>
               </div>
             </div>
           )}
 
-          {plan.unassigned_chapters.length === 0 && (
-            <div className="rd-button-row">
-              <button
-                type="button"
-                className="outline"
-                onClick={handleFinalize}
-                disabled={plan.current_assignment_chapters.length === 0}
-              >
-                Save Week &amp; Start Next
-              </button>
-            </div>
-          )}
-
           {plan.completed_assignments.length > 0 && (
-            <>
-              <h3>Completed Assignments</h3>
-              {position && (
-                <p className="rd-meta">Cycle {position.book_cycle}</p>
-              )}
-              <ol>
+            <details className="rd-reading-history">
+              <summary>
+                Reading History ({plan.completed_assignments.length}{" "}
+                {plan.completed_assignments.length === 1 ? "week" : "weeks"})
+                {position && (
+                  <span className="rd-meta">
+                    {" "}
+                    &mdash; Cycle {position.book_cycle}
+                  </span>
+                )}
+              </summary>
+              <ol className="rd-reading-history__list">
                 {plan.completed_assignments.map((a, i) => (
-                  <li key={a.id}>
+                  <li
+                    key={a.id}
+                    className={`rd-reading-history__item${position && position.current_assignment_index === i ? " rd-reading-history__item--current" : ""}`}
+                  >
                     {editingAssignmentId === a.id ? (
                       <div>
                         <p>Select chapters:</p>
@@ -650,83 +721,102 @@ export function Settings(): React.ReactElement {
                         </div>
                       </div>
                     ) : (
-                      <div
-                        className={`rd-assignment-item${position && position.current_assignment_index === i ? " rd-assignment-item--current" : ""}`}
-                      >
-                        <span>
-                          {position &&
-                            position.current_assignment_index === i && (
-                              <strong className="rd-current-marker">
-                                Current:{" "}
-                              </strong>
-                            )}
-                          {a.chapters.map((c) => c.title).join(", ")} (
-                          {a.total_pages} pages)
-                          {a.meeting_date && (
-                            <span className="rd-assignment-item__date">
-                              {" "}
-                              &mdash; {formatShortDate(a.meeting_date)}
-                            </span>
-                          )}
-                        </span>
-                        <span className="rd-assignment-item__actions">
-                          {position &&
-                            position.current_assignment_index !== i && (
-                              <button
-                                type="button"
-                                className="rd-ghost"
-                                onClick={() => handleSetAsCurrent(i)}
-                              >
-                                Set as Current
-                              </button>
-                            )}
-                          <button
-                            type="button"
-                            className="rd-ghost"
-                            onClick={() =>
-                              handleEditAssignment(
-                                a.id,
-                                a.chapters.map((c) => c.id),
-                              )
+                      <div>
+                        <div
+                          className="rd-reading-history__row"
+                          role="button"
+                          tabIndex={0}
+                          onClick={() =>
+                            setExpandedHistoryId(
+                              expandedHistoryId === a.id ? null : a.id,
+                            )
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              setExpandedHistoryId(
+                                expandedHistoryId === a.id ? null : a.id,
+                              );
                             }
-                          >
-                            Edit
-                          </button>
-                          {confirmAction === `delete-assignment-${a.id}` ? (
-                            <>
-                              <button
-                                type="button"
-                                className="rd-danger"
-                                onClick={() => handleDeleteAssignment(a.id)}
-                              >
-                                Confirm Delete
-                              </button>
-                              <button
-                                type="button"
-                                className="outline"
-                                onClick={() => setConfirmAction(null)}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          ) : (
+                          }}
+                        >
+                          <span className="rd-reading-history__content">
+                            {position &&
+                              position.current_assignment_index === i && (
+                                <strong className="rd-current-marker">
+                                  Current:{" "}
+                                </strong>
+                              )}
+                            {a.chapters.map((c) => c.title).join(", ")}
+                            <span className="rd-meta">
+                              {" "}
+                              &mdash; {a.total_pages}pp
+                              {a.meeting_date && (
+                                <> &mdash; {formatShortDate(a.meeting_date)}</>
+                              )}
+                            </span>
+                          </span>
+                        </div>
+                        {expandedHistoryId === a.id && (
+                          <div className="rd-reading-history__actions">
+                            {position &&
+                              position.current_assignment_index !== i && (
+                                <button
+                                  type="button"
+                                  className="outline rd-icon-btn"
+                                  onClick={() => handleSetAsCurrent(i)}
+                                >
+                                  Set as Current
+                                </button>
+                              )}
                             <button
                               type="button"
-                              className="rd-ghost"
+                              className="outline rd-icon-btn"
                               onClick={() =>
-                                setConfirmAction(`delete-assignment-${a.id}`)
+                                handleEditAssignment(
+                                  a.id,
+                                  a.chapters.map((c) => c.id),
+                                )
                               }
                             >
-                              Delete
+                              Edit
                             </button>
-                          )}
-                        </span>
+                            {confirmAction === `delete-assignment-${a.id}` ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="rd-danger"
+                                  onClick={() => handleDeleteAssignment(a.id)}
+                                >
+                                  Confirm Delete
+                                </button>
+                                <button
+                                  type="button"
+                                  className="outline"
+                                  onClick={() => setConfirmAction(null)}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            ) : (
+                              <button
+                                type="button"
+                                className="outline rd-icon-btn rd-danger-outline"
+                                onClick={() =>
+                                  setConfirmAction(`delete-assignment-${a.id}`)
+                                }
+                              >
+                                Delete
+                              </button>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
                   </li>
                 ))}
               </ol>
-              {plan.unassigned_chapters.length === 0 && (
+              {bookComplete && (
                 <div className="rd-button-row">
                   {confirmAction === "restart-book" ? (
                     <>
@@ -756,7 +846,7 @@ export function Settings(): React.ReactElement {
                   )}
                 </div>
               )}
-            </>
+            </details>
           )}
         </section>
       )}
