@@ -211,66 +211,66 @@ class TestMeetingsEndpoints:
         )
         assert response.status_code == 404
 
-    def test_attendance_sets_count(
+    def test_dana_sets_amount(
         self,
         client: TestClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """PUT attendance sets attendance count on a meeting."""
+        """PUT dana sets dana amount on a meeting."""
         response = client.put(
-            "/meetings/2025-03-01/attendance",
-            json={"attendance_count": 15},
+            "/meetings/2025-03-01/dana",
+            json={"dana_amount": 15.50},
             headers=auth_headers,
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["attendance_count"] == 15
+        assert data["dana_amount"] == 15.50
 
-    def test_attendance_null_clears_count(
+    def test_dana_null_clears_amount(
         self,
         client: TestClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """PUT attendance with null clears attendance count."""
-        # First set a count
+        """PUT dana with null clears dana amount."""
+        # First set an amount
         client.put(
-            "/meetings/2025-03-01/attendance",
-            json={"attendance_count": 15},
+            "/meetings/2025-03-01/dana",
+            json={"dana_amount": 15.50},
             headers=auth_headers,
         )
         # Then clear it
         response = client.put(
-            "/meetings/2025-03-01/attendance",
-            json={"attendance_count": None},
+            "/meetings/2025-03-01/dana",
+            json={"dana_amount": None},
             headers=auth_headers,
         )
         assert response.status_code == 200
         data = response.json()
-        assert data["attendance_count"] is None
+        assert data["dana_amount"] is None
 
-    def test_attendance_rejects_negative(
+    def test_dana_rejects_negative(
         self,
         client: TestClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """PUT attendance with negative count returns 422."""
+        """PUT dana with negative amount returns 422."""
         response = client.put(
-            "/meetings/2025-03-01/attendance",
-            json={"attendance_count": -1},
+            "/meetings/2025-03-01/dana",
+            json={"dana_amount": -1},
             headers=auth_headers,
         )
         assert response.status_code == 422
 
-    def test_upcoming_includes_attendance(
+    def test_upcoming_includes_dana(
         self,
         client: TestClient,
         auth_headers: dict[str, str],
     ) -> None:
-        """Upcoming meeting response includes attendance_count field."""
+        """Upcoming meeting response includes dana_amount field."""
         response = client.get("/meetings/upcoming", headers=auth_headers)
         assert response.status_code == 200
         data = response.json()
-        assert "attendance_count" in data
+        assert "dana_amount" in data
 
     def test_endpoints_require_auth(self, client: TestClient) -> None:
         """Meeting endpoints return 401 without auth."""

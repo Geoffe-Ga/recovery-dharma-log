@@ -9,7 +9,7 @@ from app.auth import get_current_user
 from app.database import get_db
 from app.models import MeetingLog, User
 from app.schemas import (
-    AttendanceUpdate,
+    DanaUpdate,
     MeetingCancel,
     MeetingLogUpdate,
     MeetingResponse,
@@ -123,14 +123,14 @@ def cancel_meeting(
     return log_entry
 
 
-@router.put("/{meeting_date}/attendance", response_model=MeetingResponse)
-def update_attendance(
+@router.put("/{meeting_date}/dana", response_model=MeetingResponse)
+def update_dana(
     meeting_date: date,
-    body: AttendanceUpdate,
+    body: DanaUpdate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> MeetingLog:
-    """Set or clear the attendance count for a meeting."""
+    """Set or clear the dana amount for a meeting."""
     log_entry = (
         db.query(MeetingLog)
         .filter(
@@ -140,14 +140,14 @@ def update_attendance(
         .first()
     )
     if log_entry:
-        log_entry.attendance_count = body.attendance_count
+        log_entry.dana_amount = body.dana_amount
     else:
         fmt = get_format_for_date(db, current_user.group, meeting_date)
         log_entry = MeetingLog(
             group_id=current_user.group_id,
             meeting_date=meeting_date,
             format_type=fmt,
-            attendance_count=body.attendance_count,
+            dana_amount=body.dana_amount,
         )
         db.add(log_entry)
     db.commit()

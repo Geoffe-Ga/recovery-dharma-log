@@ -22,7 +22,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: "Mindfulness",
     reading_assignment_summary: null,
     is_cancelled: false,
-    attendance_count: 12,
+    dana_amount: 12,
   },
   {
     id: 2,
@@ -33,7 +33,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: null,
     reading_assignment_summary: null,
     is_cancelled: false,
-    attendance_count: null,
+    dana_amount: null,
   },
   {
     id: 3,
@@ -44,7 +44,7 @@ const mockEntries: MeetingLogEntry[] = [
     topic_name: null,
     reading_assignment_summary: null,
     is_cancelled: false,
-    attendance_count: 8,
+    dana_amount: 8,
   },
 ];
 
@@ -139,14 +139,14 @@ describe("Log", () => {
     });
   });
 
-  it("renders attendance column with count value", async () => {
+  it("renders dana column with amount value", async () => {
     getMeetingLog.mockResolvedValue(mockEntries);
     renderLog();
 
     await waitFor(() => {
-      expect(screen.getByText("Attendance")).toBeInTheDocument();
-      expect(screen.getByText("12")).toBeInTheDocument();
-      expect(screen.getByText("8")).toBeInTheDocument();
+      expect(screen.getByText("Dana")).toBeInTheDocument();
+      expect(screen.getByText("$12.00")).toBeInTheDocument();
+      expect(screen.getByText("$8.00")).toBeInTheDocument();
     });
   });
 

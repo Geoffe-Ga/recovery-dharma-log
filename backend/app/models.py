@@ -267,8 +267,8 @@ class MeetingLog(Base):
         nullable=False,
         default=False,
     )
-    attendance_count: Mapped[int | None] = mapped_column(
-        Integer,
+    dana_amount: Mapped[float | None] = mapped_column(
+        "attendance_count",
         nullable=True,
     )
 

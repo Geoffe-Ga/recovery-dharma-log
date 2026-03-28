@@ -921,7 +921,7 @@ class TestExport:
         assert "Preface" in csv
         assert "pp." in csv
 
-    def test_csv_export_includes_attendance(self, db_session: Session) -> None:
+    def test_csv_export_includes_dana(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(
             MeetingLog(
@@ -929,7 +929,7 @@ class TestExport:
                 meeting_date=date(2025, 1, 5),
                 format_type="Speaker",
                 speaker_name="Dave",
-                attendance_count=15,
+                dana_amount=15.50,
             )
         )
         db_session.add(
@@ -937,15 +937,15 @@ class TestExport:
                 group_id=group.id,
                 meeting_date=date(2025, 1, 12),
                 format_type="Topic",
-                attendance_count=None,
+                dana_amount=None,
             )
         )
         db_session.flush()
 
         csv = generate_csv_export(db_session, group)
-        assert "attendance" in csv.split("\n")[0]
-        assert "15" in csv
-        # Null attendance renders as empty, not "None"
+        assert "dana" in csv.split("\n")[0]
+        assert "15.50" in csv
+        # Null dana renders as empty, not "None"
         assert "None" not in csv
 
     def test_printable_export(self, db_session: Session) -> None:
@@ -1032,7 +1032,7 @@ class TestExport:
         html = generate_printable_export(db_session, group)
         assert "Generated from RD Log" in html
 
-    def test_printable_export_shows_attendance(self, db_session: Session) -> None:
+    def test_printable_export_shows_dana(self, db_session: Session) -> None:
         group = _create_group(db_session)
         db_session.add(
             MeetingLog(
@@ -1040,14 +1040,14 @@ class TestExport:
                 meeting_date=date(2025, 1, 5),
                 format_type="Speaker",
                 speaker_name="Clare",
-                attendance_count=15,
+                dana_amount=15.50,
             )
         )
         db_session.flush()
 
         html = generate_printable_export(db_session, group)
-        assert "15" in html
-        assert "Attendance" in html
+        assert "$15.50" in html
+        assert "Dana" in html
 
     def test_printable_export_shows_topic(self, db_session: Session) -> None:
         group = _create_group(db_session)
