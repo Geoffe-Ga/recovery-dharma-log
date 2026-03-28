@@ -480,9 +480,7 @@ class TestBookEndpoints:
     ) -> None:
         """DELETE /book/assignments/{id} removes the assignment."""
         client.post("/book/plan/add-chapter", headers=auth_headers)
-        finalized = client.post(
-            "/book/plan/finalize", headers=auth_headers
-        ).json()
+        finalized = client.post("/book/plan/finalize", headers=auth_headers).json()
         response = client.delete(
             f"/book/assignments/{finalized['id']}", headers=auth_headers
         )
@@ -494,9 +492,7 @@ class TestBookEndpoints:
         auth_headers: dict[str, str],
     ) -> None:
         """DELETE /book/assignments/{id} with invalid ID returns 400."""
-        response = client.delete(
-            "/book/assignments/99999", headers=auth_headers
-        )
+        response = client.delete("/book/assignments/99999", headers=auth_headers)
         assert response.status_code == 400
 
 
