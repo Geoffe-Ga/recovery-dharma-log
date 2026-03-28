@@ -432,6 +432,36 @@ class TestBookEndpoints:
         )
         assert response.status_code == 200
 
+    def test_add_chapters_batch_returns_200(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Batch add chapters returns valid response."""
+        chapters = client.get("/book/chapters", headers=auth_headers).json()
+        ids = [ch["id"] for ch in chapters[:2]]
+        response = client.post(
+            "/book/plan/add-chapters",
+            json={"chapter_ids": ids},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        data = response.json()
+        assert len(data["current_assignment_chapters"]) == 2
+
+    def test_add_chapters_batch_invalid_ids_returns_400(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Batch add with invalid chapter IDs returns 400."""
+        response = client.post(
+            "/book/plan/add-chapters",
+            json={"chapter_ids": [9999]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
     def test_finalize_returns_200(
         self,
         client: TestClient,
