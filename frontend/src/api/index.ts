@@ -27,8 +27,13 @@ import type {
 export async function register(
   username: string,
   password: string,
+  inviteCode?: string,
 ): Promise<User> {
-  return api.post<User>("/auth/register", { username, password });
+  const body: Record<string, string> = { username, password };
+  if (inviteCode) {
+    body.invite_code = inviteCode;
+  }
+  return api.post<User>("/auth/register", body);
 }
 
 export async function login(
@@ -238,6 +243,14 @@ export async function updateSettings(
   settings: GroupSettingsUpdate,
 ): Promise<GroupSettings> {
   return api.put<GroupSettings>("/settings/", settings);
+}
+
+export async function generateInviteCode(): Promise<{ invite_code: string }> {
+  return api.post<{ invite_code: string }>("/settings/invite-code");
+}
+
+export async function revokeInviteCode(): Promise<void> {
+  await api.delete("/settings/invite-code");
 }
 
 // --- Export ---

@@ -33,6 +33,7 @@ _MIGRATIONS: list[tuple[str, str, str]] = [
     ("groups", "book_cycle", "INTEGER DEFAULT 1"),
     ("groups", "current_chapter_marker", "INTEGER"),
     ("groups", "setup_completed", "BOOLEAN DEFAULT 0"),
+    ("groups", "invite_code", "VARCHAR(8)"),
 ]
 
 
