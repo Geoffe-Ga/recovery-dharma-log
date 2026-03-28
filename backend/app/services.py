@@ -524,7 +524,8 @@ def add_chapters_to_current_assignment(
         db.flush()
 
     existing_ids = json.loads(draft.chapters_json)
-    existing_ids.extend(chapter_ids_to_add)
+    new_ids = [i for i in chapter_ids_to_add if i not in existing_ids]
+    existing_ids.extend(new_ids)
     draft.chapters_json = json.dumps(existing_ids)
     db.flush()
 
