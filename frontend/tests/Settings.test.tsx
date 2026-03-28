@@ -328,7 +328,7 @@ describe("Settings", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Add Chapters" }),
+        screen.getByRole("heading", { name: "Unassigned Chapters" }),
       ).toBeInTheDocument();
     });
 

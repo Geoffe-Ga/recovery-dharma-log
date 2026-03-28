@@ -494,7 +494,7 @@ def add_chapter_to_current_assignment(db: Session, group: Group) -> dict:
 def add_chapters_to_current_assignment(
     db: Session, group: Group, chapter_ids_to_add: list[int]
 ) -> dict:
-    """Add multiple specific chapters to the current draft assignment in one operation."""
+    """Add multiple chapters to the current draft assignment."""
     if not chapter_ids_to_add:
         return get_plan_status(db, group)
 
