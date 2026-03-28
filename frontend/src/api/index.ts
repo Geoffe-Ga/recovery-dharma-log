@@ -27,8 +27,13 @@ import type {
 export async function register(
   username: string,
   password: string,
+  inviteCode?: string,
 ): Promise<User> {
-  return api.post<User>("/auth/register", { username, password });
+  const body: Record<string, string> = { username, password };
+  if (inviteCode) {
+    body.invite_code = inviteCode;
+  }
+  return api.post<User>("/auth/register", body);
 }
 
 export async function login(
@@ -240,6 +245,14 @@ export async function updateSettings(
   return api.put<GroupSettings>("/settings/", settings);
 }
 
+export async function generateInviteCode(): Promise<{ invite_code: string }> {
+  return api.post<{ invite_code: string }>("/settings/invite-code");
+}
+
+export async function revokeInviteCode(): Promise<void> {
+  await api.delete("/settings/invite-code");
+}
+
 // --- Export ---
 
 export function getCsvExportUrl(startDate?: string, endDate?: string): string {
@@ -259,6 +272,39 @@ export function getPrintableExportUrl(
   if (endDate) params.set("end_date", endDate);
   const qs = params.toString();
   return `/api/export/printable${qs ? `?${qs}` : ""}`;
+}
+
+// --- Setup Wizard ---
+
+export async function setupBasics(data: {
+  name: string;
+  meeting_day: number;
+  meeting_time: string;
+  start_date: string;
+}): Promise<void> {
+  await api.post("/setup/basics", data);
+}
+
+export async function setupRotation(formatRotation: string[]): Promise<void> {
+  await api.post("/setup/rotation", { format_rotation: formatRotation });
+}
+
+export async function setupTopics(
+  keepTopics: string[],
+  newTopics: string[],
+): Promise<void> {
+  await api.post("/setup/topics", {
+    keep_topics: keepTopics,
+    new_topics: newTopics,
+  });
+}
+
+export async function setupBookPosition(chapterOrder: number): Promise<void> {
+  await api.post("/setup/book-position", { chapter_order: chapterOrder });
+}
+
+export async function setupComplete(): Promise<void> {
+  await api.post("/setup/complete");
 }
 
 // --- Activity Log ---

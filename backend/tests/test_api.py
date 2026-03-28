@@ -1051,3 +1051,338 @@ class TestBookPositionEndpoints:
         assert client.put("/book/position").status_code == 401
         assert client.post("/book/advance").status_code == 401
         assert client.post("/book/restart").status_code == 401
+
+
+class TestSetupWizardEndpoints:
+    """Tests for setup wizard endpoints."""
+
+    def test_setup_basics_saves_group_settings(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/basics updates group name, day, time, start date."""
+        response = client.post(
+            "/setup/basics",
+            json={
+                "name": "Dharma Group",
+                "meeting_day": 3,
+                "meeting_time": "19:30:00",
+                "start_date": "2026-01-07",
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        # Verify via settings
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["name"] == "Dharma Group"
+        assert settings["meeting_day"] == 3
+
+    def test_setup_rotation_replaces_formats(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/rotation replaces format rotation."""
+        response = client.post(
+            "/setup/rotation",
+            json={"format_rotation": ["Topic", "Book Study"]},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["format_rotation"] == ["Topic", "Book Study"]
+
+    def test_setup_topics_deactivates_unchecked(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/topics deactivates topics not in keep list."""
+        # Verify we start with 10 default topics
+        before = client.get("/topics/", headers=auth_headers).json()
+        assert len(before) == 10
+        response = client.post(
+            "/setup/topics",
+            json={"keep_topics": ["Karma", "Mindfulness"], "new_topics": []},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        # GET /topics/ only returns active topics
+        after = client.get("/topics/", headers=auth_headers).json()
+        names = [t["name"] for t in after]
+        assert "Karma" in names
+        assert "Mindfulness" in names
+        assert len(after) == 2
+
+    def test_setup_topics_adds_new_topics(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/topics adds new custom topics."""
+        response = client.post(
+            "/setup/topics",
+            json={
+                "keep_topics": ["Karma"],
+                "new_topics": ["Compassion", "Equanimity"],
+            },
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        topics = client.get("/topics/", headers=auth_headers).json()
+        names = [t["name"] for t in topics]
+        assert "Compassion" in names
+        assert "Equanimity" in names
+
+    def test_setup_book_position_sets_marker(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position sets chapter marker."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 5},
+            headers=auth_headers,
+        )
+        assert response.status_code == 200
+        pos = client.get("/book/position", headers=auth_headers).json()
+        assert pos["chapter_marker"] == 5
+
+    def test_setup_book_position_invalid_chapter(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position with invalid chapter returns 400."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 999},
+            headers=auth_headers,
+        )
+        assert response.status_code == 400
+
+    def test_setup_book_position_zero_rejected(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/book-position with chapter_order 0 returns 422."""
+        response = client.post(
+            "/setup/book-position",
+            json={"chapter_order": 0},
+            headers=auth_headers,
+        )
+        assert response.status_code == 422
+
+    def test_setup_complete_sets_flag(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /setup/complete marks setup as done."""
+        response = client.post("/setup/complete", headers=auth_headers)
+        assert response.status_code == 200
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["setup_completed"] is True
+
+    def test_settings_shows_setup_completed(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """GET /settings/ includes setup_completed field."""
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert "setup_completed" in settings
+        # New registration defaults to False
+        assert settings["setup_completed"] is False
+
+    def test_setup_requires_auth(self, client: TestClient) -> None:
+        """Setup endpoints return 401 without auth."""
+        assert client.post("/setup/basics").status_code == 401
+        assert client.post("/setup/rotation").status_code == 401
+        assert client.post("/setup/topics").status_code == 401
+        assert client.post("/setup/book-position").status_code == 401
+        assert client.post("/setup/complete").status_code == 401
+
+
+class TestInviteFlowEndpoints:
+    """Tests for invite code and multi-user join flow."""
+
+    def test_generate_invite_code(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /settings/invite-code generates an 8-char code."""
+        response = client.post("/settings/invite-code", headers=auth_headers)
+        assert response.status_code == 200
+        code = response.json()["invite_code"]
+        assert len(code) == 8
+        assert code.isalnum()
+
+    def test_invite_code_in_settings(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Generated invite code appears in GET /settings/."""
+        client.post("/settings/invite-code", headers=auth_headers)
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["invite_code"] is not None
+        assert len(settings["invite_code"]) == 8
+
+    def test_revoke_invite_code(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """DELETE /settings/invite-code clears the code."""
+        client.post("/settings/invite-code", headers=auth_headers)
+        response = client.delete("/settings/invite-code", headers=auth_headers)
+        assert response.status_code == 200
+        assert response.json()["invite_code"] is None
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["invite_code"] is None
+
+    def test_generate_invite_code_collision_returns_503(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """POST /settings/invite-code returns 503 on exhausted retries."""
+        from unittest.mock import patch
+
+        with patch("app.services.secrets.choice", return_value="A"):
+            # First call creates code "AAAAAAAA", second will always collide
+            client.post("/settings/invite-code", headers=auth_headers)
+            response = client.post("/settings/invite-code", headers=auth_headers)
+        assert response.status_code == 503
+
+    def test_register_with_invite_joins_group(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Registering with invite code joins existing group."""
+        # Generate invite code
+        resp = client.post("/settings/invite-code", headers=auth_headers)
+        code = resp.json()["invite_code"]
+        # Register new user with invite code
+        resp2 = client.post(
+            "/auth/register",
+            json={
+                "username": "invited_user",
+                "password": "pass123",
+                "invite_code": code,
+            },
+        )
+        assert resp2.status_code == 200
+        # Log in as invited user and verify they see the same group settings
+        invited_token = client.post(
+            "/auth/login",
+            data={"username": "invited_user", "password": "pass123"},
+        ).json()["access_token"]
+        invited_headers = {"Authorization": f"Bearer {invited_token}"}
+        invited_settings = client.get("/settings/", headers=invited_headers).json()
+        original_settings = client.get("/settings/", headers=auth_headers).json()
+        # Same group = same settings (name, start_date, rotation, etc.)
+        assert invited_settings["name"] == original_settings["name"]
+        assert invited_settings["start_date"] == original_settings["start_date"]
+
+    def test_register_with_invalid_invite_returns_400(
+        self,
+        client: TestClient,
+    ) -> None:
+        """Registering with invalid invite code returns 400."""
+        response = client.post(
+            "/auth/register",
+            json={
+                "username": "bad_invite",
+                "password": "pass123",
+                "invite_code": "INVALID1",
+            },
+        )
+        assert response.status_code == 400
+        assert "Invalid invite code" in response.json()["detail"]
+
+    def test_revoked_code_cannot_be_used_to_register(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Registering with a revoked invite code returns 400."""
+        resp = client.post("/settings/invite-code", headers=auth_headers)
+        code = resp.json()["invite_code"]
+        client.delete("/settings/invite-code", headers=auth_headers)
+        response = client.post(
+            "/auth/register",
+            json={
+                "username": "revoked_user",
+                "password": "pass123",
+                "invite_code": code,
+            },
+        )
+        assert response.status_code == 400
+        assert "Invalid invite code" in response.json()["detail"]
+
+    def test_invited_user_skips_setup(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Invited user's group already has setup_completed from original user."""
+        # Complete setup as first user
+        client.post("/setup/complete", headers=auth_headers)
+        # Generate invite
+        resp = client.post("/settings/invite-code", headers=auth_headers)
+        code = resp.json()["invite_code"]
+        # Register and login as invited user
+        client.post(
+            "/auth/register",
+            json={
+                "username": "invited2",
+                "password": "pass123",
+                "invite_code": code,
+            },
+        )
+        login_resp = client.post(
+            "/auth/login",
+            data={"username": "invited2", "password": "pass123"},
+        )
+        invited_headers = {
+            "Authorization": f"Bearer {login_resp.json()['access_token']}"
+        }
+        # Invited user should see setup as already completed
+        settings = client.get("/settings/", headers=invited_headers).json()
+        assert settings["setup_completed"] is True
+
+    def test_register_without_invite_creates_new_group(
+        self,
+        client: TestClient,
+    ) -> None:
+        """Normal registration without invite creates a new group."""
+        resp1 = client.post(
+            "/auth/register",
+            json={"username": "user_a", "password": "pass123"},
+        )
+        resp2 = client.post(
+            "/auth/register",
+            json={"username": "user_b", "password": "pass456"},
+        )
+        assert resp1.json()["group_id"] != resp2.json()["group_id"]
+
+    def test_settings_starts_without_invite_code(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """New group has no invite code by default."""
+        settings = client.get("/settings/", headers=auth_headers).json()
+        assert settings["invite_code"] is None
+
+    def test_invite_endpoints_require_auth(self, client: TestClient) -> None:
+        """Invite endpoints return 401 without auth."""
+        assert client.post("/settings/invite-code").status_code == 401
+        assert client.delete("/settings/invite-code").status_code == 401

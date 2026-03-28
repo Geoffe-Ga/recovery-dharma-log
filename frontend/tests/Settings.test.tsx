@@ -28,6 +28,8 @@ jest.mock("../src/api/index", () => ({
   deleteAssignment: jest.fn(),
   setBookPosition: jest.fn(),
   restartBook: jest.fn(),
+  generateInviteCode: jest.fn(),
+  revokeInviteCode: jest.fn(),
 }));
 
 import * as api from "../src/api/index";
@@ -38,6 +40,8 @@ const mockSettings: GroupSettings = {
   start_date: "2025-01-05",
   meeting_time: "18:00:00",
   format_rotation: ["Speaker", "Topic", "Book Study"],
+  setup_completed: true,
+  invite_code: null,
 };
 
 const mockTopics: Topic[] = [
@@ -1145,6 +1149,68 @@ describe("Settings", () => {
 
     await waitFor(() => {
       expect(api.restartBook).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("invite members section", () => {
+    it("shows Generate Invite Code button when no code exists", async () => {
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generate Invite Code" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("shows invite code with Copy and Revoke when code exists", async () => {
+      (api.getSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        invite_code: "ABC12345",
+      });
+      renderSettings();
+      await waitFor(() => {
+        expect(screen.getByText("ABC12345")).toBeInTheDocument();
+      });
+      expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Revoke" }),
+      ).toBeInTheDocument();
+    });
+
+    it("generates invite code on button click", async () => {
+      const user = userEvent.setup();
+      (api.generateInviteCode as jest.Mock).mockResolvedValue({
+        invite_code: "XYZ98765",
+      });
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Generate Invite Code" }),
+        ).toBeInTheDocument();
+      });
+      await user.click(
+        screen.getByRole("button", { name: "Generate Invite Code" }),
+      );
+      await waitFor(() => {
+        expect(api.generateInviteCode).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    it("revokes invite code on Revoke click", async () => {
+      const user = userEvent.setup();
+      (api.getSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        invite_code: "ABC12345",
+      });
+      (api.revokeInviteCode as jest.Mock).mockResolvedValue(undefined);
+      renderSettings();
+      await waitFor(() => {
+        expect(screen.getByText("ABC12345")).toBeInTheDocument();
+      });
+      await user.click(screen.getByRole("button", { name: "Revoke" }));
+      await waitFor(() => {
+        expect(api.revokeInviteCode).toHaveBeenCalledTimes(1);
+      });
     });
   });
 });
