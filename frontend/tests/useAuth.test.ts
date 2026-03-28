@@ -177,7 +177,7 @@ describe("useAuth", () => {
       await result.current.register("bob", "pass123");
     });
 
-    expect(mockRegister).toHaveBeenCalledWith("bob", "pass123");
+    expect(mockRegister).toHaveBeenCalledWith("bob", "pass123", undefined);
     expect(mockLogin).toHaveBeenCalledWith("bob", "pass123");
     expect(result.current.isAuthenticated).toBe(true);
   });

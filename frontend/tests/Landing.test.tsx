@@ -21,6 +21,8 @@ jest.mock("../src/api/index", () => ({
   unscheduleSpeaker: jest.fn(),
   cancelMeeting: jest.fn(),
   updateDana: jest.fn(),
+  getBookPosition: jest.fn(),
+  advanceBook: jest.fn(),
 }));
 
 function renderLanding(): void {
@@ -44,6 +46,8 @@ const cancelMeeting = api.cancelMeeting as jest.Mock;
 const scheduleSpeaker = api.scheduleSpeaker as jest.Mock;
 const unscheduleSpeaker = api.unscheduleSpeaker as jest.Mock;
 const updateDana = api.updateDana as jest.Mock;
+const getBookPosition = api.getBookPosition as jest.Mock;
+const advanceBook = api.advanceBook as jest.Mock;
 
 const lookaheadMeetings = [
   {
@@ -105,6 +109,29 @@ const speakerMeetingNoSpeaker: UpcomingMeeting = {
   speaker_name: null,
 };
 
+const bookPositionData = {
+  current_assignment_index: 2,
+  book_cycle: 1,
+  total_assignments: 5,
+  current_assignment: {
+    id: 3,
+    assignment_order: 3,
+    chapters: [
+      {
+        id: 5,
+        order: 5,
+        start_page: "41",
+        end_page: "50",
+        title: "Chapter 5",
+        page_count: 9,
+      },
+    ],
+    total_pages: 9,
+    meeting_date: "2026-03-01",
+  },
+  chapter_marker: null,
+};
+
 const speakerScheduleData = [
   { meeting_date: "2026-03-01", speaker_name: "Alice" },
   { meeting_date: "2026-03-29", speaker_name: null },
@@ -117,6 +144,7 @@ describe("Landing", () => {
     getSpeakerNames.mockResolvedValue([]);
     getUpcomingSpeakerDates.mockResolvedValue(speakerScheduleData);
     getFormatOverrides.mockResolvedValue([]);
+    getBookPosition.mockResolvedValue(bookPositionData);
   });
 
   it("renders formatted meeting date", async () => {
@@ -1123,6 +1151,103 @@ describe("Landing", () => {
           }),
         ).toBeDisabled();
       });
+    });
+  });
+
+  describe("book study section", () => {
+    const bookStudyMeeting: UpcomingMeeting = {
+      ...baseMeeting,
+      format_type: "Book Study",
+      topic_name: null,
+      topics_remaining: 0,
+      topics_total: 0,
+      book_chapter: "Chapter 5 (pp. 41\u201350, 9 pages)",
+    };
+
+    it("shows book chapter and position info", async () => {
+      getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Chapter 5 (pp. 41\u201350, 9 pages)"),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByText(/Cycle 1 — Assignment 3 of 5/),
+      ).toBeInTheDocument();
+    });
+
+    it("shows Next Assignment button", async () => {
+      getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Next Assignment" }),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it("calls advanceBook when Next Assignment is clicked", async () => {
+      const user = userEvent.setup();
+      getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
+      advanceBook.mockResolvedValue({
+        ...bookPositionData,
+        current_assignment_index: 3,
+      });
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Next Assignment" }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Next Assignment" }));
+
+      await waitFor(() => {
+        expect(advanceBook).toHaveBeenCalled();
+      });
+    });
+
+    it("shows toast on advance failure", async () => {
+      const user = userEvent.setup();
+      getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
+      advanceBook.mockRejectedValue(new Error("Advance failed"));
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Next Assignment" }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Next Assignment" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Advance failed")).toBeInTheDocument();
+      });
+    });
+
+    it("hides position info when no assignments", async () => {
+      getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
+      getBookPosition.mockResolvedValue({
+        ...bookPositionData,
+        total_assignments: 0,
+        current_assignment: null,
+      });
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText("Chapter 5 (pp. 41\u201350, 9 pages)"),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Cycle/)).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Next Assignment" }),
+      ).not.toBeInTheDocument();
     });
   });
 

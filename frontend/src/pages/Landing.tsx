@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
+  advanceBook,
   cancelMeeting,
   deleteFormatOverride,
   drawTopic,
+  getBookPosition,
   getFormatOverrides,
   getSpeakerNames,
   getUpcomingMeeting,
@@ -18,6 +20,7 @@ import {
 } from "../api/index";
 import { useShowToast } from "../contexts/ToastContext";
 import type {
+  BookPosition,
   FormatOverride,
   SpeakerSchedule,
   UpcomingMeeting,
@@ -45,23 +48,25 @@ export function Landing(): React.ReactElement {
   const [overrideDropdownDate, setOverrideDropdownDate] = useState<
     string | null
   >(null);
+  const [bookPosition, setBookPosition] = useState<BookPosition | null>(null);
   const showToast = useShowToast();
 
   const refresh = useCallback(async () => {
     try {
-      const [updated, upcoming, speakers, fetchedOverrides] = await Promise.all(
-        [
+      const [updated, upcoming, speakers, fetchedOverrides, position] =
+        await Promise.all([
           getUpcomingMeeting(),
           getUpcomingMeetings(4),
           getUpcomingSpeakerDates(8),
           getFormatOverrides(),
-        ],
-      );
+          getBookPosition(),
+        ]);
       setMeeting(updated);
       // Exclude the first meeting (already shown as primary card)
       setLookahead(upcoming.slice(1));
       setSpeakerDates(speakers);
       setOverrides(fetchedOverrides);
+      setBookPosition(position);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to load");
     }
@@ -191,6 +196,19 @@ export function Landing(): React.ReactElement {
     },
     [scheduleFormDate, scheduleInput, refresh, showToast],
   );
+
+  const handleAdvanceBook = useCallback(async () => {
+    try {
+      await advanceBook();
+      await refresh();
+      showToast("success", "Advanced to next assignment");
+    } catch (err: unknown) {
+      showToast(
+        "error",
+        err instanceof Error ? err.message : "Failed to advance",
+      );
+    }
+  }, [refresh, showToast]);
 
   const handleSetOverride = useCallback(
     async (meetingDate: string, formatType: string) => {
@@ -444,11 +462,29 @@ export function Landing(): React.ReactElement {
               </section>
             )}
 
-            {meeting.format_type === "Book Study" && meeting.book_chapter && (
+            {meeting.format_type === "Book Study" && (
               <section>
-                <p>
-                  <strong>{meeting.book_chapter}</strong>
-                </p>
+                {meeting.book_chapter && (
+                  <p>
+                    <strong>{meeting.book_chapter}</strong>
+                  </p>
+                )}
+                {bookPosition && bookPosition.total_assignments > 0 && (
+                  <>
+                    <p className="rd-meta">
+                      Cycle {bookPosition.book_cycle} — Assignment{" "}
+                      {bookPosition.current_assignment_index + 1} of{" "}
+                      {bookPosition.total_assignments}
+                    </p>
+                    <button
+                      type="button"
+                      className="outline"
+                      onClick={handleAdvanceBook}
+                    >
+                      Next Assignment
+                    </button>
+                  </>
+                )}
               </section>
             )}
 

@@ -25,6 +25,7 @@ from app.routers import (
     export,
     meetings,
     overrides,
+    setup,
     speakers,
     topics,
 )
@@ -38,6 +39,20 @@ _DEV_SECRET_KEY = "dev-secret-key-change-in-production"  # nosec B105 - compared
 _MIGRATIONS: list[tuple[str, str, str]] = [
     ("meeting_logs", "attendance_count", "REAL"),
     ("reading_assignments", "meeting_date", "DATE"),
+    ("groups", "current_book_assignment_index", "INTEGER DEFAULT 0"),
+    ("groups", "book_cycle", "INTEGER DEFAULT 1"),
+    ("groups", "current_chapter_marker", "INTEGER"),
+    ("groups", "setup_completed", "BOOLEAN DEFAULT 0"),
+    ("groups", "invite_code", "VARCHAR(8)"),
+]
+
+
+_DATA_MIGRATIONS: list[str] = [
+    # Existing groups should be treated as already set up
+    (
+        "UPDATE groups SET setup_completed = 1 WHERE setup_completed = 0"
+        " AND id IN (SELECT group_id FROM users)"
+    ),
 ]
 
 # Column type changes. Each entry is (table, column, new_type).
@@ -91,6 +106,23 @@ def _run_migrations() -> None:
                     column,
                 )
 
+    _run_data_migrations()
+
+
+def _run_data_migrations() -> None:
+    """Run one-off data migrations, suppressing only missing-table errors."""
+    for sql in _DATA_MIGRATIONS:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(sql))
+                conn.commit()
+        except OperationalError as exc:
+            msg = str(exc).lower()
+            if "no such table" in msg or "no such column" in msg:
+                logger.debug("Data migration skipped (table not ready): %s", sql)
+            else:
+                raise
+
 
 @asynccontextmanager
 async def lifespan(_app: Any) -> AsyncGenerator[None, None]:
@@ -124,6 +156,7 @@ app.include_router(settings_router.router)
 app.include_router(overrides.router)
 app.include_router(export.router)
 app.include_router(activity.router)
+app.include_router(setup.router)
 
 
 @app.get("/health")

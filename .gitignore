@@ -54,5 +54,13 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 
+# AI tooling artifacts
+.claude/
+.claude-flow/
+.mcp.json
+plan/
+plans/
+/package-lock.json
+
 # OS
 Thumbs.db

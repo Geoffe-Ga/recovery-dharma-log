@@ -17,6 +17,8 @@ export interface GroupSettings {
   start_date: string;
   meeting_time: string | null;
   format_rotation: string[];
+  setup_completed: boolean;
+  invite_code: string | null;
 }
 
 export interface GroupSettingsUpdate {
@@ -100,6 +102,18 @@ export interface ReadingAssignment {
 
 export interface AssignmentUpdate {
   chapter_ids: number[];
+}
+
+export interface BookPosition {
+  current_assignment_index: number;
+  book_cycle: number;
+  total_assignments: number;
+  current_assignment: ReadingAssignment | null;
+  chapter_marker: number | null;
+}
+
+export interface BookPositionUpdate {
+  assignment_index: number;
 }
 
 export interface ReadingPlanStatus {

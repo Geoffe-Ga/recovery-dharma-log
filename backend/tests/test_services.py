@@ -1,6 +1,7 @@
 """Tests for core business logic in services module."""
 
 from datetime import date
+import json
 
 import pytest
 from sqlalchemy.orm import Session
@@ -17,12 +18,14 @@ from app.models import (
 from app.services import (
     add_chapter_to_current_assignment,
     add_chapters_to_current_assignment,
+    advance_book_position,
     count_meetings_since_start,
     delete_assignment,
     draw_random_topic,
     finalize_current_assignment,
     generate_csv_export,
     generate_printable_export,
+    get_book_position,
     get_deck_stats,
     get_format_for_date,
     get_next_meeting_date,
@@ -34,6 +37,9 @@ from app.services import (
     page_count,
     page_to_int,
     reshuffle_deck,
+    restart_book,
+    set_book_position,
+    set_chapter_marker,
     undo_topic_draw,
     update_assignment_chapters,
 )
@@ -675,6 +681,40 @@ class TestAssignmentEditing:
         assert len(status["completed_assignments"]) == 1
         assert status["completed_assignments"][0]["assignment_order"] == 1
 
+    def test_delete_assignment_adjusts_position(self, db_session: Session) -> None:
+        """Deleting an assignment before current position shifts index down."""
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        # Create three finalized assignments
+        add_chapter_to_current_assignment(db_session, group)
+        a1 = finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        assert a1 is not None
+
+        # Set position to assignment index 2 (third assignment)
+        set_book_position(db_session, group, 2)
+        assert group.current_book_assignment_index == 2
+
+        # Delete first assignment — position should shift down to 1
+        delete_assignment(db_session, group, a1["id"])
+        assert group.current_book_assignment_index == 1
+
+    def test_delete_last_assignment_clamps_position(self, db_session: Session) -> None:
+        """Deleting the last assignment when positioned at it clamps to 0."""
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        a1 = finalize_current_assignment(db_session, group)
+        assert a1 is not None
+        assert group.current_book_assignment_index == 0
+
+        # Delete the only assignment — index should reset to 0
+        delete_assignment(db_session, group, a1["id"])
+        assert group.current_book_assignment_index == 0
+
     def test_delete_assignment_not_found(self, db_session: Session) -> None:
         group = _create_group(db_session)
         with pytest.raises(ValueError, match="Assignment not found"):
@@ -1134,3 +1174,373 @@ class TestExport:
 
         html = generate_printable_export(db_session, group)
         assert "Introduction" in html
+
+
+# --- Book Position Tracking Tests ---
+
+
+def _create_group_with_assignments(
+    db: Session,
+    num_assignments: int = 3,
+) -> tuple[Group, list[BookChapter]]:
+    """Create a group with chapters and finalized assignments."""
+    group = _create_group(db)
+    chapters = []
+    for i in range(num_assignments):
+        ch = BookChapter(
+            group_id=group.id,
+            order=i + 1,
+            start_page=str(i * 10 + 1),
+            end_page=str((i + 1) * 10),
+            title=f"Chapter {i + 1}",
+        )
+        db.add(ch)
+        chapters.append(ch)
+    db.flush()
+
+    for i, ch in enumerate(chapters):
+        ra = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=i + 1,
+            chapters_json=json.dumps([ch.id]),
+            meeting_date=date(2025, 2, 1 + i * 7),
+        )
+        db.add(ra)
+    # Add empty draft
+    db.add(
+        ReadingAssignment(
+            group_id=group.id,
+            assignment_order=num_assignments + 1,
+            chapters_json="[]",
+        )
+    )
+    db.flush()
+    return group, chapters
+
+
+class TestBookPositionTracking:
+    """Tests for book position tracking features."""
+
+    def test_get_book_chapter_summary_uses_index_not_modulo(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Book chapter summary uses current_book_assignment_index."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        # Default index is 0 -> first assignment
+        from app.services import _get_book_chapter_summary
+
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
+        assert summary is not None
+        assert "Chapter 1" in summary
+
+        # Move to index 2 -> third assignment
+        group.current_book_assignment_index = 2
+        db_session.flush()
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
+        assert summary is not None
+        assert "Chapter 3" in summary
+
+    def test_get_book_position_returns_correct_data(
+        self,
+        db_session: Session,
+    ) -> None:
+        """get_book_position returns position, cycle, total, assignment."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        result = get_book_position(db_session, group)
+        assert result["current_assignment_index"] == 0
+        assert result["book_cycle"] == 1
+        assert result["total_assignments"] == 3
+        assert result["current_assignment"] is not None
+        assert result["chapter_marker"] is None
+
+    def test_get_book_position_empty_when_no_assignments(
+        self,
+        db_session: Session,
+    ) -> None:
+        """get_book_position returns 0 total when no finalized assignments."""
+        group = _create_group(db_session)
+        result = get_book_position(db_session, group)
+        assert result["total_assignments"] == 0
+        assert result["current_assignment"] is None
+
+    def test_set_position_validates_bounds(
+        self,
+        db_session: Session,
+    ) -> None:
+        """set_book_position rejects out-of-range index."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        with pytest.raises(ValueError, match="out of range"):
+            set_book_position(db_session, group, 5)
+        with pytest.raises(ValueError, match="out of range"):
+            set_book_position(db_session, group, -1)
+
+    def test_set_position_validates_no_assignments(
+        self,
+        db_session: Session,
+    ) -> None:
+        """set_book_position rejects when no finalized assignments."""
+        group = _create_group(db_session)
+        with pytest.raises(ValueError, match="No finalized"):
+            set_book_position(db_session, group, 0)
+
+    def test_set_position_updates_index(
+        self,
+        db_session: Session,
+    ) -> None:
+        """set_book_position updates the index correctly."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        set_book_position(db_session, group, 2)
+        assert group.current_book_assignment_index == 2
+
+    def test_advance_wraps_and_increments_cycle(
+        self,
+        db_session: Session,
+    ) -> None:
+        """advance_book_position wraps to 0 and increments cycle at end."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        # Advance 3 times: 0->1, 1->2, 2->wrap to 0 (cycle 2)
+        advance_book_position(db_session, group)
+        assert group.current_book_assignment_index == 1
+        assert group.book_cycle == 1
+
+        advance_book_position(db_session, group)
+        assert group.current_book_assignment_index == 2
+        assert group.book_cycle == 1
+
+        result = advance_book_position(db_session, group)
+        assert group.current_book_assignment_index == 0
+        assert group.book_cycle == 2
+        assert result["current_assignment_index"] == 0
+        assert result["book_cycle"] == 2
+
+    def test_advance_fails_with_no_assignments(
+        self,
+        db_session: Session,
+    ) -> None:
+        """advance_book_position raises when no finalized assignments."""
+        group = _create_group(db_session)
+        with pytest.raises(ValueError, match="No finalized"):
+            advance_book_position(db_session, group)
+
+    def test_restart_resets_to_zero_increments_cycle(
+        self,
+        db_session: Session,
+    ) -> None:
+        """restart_book resets index to 0 and increments cycle."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        group.current_book_assignment_index = 2
+        group.book_cycle = 1
+        db_session.flush()
+
+        result = restart_book(db_session, group)
+        assert group.current_book_assignment_index == 0
+        assert group.book_cycle == 2
+        assert result["current_assignment_index"] == 0
+        assert result["book_cycle"] == 2
+
+    def test_restart_from_start_does_not_increment_cycle(
+        self,
+        db_session: Session,
+    ) -> None:
+        """restart_book is a no-op on cycle when already at index 0."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        group.current_book_assignment_index = 0
+        group.book_cycle = 1
+        db_session.flush()
+
+        result = restart_book(db_session, group)
+        assert group.current_book_assignment_index == 0
+        assert group.book_cycle == 1
+        assert result["book_cycle"] == 1
+
+    def test_set_chapter_marker_valid(
+        self,
+        db_session: Session,
+    ) -> None:
+        """set_chapter_marker sets the marker for a valid chapter."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        set_chapter_marker(db_session, group, 2)
+        assert group.current_chapter_marker == 2
+
+    def test_set_chapter_marker_invalid(
+        self,
+        db_session: Session,
+    ) -> None:
+        """set_chapter_marker raises for nonexistent chapter order."""
+        group, _chapters = _create_group_with_assignments(db_session, 3)
+        with pytest.raises(ValueError, match="not found"):
+            set_chapter_marker(db_session, group, 999)
+
+    def test_chapter_marker_auto_advances_on_finalize(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Finalizing assignment auto-advances when marker matches."""
+        group = _create_group(db_session)
+        # Create chapters
+        ch1 = BookChapter(
+            group_id=group.id,
+            order=1,
+            start_page="1",
+            end_page="10",
+            title="Ch 1",
+        )
+        ch2 = BookChapter(
+            group_id=group.id,
+            order=2,
+            start_page="11",
+            end_page="20",
+            title="Ch 2",
+        )
+        ch3 = BookChapter(
+            group_id=group.id,
+            order=3,
+            start_page="21",
+            end_page="30",
+            title="Ch 3",
+        )
+        db_session.add_all([ch1, ch2, ch3])
+        db_session.flush()
+
+        # Set chapter marker to chapter 3
+        group.current_chapter_marker = 3
+        db_session.flush()
+
+        # Create first assignment with ch1, finalize it
+        ra1 = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=1,
+            chapters_json=json.dumps([ch1.id]),
+            meeting_date=date(2025, 2, 1),
+        )
+        db_session.add(ra1)
+        # Create draft assignment with ch2+ch3
+        draft = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=2,
+            chapters_json=json.dumps([ch2.id, ch3.id]),
+        )
+        db_session.add(draft)
+        db_session.flush()
+
+        # Finalize the draft (contains chapter 3 which >= marker 3)
+        finalize_current_assignment(db_session, group)
+
+        # Index should have been set to point to this assignment (index 1)
+        assert group.current_book_assignment_index == 1
+
+    def test_chapter_summary_shows_marker_when_no_assignments(
+        self,
+        db_session: Session,
+    ) -> None:
+        """When no finalized assignments, show chapter marker info."""
+        group = _create_group(db_session)
+        ch = BookChapter(
+            group_id=group.id,
+            order=5,
+            start_page="41",
+            end_page="50",
+            title="The Fifth Fold",
+        )
+        db_session.add(ch)
+        db_session.flush()
+        group.current_chapter_marker = 5
+        db_session.flush()
+
+        from app.services import _get_book_chapter_summary
+
+        summary = _get_book_chapter_summary(db_session, group, date(2025, 3, 1))
+        assert summary is not None
+        assert "The Fifth Fold" in summary
+        assert "chapter marker" in summary
+
+
+class TestInviteCodes:
+    """Tests for invite code service functions."""
+
+    def test_generate_invite_code_is_8_chars(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Generated code is 8 alphanumeric characters."""
+        group = _create_group(db_session)
+        from app.services import generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        assert len(code) == 8
+        assert code.isalnum()
+        assert group.invite_code == code
+
+    def test_revoke_clears_code(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Revoking sets invite_code to None."""
+        group = _create_group(db_session)
+        from app.services import generate_invite_code, revoke_invite_code
+
+        generate_invite_code(db_session, group)
+        assert group.invite_code is not None
+        revoke_invite_code(db_session, group)
+        assert group.invite_code is None
+
+    def test_find_group_by_invite_code(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Can look up a group by its invite code."""
+        group = _create_group(db_session)
+        from app.services import find_group_by_invite_code, generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        db_session.flush()
+        found = find_group_by_invite_code(db_session, code)
+        assert found is not None
+        assert found.id == group.id
+
+    def test_find_group_by_invite_code_case_insensitive(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Invite code lookup is case-insensitive."""
+        group = _create_group(db_session)
+        from app.services import find_group_by_invite_code, generate_invite_code
+
+        code = generate_invite_code(db_session, group)
+        db_session.flush()
+        found = find_group_by_invite_code(db_session, code.lower())
+        assert found is not None
+        assert found.id == group.id
+
+    def test_find_nonexistent_code_returns_none(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Looking up a nonexistent code returns None."""
+        from app.services import find_group_by_invite_code
+
+        found = find_group_by_invite_code(db_session, "NOTACODE")
+        assert found is None
+
+    def test_generate_invite_code_raises_after_retries(
+        self,
+        db_session: Session,
+    ) -> None:
+        """generate_invite_code raises ValueError when all retries collide."""
+        from unittest.mock import patch
+
+        from app.services import generate_invite_code
+
+        group1 = _create_group(db_session)
+        # Manually set a known code on group1
+        group1.invite_code = "AAAAAAAA"
+        db_session.flush()
+
+        group2 = _create_group(db_session)
+        # Mock secrets.choice to always return "A" → code is always "AAAAAAAA"
+        with (
+            patch("app.services.secrets.choice", return_value="A"),
+            pytest.raises(ValueError, match="Could not generate unique"),
+        ):
+            generate_invite_code(db_session, group2)

@@ -11,19 +11,38 @@ from app.database import get_db
 from app.models import FormatRotation, Group, User
 from app.schemas import Token, UserCreate, UserResponse
 from app.seed import BOOK_CHAPTERS, DEFAULT_TOPICS
+from app.services import find_group_by_invite_code
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", response_model=UserResponse)
 def register(user_in: UserCreate, db: Session = Depends(get_db)) -> User:
-    """Register a new user and create a default group."""
+    """Register a new user, optionally joining an existing group via invite."""
     existing = db.query(User).filter(User.username == user_in.username).first()
     if existing:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered",
         )
+
+    if user_in.invite_code:
+        # Join existing group via invite code
+        group = find_group_by_invite_code(db, user_in.invite_code)
+        if not group:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid invite code",
+            )
+        user = User(
+            username=user_in.username,
+            hashed_password=hash_password(user_in.password),
+            group_id=group.id,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        return user
 
     # Create group with defaults
     group = Group(

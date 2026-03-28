@@ -12,6 +12,7 @@ class UserCreate(BaseModel):
 
     username: str
     password: str
+    invite_code: str | None = None
 
 
 class UserResponse(BaseModel):
@@ -42,6 +43,8 @@ class GroupSettings(BaseModel):
     meeting_time: time | None = None
     start_date: date
     format_rotation: list[str]
+    setup_completed: bool = True
+    invite_code: str | None = None
 
 
 class GroupSettingsUpdate(BaseModel):
@@ -183,6 +186,28 @@ class AssignmentUpdate(BaseModel):
     chapter_ids: list[int]
 
 
+class BookPositionUpdate(BaseModel):
+    """Request schema for setting the current book assignment index."""
+
+    assignment_index: int = Field(ge=0)
+
+
+class ChapterMarkerUpdate(BaseModel):
+    """Request schema for setting the current chapter marker."""
+
+    chapter_order: int = Field(ge=1)
+
+
+class BookPositionResponse(BaseModel):
+    """Response schema for the current book position."""
+
+    current_assignment_index: int
+    book_cycle: int
+    total_assignments: int
+    current_assignment: ReadingAssignmentResponse | None = None
+    chapter_marker: int | None = None
+
+
 class ReadingPlanStatus(BaseModel):
     """Response schema for reading plan builder state."""
 
@@ -257,3 +282,43 @@ class FormatOverrideResponse(BaseModel):
     format_type: str
 
     model_config = {"from_attributes": True}
+
+
+# --- Setup Wizard ---
+
+
+class SetupBasics(BaseModel):
+    """Request schema for wizard step 1: group basics."""
+
+    name: str
+    meeting_day: int = Field(ge=0, le=6)
+    meeting_time: time
+    start_date: date
+
+
+class SetupRotation(BaseModel):
+    """Request schema for wizard step 2: format rotation."""
+
+    format_rotation: list[str] = Field(min_length=1)
+
+
+class SetupTopics(BaseModel):
+    """Request schema for wizard step 3: topic selection."""
+
+    keep_topics: list[str] = []
+    new_topics: list[str] = []
+
+
+class SetupBookPosition(BaseModel):
+    """Request schema for wizard step 4: book position."""
+
+    chapter_order: int = Field(ge=1)
+
+
+# --- Invite ---
+
+
+class InviteCodeResponse(BaseModel):
+    """Response schema for invite code operations."""
+
+    invite_code: str | None = None

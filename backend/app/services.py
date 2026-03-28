@@ -558,6 +558,24 @@ def finalize_current_assignment(db: Session, group: Group) -> dict | None:
     db.add(new_draft)
     db.flush()
 
+    # Auto-advance position when chapter marker is set: if the newly finalized
+    # assignment contains/passes the marked chapter, point the position to it.
+    if group.current_chapter_marker is not None:
+        chapters = (
+            db.query(BookChapter)
+            .filter(BookChapter.id.in_(chapter_ids))
+            .order_by(BookChapter.order)
+            .all()
+        )
+        chapter_orders = [ch.order for ch in chapters]
+        if any(o >= group.current_chapter_marker for o in chapter_orders):
+            finalized = _get_finalized_assignments(db, group)
+            for i, a in enumerate(finalized):
+                if a.id == draft.id:
+                    group.current_book_assignment_index = i
+                    break
+            db.flush()
+
     return {
         "id": draft.id,
         "assignment_order": draft.assignment_order,
@@ -641,6 +659,19 @@ def delete_assignment(db: Session, group: Group, assignment_id: int) -> None:
     )
     for a in remaining:
         a.assignment_order -= 1
+
+    # Adjust book position index so it still points at the same assignment
+    total_after = (
+        db.query(ReadingAssignment)
+        .filter(ReadingAssignment.group_id == group.id)
+        .count()
+    )
+    if total_after == 0:
+        group.current_book_assignment_index = 0
+    elif deleted_order <= group.current_book_assignment_index:
+        group.current_book_assignment_index = max(
+            0, group.current_book_assignment_index - 1
+        )
     db.flush()
 
 
@@ -661,33 +692,8 @@ def _get_topic_details(
     return topic_name, topics_remaining, topics_total
 
 
-def _get_book_chapter_summary(
-    db: Session,
-    group: Group,
-    meeting_date: date,
-) -> str | None:
-    """Get the book chapter summary for a Book Study format meeting."""
-    assignments = (
-        db.query(ReadingAssignment)
-        .filter(ReadingAssignment.group_id == group.id)
-        .order_by(ReadingAssignment.assignment_order)
-        .all()
-    )
-    book_weeks = (
-        db.query(MeetingLog)
-        .filter(
-            MeetingLog.group_id == group.id,
-            MeetingLog.format_type == "Book Study",
-            MeetingLog.is_cancelled.is_(False),
-            MeetingLog.meeting_date < meeting_date,
-        )
-        .count()
-    )
-    finalized = [a for a in assignments if json.loads(a.chapters_json)]
-    if not finalized:
-        return None
-    idx = book_weeks % len(finalized)
-    assignment = finalized[idx]
+def _format_assignment_summary(db: Session, assignment: ReadingAssignment) -> str:
+    """Format a reading assignment as a human-readable summary string."""
     chapter_ids = json.loads(assignment.chapters_json)
     chapters = (
         db.query(BookChapter)
@@ -695,11 +701,174 @@ def _get_book_chapter_summary(
         .order_by(BookChapter.order)
         .all()
     )
+    if not chapters:
+        return ""
     titles = " + ".join(ch.title for ch in chapters)
     start_page = chapters[0].start_page
     end_page = chapters[-1].end_page
     total_pages = page_count(start_page, end_page)
     return f"{titles} (pp. {start_page}\u2013{end_page}, {total_pages} pages)"
+
+
+def _get_finalized_assignments(
+    db: Session,
+    group: Group,
+) -> list[ReadingAssignment]:
+    """Get all finalized (non-empty) reading assignments for a group."""
+    assignments = (
+        db.query(ReadingAssignment)
+        .filter(ReadingAssignment.group_id == group.id)
+        .order_by(ReadingAssignment.assignment_order)
+        .all()
+    )
+    return [a for a in assignments if json.loads(a.chapters_json)]
+
+
+def _get_book_chapter_summary(
+    db: Session,
+    group: Group,
+    meeting_date: date,
+) -> str | None:
+    """Get the book chapter summary for a Book Study format meeting.
+
+    Uses group.current_book_assignment_index for position tracking.
+    Falls back to chapter marker info if no finalized assignments exist.
+    """
+    finalized = _get_finalized_assignments(db, group)
+    if not finalized:
+        # No finalized assignments; show chapter marker info if set
+        if group.current_chapter_marker is not None:
+            chapter = (
+                db.query(BookChapter)
+                .filter(
+                    BookChapter.group_id == group.id,
+                    BookChapter.order == group.current_chapter_marker,
+                )
+                .first()
+            )
+            if chapter:
+                return f"{chapter.title} (chapter marker)"
+        return None
+
+    # Modulo wrap handles stale index (e.g. if an assignment was deleted
+    # after the position was set), falling back to a valid assignment.
+    idx = group.current_book_assignment_index % len(finalized)
+    assignment = finalized[idx]
+    return _format_assignment_summary(db, assignment)
+
+
+# --- Book Position Tracking ---
+
+
+def get_book_position(db: Session, group: Group) -> dict:
+    """Get the current book position for a group."""
+    finalized = _get_finalized_assignments(db, group)
+    total = len(finalized)
+    current_assignment = None
+    if total > 0:
+        idx = group.current_book_assignment_index % total
+        assignment = finalized[idx]
+        chapter_ids = json.loads(assignment.chapters_json)
+        chapter_dicts = _chapters_for_ids(db, chapter_ids)
+        total_pages = sum(int(c["page_count"]) for c in chapter_dicts)
+        current_assignment = {
+            "id": assignment.id,
+            "assignment_order": assignment.assignment_order,
+            "chapters": chapter_dicts,
+            "total_pages": total_pages,
+            "meeting_date": assignment.meeting_date,
+        }
+    return {
+        "current_assignment_index": group.current_book_assignment_index,
+        "book_cycle": group.book_cycle,
+        "total_assignments": total,
+        "current_assignment": current_assignment,
+        "chapter_marker": group.current_chapter_marker,
+    }
+
+
+def set_book_position(db: Session, group: Group, assignment_index: int) -> None:
+    """Set the current book assignment index, validating bounds."""
+    finalized = _get_finalized_assignments(db, group)
+    if not finalized:
+        raise ValueError("No finalized assignments exist")
+    if assignment_index < 0 or assignment_index >= len(finalized):
+        raise ValueError(
+            f"Index {assignment_index} out of range (0-{len(finalized) - 1})"
+        )
+    group.current_book_assignment_index = assignment_index
+    db.flush()
+
+
+def set_chapter_marker(db: Session, group: Group, chapter_order: int) -> None:
+    """Set the current chapter marker for pre-assignment tracking."""
+    chapter = (
+        db.query(BookChapter)
+        .filter(
+            BookChapter.group_id == group.id,
+            BookChapter.order == chapter_order,
+        )
+        .first()
+    )
+    if not chapter:
+        raise ValueError(f"Chapter with order {chapter_order} not found")
+    group.current_chapter_marker = chapter_order
+    db.flush()
+
+
+def advance_book_position(db: Session, group: Group) -> dict:
+    """Move to the next assignment. Wraps to 0 and increments cycle at end."""
+    finalized = _get_finalized_assignments(db, group)
+    if not finalized:
+        raise ValueError("No finalized assignments exist")
+    next_index = group.current_book_assignment_index + 1
+    if next_index >= len(finalized):
+        group.current_book_assignment_index = 0
+        group.book_cycle += 1
+    else:
+        group.current_book_assignment_index = next_index
+    db.flush()
+    return get_book_position(db, group)
+
+
+def restart_book(db: Session, group: Group) -> dict:
+    """Reset the book to the beginning and increment the cycle.
+
+    Only increments the cycle counter if the group has progressed past
+    index 0, so restarting from the beginning is a no-op on the cycle.
+    """
+    if group.current_book_assignment_index > 0:
+        group.book_cycle += 1
+    group.current_book_assignment_index = 0
+    db.flush()
+    return get_book_position(db, group)
+
+
+# --- Invite Codes ---
+
+
+def generate_invite_code(db: Session, group: Group) -> str:
+    """Generate a unique 8-character alphanumeric invite code."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    for _ in range(10):
+        code = "".join(secrets.choice(alphabet) for _ in range(8))
+        existing = db.query(Group).filter(Group.invite_code == code).first()
+        if not existing:
+            group.invite_code = code
+            db.flush()
+            return code
+    raise ValueError("Could not generate unique invite code")
+
+
+def revoke_invite_code(db: Session, group: Group) -> None:
+    """Revoke the current invite code."""
+    group.invite_code = None
+    db.flush()
+
+
+def find_group_by_invite_code(db: Session, code: str) -> Group | None:
+    """Look up a group by its invite code."""
+    return db.query(Group).filter(Group.invite_code == code.upper()).first()
 
 
 def get_speaker_banners(db: Session, group: Group) -> list[str]:
