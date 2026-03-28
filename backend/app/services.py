@@ -849,9 +849,7 @@ def _format_csv_row(db: Session, group: Group, entry: MeetingLog) -> str:
             book_section = summary
     cancelled = "Yes" if entry.is_cancelled else ""
     speaker = entry.speaker_name or ""
-    dana = (
-        f"{entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
-    )
+    dana = f"{entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
     return (
         f"{entry.meeting_date},{entry.format_type},"
         f'"{speaker}","{topic_name}","{book_section}",{cancelled},{dana}'
@@ -910,9 +908,7 @@ def _build_export_rows(
     rows = []
     for entry in entries:
         content = _get_entry_content(db, group, entry)
-        dana = (
-            f"${entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
-        )
+        dana = f"${entry.dana_amount:.2f}" if entry.dana_amount is not None else ""
         rows.append(
             f"<tr><td>{entry.meeting_date}</td>"
             f"<td>{entry.format_type}</td>"
@@ -922,7 +918,7 @@ def _build_export_rows(
 
     for _ in range(blank_rows):
         rows.append(
-            '<tr class="blank-row">' "<td>&nbsp;</td><td></td><td></td><td></td></tr>"
+            '<tr class="blank-row"><td>&nbsp;</td><td></td><td></td><td></td></tr>'
         )
 
     return "\n".join(rows)
@@ -945,9 +941,7 @@ def generate_printable_export(
     date_range = _format_date_range(start_date, end_date)
     date_range_html = f'<p class="date-range">{date_range}</p>' if date_range else ""
 
-    font_url = (
-        "https://fonts.googleapis.com" "/css2?family=Lato:wght@400;700&display=swap"
-    )
+    font_url = "https://fonts.googleapis.com/css2?family=Lato:wght@400;700&display=swap"
 
     return f"""<!DOCTYPE html>
 <html>

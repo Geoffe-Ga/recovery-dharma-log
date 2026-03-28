@@ -170,7 +170,9 @@ export function Log(): React.ReactElement {
                         entry.content_summary ??
                         "\u2014"}
                     </td>
-                    <td>{meetingStatus(entry.meeting_date, entry.is_cancelled)}</td>
+                    <td>
+                      {meetingStatus(entry.meeting_date, entry.is_cancelled)}
+                    </td>
                     <td>
                       {entry.dana_amount != null
                         ? `$${entry.dana_amount.toFixed(2)}`

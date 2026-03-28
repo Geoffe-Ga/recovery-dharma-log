@@ -163,10 +163,7 @@ export function Landing(): React.ReactElement {
       await updateDana(meeting.meeting_date, amount);
       setShowDanaForm(false);
       await refresh();
-      showToast(
-        "success",
-        amount === null ? "Dana cleared" : "Dana saved",
-      );
+      showToast("success", amount === null ? "Dana cleared" : "Dana saved");
     } catch (err: unknown) {
       showToast(
         "error",

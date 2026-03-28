@@ -757,7 +757,7 @@ describe("Landing", () => {
     it("shows dana amount when already recorded", async () => {
       getUpcomingMeeting.mockResolvedValue({
         ...baseMeeting,
-        dana_amount: 15.50,
+        dana_amount: 15.5,
       });
       renderLanding();
 
@@ -781,9 +781,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: "Record Dana" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Record Dana" }));
       await user.type(screen.getByPlaceholderText("0.00"), "20.00");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -803,9 +801,7 @@ describe("Landing", () => {
         ).toBeInTheDocument();
       });
 
-      await user.click(
-        screen.getByRole("button", { name: "Record Dana" }),
-      );
+      await user.click(screen.getByRole("button", { name: "Record Dana" }));
       await user.type(screen.getByPlaceholderText("0.00"), "-5");
       await user.click(screen.getByRole("button", { name: "Save" }));
 
@@ -816,7 +812,7 @@ describe("Landing", () => {
       const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue({
         ...baseMeeting,
-        dana_amount: 15.50,
+        dana_amount: 15.5,
       });
       updateDana.mockResolvedValue({});
       renderLanding();
