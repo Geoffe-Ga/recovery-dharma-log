@@ -702,6 +702,19 @@ class TestAssignmentEditing:
         delete_assignment(db_session, group, a1["id"])
         assert group.current_book_assignment_index == 1
 
+    def test_delete_last_assignment_clamps_position(self, db_session: Session) -> None:
+        """Deleting the last assignment when positioned at it clamps to 0."""
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        a1 = finalize_current_assignment(db_session, group)
+        assert a1 is not None
+        assert group.current_book_assignment_index == 0
+
+        # Delete the only assignment — index should reset to 0
+        delete_assignment(db_session, group, a1["id"])
+        assert group.current_book_assignment_index == 0
+
     def test_delete_assignment_not_found(self, db_session: Session) -> None:
         group = _create_group(db_session)
         with pytest.raises(ValueError, match="Assignment not found"):
