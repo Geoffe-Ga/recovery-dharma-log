@@ -38,8 +38,14 @@ _DEV_SECRET_KEY = "dev-secret-key-change-in-production"  # nosec B105 - compared
 
 # Columns added after initial schema. Each entry is (table, column, type).
 _MIGRATIONS: list[tuple[str, str, str]] = [
-    ("meeting_logs", "attendance_count", "INTEGER"),
+    ("meeting_logs", "attendance_count", "REAL"),
     ("reading_assignments", "meeting_date", "DATE"),
+]
+
+# Column type changes. Each entry is (table, column, new_type).
+# Only runs on PostgreSQL; SQLite uses dynamic typing so no change needed.
+_TYPE_MIGRATIONS: list[tuple[str, str, str]] = [
+    ("meeting_logs", "attendance_count", "DOUBLE PRECISION"),
 ]
 
 
@@ -61,6 +67,23 @@ def _run_migrations() -> None:
                     conn.commit()
             except OperationalError:
                 pass  # Column already exists (race or stale inspector cache)
+
+    # Apply column type changes (PostgreSQL only; SQLite ignores column types)
+    dialect = engine.dialect.name
+    if dialect == "postgresql":
+        for table, column, new_type in _TYPE_MIGRATIONS:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(
+                        text(
+                            f"ALTER TABLE {table} "
+                            f"ALTER COLUMN {column} TYPE {new_type} "
+                            f"USING {column}::double precision"
+                        )
+                    )
+                    conn.commit()
+            except OperationalError:
+                pass  # Already the right type or column doesn't exist
 
 
 @asynccontextmanager

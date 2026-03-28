@@ -498,6 +498,9 @@ def add_chapters_to_current_assignment(
     if not chapter_ids_to_add:
         return get_plan_status(db, group)
 
+    # Deduplicate while preserving order
+    chapter_ids_to_add = list(dict.fromkeys(chapter_ids_to_add))
+
     # Validate that all chapter IDs belong to this group
     valid_count = (
         db.query(BookChapter)
