@@ -659,6 +659,17 @@ def delete_assignment(db: Session, group: Group, assignment_id: int) -> None:
     )
     for a in remaining:
         a.assignment_order -= 1
+
+    # Adjust book position index so it still points at the same assignment
+    finalized_count = len(remaining) + deleted_order  # total after delete
+    if finalized_count == 0:
+        group.current_book_assignment_index = 0
+    elif group.current_book_assignment_index >= finalized_count:
+        group.current_book_assignment_index = finalized_count - 1
+    elif deleted_order <= group.current_book_assignment_index:
+        group.current_book_assignment_index = max(
+            0, group.current_book_assignment_index - 1
+        )
     db.flush()
 
 

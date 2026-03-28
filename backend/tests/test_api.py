@@ -473,6 +473,32 @@ class TestBookEndpoints:
         response = client.post("/book/plan/finalize", headers=auth_headers)
         assert response.status_code == 200
 
+    def test_delete_assignment_returns_204(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """DELETE /book/assignments/{id} removes the assignment."""
+        client.post("/book/plan/add-chapter", headers=auth_headers)
+        finalized = client.post(
+            "/book/plan/finalize", headers=auth_headers
+        ).json()
+        response = client.delete(
+            f"/book/assignments/{finalized['id']}", headers=auth_headers
+        )
+        assert response.status_code == 204
+
+    def test_delete_assignment_not_found_returns_400(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """DELETE /book/assignments/{id} with invalid ID returns 400."""
+        response = client.delete(
+            "/book/assignments/99999", headers=auth_headers
+        )
+        assert response.status_code == 400
+
 
 class TestSpeakersEndpoints:
     """Tests for speaker endpoints."""

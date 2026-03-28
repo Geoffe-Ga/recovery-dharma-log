@@ -681,6 +681,27 @@ class TestAssignmentEditing:
         assert len(status["completed_assignments"]) == 1
         assert status["completed_assignments"][0]["assignment_order"] == 1
 
+    def test_delete_assignment_adjusts_position(self, db_session: Session) -> None:
+        """Deleting an assignment before current position shifts index down."""
+        group = _create_group(db_session)
+        _create_chapters(db_session, group)
+        # Create three finalized assignments
+        add_chapter_to_current_assignment(db_session, group)
+        a1 = finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        add_chapter_to_current_assignment(db_session, group)
+        finalize_current_assignment(db_session, group)
+        assert a1 is not None
+
+        # Set position to assignment index 2 (third assignment)
+        set_book_position(db_session, group, 2)
+        assert group.current_book_assignment_index == 2
+
+        # Delete first assignment — position should shift down to 1
+        delete_assignment(db_session, group, a1["id"])
+        assert group.current_book_assignment_index == 1
+
     def test_delete_assignment_not_found(self, db_session: Session) -> None:
         group = _create_group(db_session)
         with pytest.raises(ValueError, match="Assignment not found"):
