@@ -32,17 +32,11 @@ import type {
   Topic,
 } from "../types/index";
 import { formatLogDate, formatShortDate } from "../utils/dates";
-import { MAX_ROTATION_SLOTS, ordinalDayLabel } from "../utils/rotation";
-
-const DAYS_OF_WEEK = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
+import {
+  DAYS_OF_WEEK,
+  MAX_ROTATION_SLOTS,
+  ordinalDayLabel,
+} from "../utils/rotation";
 
 export function Settings(): React.ReactElement {
   const [settings, setSettings] = useState<GroupSettings | null>(null);

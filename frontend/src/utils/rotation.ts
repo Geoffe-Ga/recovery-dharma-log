@@ -2,7 +2,7 @@
 
 export const MAX_ROTATION_SLOTS = 5;
 
-const DAYS_OF_WEEK = [
+export const DAYS_OF_WEEK = [
   "Monday",
   "Tuesday",
   "Wednesday",
