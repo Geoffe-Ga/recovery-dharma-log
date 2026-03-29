@@ -267,7 +267,8 @@ export function Settings(): React.ReactElement {
       // Fetch fresh position and only advance explicitly if it didn't move.
       const freshPos = await getBookPosition();
       if (
-        freshPos.current_assignment_index === position?.current_assignment_index &&
+        freshPos.current_assignment_index ===
+          position?.current_assignment_index &&
         freshPos.total_assignments > 0
       ) {
         const updated = await advanceBook();
