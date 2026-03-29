@@ -656,7 +656,11 @@ export function Settings(): React.ReactElement {
           )}
 
           {allChapters.length > 0 && (
-            <div className="rd-inline-form" role="group" aria-label="Jump to chapter">
+            <div
+              className="rd-inline-form"
+              role="group"
+              aria-label="Jump to chapter"
+            >
               <label>
                 Jump to Chapter
                 <select

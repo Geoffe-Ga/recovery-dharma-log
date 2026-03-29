@@ -1662,7 +1662,9 @@ describe("Settings", () => {
       await waitFor(() => {
         expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
       });
-      const options = screen.getByLabelText("Jump to Chapter").querySelectorAll("option");
+      const options = screen
+        .getByLabelText("Jump to Chapter")
+        .querySelectorAll("option");
       expect(options).toHaveLength(3);
     });
 
@@ -1674,7 +1676,9 @@ describe("Settings", () => {
           screen.getByRole("heading", { name: "Settings" }),
         ).toBeInTheDocument();
       });
-      expect(screen.queryByLabelText("Jump to Chapter")).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText("Jump to Chapter"),
+      ).not.toBeInTheDocument();
     });
 
     it("defaults to current assignment first chapter", async () => {
@@ -1817,7 +1821,9 @@ describe("Settings", () => {
       await user.click(screen.getByRole("button", { name: "Go" }));
 
       await waitFor(() => {
-        expect(screen.getByText("Chapter position updated")).toBeInTheDocument();
+        expect(
+          screen.getByText("Chapter position updated"),
+        ).toBeInTheDocument();
       });
     });
   });
