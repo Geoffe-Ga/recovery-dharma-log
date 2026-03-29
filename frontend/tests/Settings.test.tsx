@@ -732,6 +732,54 @@ describe("Settings", () => {
     });
   });
 
+  it("shows stage-specific toast when finalize fails after chapters added", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(undefined);
+    (api.finalizePlan as jest.Mock).mockRejectedValue(
+      new Error("finalize failed"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Chapters added but finalize failed — try again"),
+      ).toBeInTheDocument();
+    });
+  });
+
   it("disables Confirm button while queue confirm is in flight", async () => {
     const user = userEvent.setup();
     let resolveAdd!: () => void;

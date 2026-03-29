@@ -255,7 +255,14 @@ export function Settings(): React.ReactElement {
       .map((ch) => ch.id);
     try {
       await addChaptersToPlan(ids);
-      await finalizePlan();
+      try {
+        await finalizePlan();
+      } catch {
+        // Chapters added but plan not finalized — refresh and report
+        setPlan(await getReadingPlan());
+        showToast("error", "Chapters added but finalize failed — try again");
+        return;
+      }
       if (position && position.total_assignments > 0) {
         const updated = await advanceBook();
         setPosition(updated);
