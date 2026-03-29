@@ -21,6 +21,7 @@ import {
   restartBook,
   revokeInviteCode,
   setBookPosition,
+  setChapterMarker,
   updateAssignment,
   updateSettings,
 } from "../api/index";
@@ -64,6 +65,8 @@ export function Settings(): React.ReactElement {
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [position, setPosition] = useState<BookPosition | null>(null);
   const [isPending, setIsPending] = useState(false);
+  const [jumpChapter, setJumpChapter] = useState<number | null>(null);
+  const [jumpPending, setJumpPending] = useState(false);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -358,6 +361,45 @@ export function Settings(): React.ReactElement {
     );
   }, []);
 
+  const currentChapterOrder = useMemo(() => {
+    if (position?.current_assignment?.chapters?.length) {
+      return position.current_assignment.chapters[0].order;
+    }
+    if (position?.chapter_marker != null) {
+      return position.chapter_marker;
+    }
+    return allChapters.length > 0 ? allChapters[0].order : 1;
+  }, [position, allChapters]);
+
+  const handleJumpToChapter = useCallback(
+    async (targetOrder: number) => {
+      if (!plan || jumpPending) return;
+      setJumpPending(true);
+      try {
+        const assignmentIndex = plan.completed_assignments.findIndex((a) =>
+          a.chapters.some((ch) => ch.order === targetOrder),
+        );
+        let updated: BookPosition;
+        if (assignmentIndex >= 0) {
+          updated = await setBookPosition(assignmentIndex);
+        } else {
+          updated = await setChapterMarker(targetOrder);
+        }
+        setPosition(updated);
+        setJumpChapter(null);
+        showToast("success", "Chapter position updated");
+      } catch (err: unknown) {
+        showToast(
+          "error",
+          err instanceof Error ? err.message : "Failed to update position",
+        );
+      } finally {
+        setJumpPending(false);
+      }
+    },
+    [plan, jumpPending, showToast],
+  );
+
   if (loading) return <Skeleton lines={4} />;
   if (error) return <ErrorWithRetry message={error} onRetry={loadSettings} />;
   if (!settings) return <p>No settings found.</p>;
@@ -610,6 +652,37 @@ export function Settings(): React.ReactElement {
                 {plan.total_chapters - plan.assigned_chapters > 0 &&
                   ` · ~${plan.total_chapters - plan.assigned_chapters} weeks left`}
               </p>
+            </div>
+          )}
+
+          {allChapters.length > 0 && (
+            <div className="rd-inline-form" role="group" aria-label="Jump to chapter">
+              <label>
+                Jump to Chapter
+                <select
+                  value={jumpChapter ?? currentChapterOrder}
+                  onChange={(e) => setJumpChapter(Number(e.target.value))}
+                >
+                  {allChapters.map((ch) => (
+                    <option key={ch.order} value={ch.order}>
+                      {ch.order}. {ch.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="outline"
+                onClick={() =>
+                  handleJumpToChapter(jumpChapter ?? currentChapterOrder)
+                }
+                disabled={
+                  jumpPending ||
+                  (jumpChapter ?? currentChapterOrder) === currentChapterOrder
+                }
+              >
+                {jumpPending ? "Updating\u2026" : "Go"}
+              </button>
             </div>
           )}
 

@@ -28,6 +28,7 @@ jest.mock("../src/api/index", () => ({
   updateAssignment: jest.fn(),
   deleteAssignment: jest.fn(),
   setBookPosition: jest.fn(),
+  setChapterMarker: jest.fn(),
   restartBook: jest.fn(),
   generateInviteCode: jest.fn(),
   revokeInviteCode: jest.fn(),
@@ -62,6 +63,33 @@ const mockPlan: ReadingPlanStatus = {
 };
 
 const mockChapters: BookChapter[] = [];
+
+const threeChapters: BookChapter[] = [
+  {
+    id: 1,
+    order: 1,
+    start_page: "1",
+    end_page: "5",
+    title: "Preface",
+    page_count: 5,
+  },
+  {
+    id: 2,
+    order: 2,
+    start_page: "6",
+    end_page: "10",
+    title: "Introduction",
+    page_count: 5,
+  },
+  {
+    id: 3,
+    order: 3,
+    start_page: "11",
+    end_page: "15",
+    title: "Chapter One",
+    page_count: 5,
+  },
+];
 
 const mockPosition: BookPosition = {
   current_assignment_index: 0,
@@ -1619,6 +1647,178 @@ describe("Settings", () => {
         ).toBeInTheDocument();
       });
       expect(screen.getByText(/5th Sunday/)).toBeInTheDocument();
+    });
+  });
+
+  describe("jump to chapter", () => {
+    it("renders dropdown when chapters exist", async () => {
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+      });
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+      const options = screen.getByLabelText("Jump to Chapter").querySelectorAll("option");
+      expect(options).toHaveLength(3);
+    });
+
+    it("does not render dropdown when no chapters exist", async () => {
+      renderSettings();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Settings" }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.queryByLabelText("Jump to Chapter")).not.toBeInTheDocument();
+    });
+
+    it("defaults to current assignment first chapter", async () => {
+      const posWithAssignment: BookPosition = {
+        ...mockPosition,
+        total_assignments: 1,
+        current_assignment_index: 0,
+        current_assignment: {
+          id: 1,
+          assignment_order: 1,
+          chapters: [threeChapters[1]],
+          total_pages: 5,
+          meeting_date: null,
+        },
+      };
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getBookPosition as jest.Mock).mockResolvedValue(posWithAssignment);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+        completed_assignments: [
+          {
+            id: 1,
+            assignment_order: 1,
+            chapters: [threeChapters[1]],
+            total_pages: 5,
+            meeting_date: null,
+          },
+        ],
+      });
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+      expect(
+        (screen.getByLabelText("Jump to Chapter") as HTMLSelectElement).value,
+      ).toBe("2");
+    });
+
+    it("calls setBookPosition when chapter is in a completed assignment", async () => {
+      const planWithAssignment: ReadingPlanStatus = {
+        ...mockPlan,
+        total_chapters: 3,
+        completed_assignments: [
+          {
+            id: 1,
+            assignment_order: 1,
+            chapters: [threeChapters[0]],
+            total_pages: 5,
+            meeting_date: null,
+          },
+          {
+            id: 2,
+            assignment_order: 2,
+            chapters: [threeChapters[1]],
+            total_pages: 5,
+            meeting_date: null,
+          },
+        ],
+      };
+      const posData: BookPosition = {
+        ...mockPosition,
+        total_assignments: 2,
+        current_assignment_index: 0,
+        current_assignment: planWithAssignment.completed_assignments[0],
+      };
+      const jumpedPos: BookPosition = {
+        ...posData,
+        current_assignment_index: 1,
+        current_assignment: planWithAssignment.completed_assignments[1],
+      };
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getBookPosition as jest.Mock).mockResolvedValue(posData);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+      (api.setBookPosition as jest.Mock).mockResolvedValue(jumpedPos);
+
+      const user = userEvent.setup();
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByLabelText("Jump to Chapter"), "2");
+      await user.click(screen.getByRole("button", { name: "Go" }));
+
+      await waitFor(() => {
+        expect(api.setBookPosition).toHaveBeenCalledWith(1);
+      });
+    });
+
+    it("calls setChapterMarker when chapter is unassigned", async () => {
+      const markedPos: BookPosition = {
+        ...mockPosition,
+        chapter_marker: 3,
+      };
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+      });
+      (api.setChapterMarker as jest.Mock).mockResolvedValue(markedPos);
+
+      const user = userEvent.setup();
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByLabelText("Jump to Chapter"), "3");
+      await user.click(screen.getByRole("button", { name: "Go" }));
+
+      await waitFor(() => {
+        expect(api.setChapterMarker).toHaveBeenCalledWith(3);
+      });
+    });
+
+    it("shows success toast after jump", async () => {
+      const markedPos: BookPosition = {
+        ...mockPosition,
+        chapter_marker: 2,
+      };
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+      });
+      (api.setChapterMarker as jest.Mock).mockResolvedValue(markedPos);
+
+      const user = userEvent.setup();
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByLabelText("Jump to Chapter"), "2");
+      await user.click(screen.getByRole("button", { name: "Go" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Chapter position updated")).toBeInTheDocument();
+      });
     });
   });
 });
