@@ -378,6 +378,8 @@ export function Settings(): React.ReactElement {
       jumpPendingRef.current = true;
       setJumpPending(true);
       try {
+        // Only search completed assignments — draft chapters use a marker
+        // instead, which the backend consumes on next finalize (see PR #94).
         const assignmentIndex = plan.completed_assignments.findIndex((a) =>
           a.chapters.some((ch) => ch.order === targetOrder),
         );
