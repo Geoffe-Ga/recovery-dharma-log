@@ -1826,5 +1826,30 @@ describe("Settings", () => {
         ).toBeInTheDocument();
       });
     });
+
+    it("shows error toast when jump fails", async () => {
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+      });
+      (api.setChapterMarker as jest.Mock).mockRejectedValue(
+        new Error("Server error"),
+      );
+
+      const user = userEvent.setup();
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+
+      await user.selectOptions(screen.getByLabelText("Jump to Chapter"), "2");
+      await user.click(screen.getByRole("button", { name: "Go" }));
+
+      await waitFor(() => {
+        expect(screen.getByText("Server error")).toBeInTheDocument();
+      });
+    });
   });
 });

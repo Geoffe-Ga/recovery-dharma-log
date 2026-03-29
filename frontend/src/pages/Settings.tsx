@@ -1,6 +1,6 @@
 /** Settings page - group configuration. */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ErrorWithRetry } from "../components/ErrorWithRetry";
 import { RotationCalendar } from "../components/RotationCalendar";
 import { Skeleton } from "../components/Skeleton";
@@ -67,6 +67,7 @@ export function Settings(): React.ReactElement {
   const [isPending, setIsPending] = useState(false);
   const [jumpChapter, setJumpChapter] = useState<number | null>(null);
   const [jumpPending, setJumpPending] = useState(false);
+  const jumpPendingRef = useRef(false);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -373,7 +374,8 @@ export function Settings(): React.ReactElement {
 
   const handleJumpToChapter = useCallback(
     async (targetOrder: number) => {
-      if (!plan || jumpPending) return;
+      if (!plan || jumpPendingRef.current) return;
+      jumpPendingRef.current = true;
       setJumpPending(true);
       try {
         const assignmentIndex = plan.completed_assignments.findIndex((a) =>
@@ -394,10 +396,11 @@ export function Settings(): React.ReactElement {
           err instanceof Error ? err.message : "Failed to update position",
         );
       } finally {
+        jumpPendingRef.current = false;
         setJumpPending(false);
       }
     },
-    [plan, jumpPending, showToast],
+    [plan, showToast],
   );
 
   if (loading) return <Skeleton lines={4} />;
