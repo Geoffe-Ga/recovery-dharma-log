@@ -732,6 +732,54 @@ describe("Settings", () => {
     });
   });
 
+  it("disables Confirm button while queue confirm is in flight", async () => {
+    const user = userEvent.setup();
+    let resolveAdd!: () => void;
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockReturnValue(
+      new Promise<void>((r) => {
+        resolveAdd = r;
+      }),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    });
+
+    resolveAdd();
+  });
+
   it("cancels queue mode", async () => {
     const user = userEvent.setup();
     const planWithData: ReadingPlanStatus = {
@@ -844,6 +892,30 @@ describe("Settings", () => {
 
     await waitFor(() => {
       expect(screen.getByText("advance failed")).toBeInTheDocument();
+    });
+  });
+
+  it("disables Mark Done button while advance is in flight", async () => {
+    const user = userEvent.setup();
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      twoAssignmentPositionFirst,
+    );
+    (api.advanceBook as jest.Mock).mockReturnValue(
+      new Promise<BookPosition>(() => {
+        /* never resolves — keeps button disabled */
+      }),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Mark Done" })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Mark Done" })).toBeDisabled();
     });
   });
 

@@ -63,6 +63,7 @@ export function Settings(): React.ReactElement {
   );
   const [confirmAction, setConfirmAction] = useState<string | null>(null);
   const [position, setPosition] = useState<BookPosition | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const showToast = useShowToast();
 
   const isDirty = useMemo(() => {
@@ -97,6 +98,15 @@ export function Settings(): React.ReactElement {
   useEffect(() => {
     loadSettings();
   }, [loadSettings]);
+
+  // Scroll to hash target after data loads (SPA deep-link support)
+  useEffect(() => {
+    if (loading) return;
+    const hash = window.location.hash;
+    if (!hash) return;
+    const el = document.getElementById(hash.slice(1));
+    if (el) el.scrollIntoView({ behavior: "smooth" });
+  }, [loading]);
 
   // Warn on navigation away with unsaved changes
   useEffect(() => {
@@ -210,7 +220,7 @@ export function Settings(): React.ReactElement {
   }, []);
 
   const handleMarkDone = useCallback(async () => {
-    if (!position || !plan) return;
+    if (!position || !plan || isPending) return;
 
     const atEnd =
       position.total_assignments > 0 &&
@@ -221,6 +231,7 @@ export function Settings(): React.ReactElement {
       return;
     }
 
+    setIsPending(true);
     try {
       const updated = await advanceBook();
       setPosition(updated);
@@ -231,11 +242,14 @@ export function Settings(): React.ReactElement {
         "error",
         err instanceof Error ? err.message : "Failed to advance",
       );
+    } finally {
+      setIsPending(false);
     }
-  }, [position, plan, enterQueueMode, showToast]);
+  }, [position, plan, isPending, enterQueueMode, showToast]);
 
   const handleConfirmQueue = useCallback(async () => {
-    if (suggestedCount === 0 || !plan) return;
+    if (suggestedCount === 0 || !plan || isPending) return;
+    setIsPending(true);
     const ids = plan.unassigned_chapters
       .slice(0, suggestedCount)
       .map((ch) => ch.id);
@@ -257,8 +271,10 @@ export function Settings(): React.ReactElement {
         "error",
         err instanceof Error ? err.message : "Failed to queue reading",
       );
+    } finally {
+      setIsPending(false);
     }
-  }, [suggestedCount, plan, position, showToast]);
+  }, [suggestedCount, plan, isPending, position, showToast]);
 
   const handleEditAssignment = useCallback(
     (assignmentId: number, currentChapterIds: number[]) => {
@@ -607,11 +623,19 @@ export function Settings(): React.ReactElement {
                       start a new cycle.
                     </p>
                   ) : isLastAssignment ? (
-                    <button type="button" onClick={handleMarkDone}>
+                    <button
+                      type="button"
+                      onClick={handleMarkDone}
+                      disabled={isPending}
+                    >
                       Mark Done &amp; Queue Next
                     </button>
                   ) : (
-                    <button type="button" onClick={handleMarkDone}>
+                    <button
+                      type="button"
+                      onClick={handleMarkDone}
+                      disabled={isPending}
+                    >
                       Mark Done
                     </button>
                   )}
@@ -666,7 +690,11 @@ export function Settings(): React.ReactElement {
                 </button>
               </div>
               <div className="rd-button-row">
-                <button type="button" onClick={handleConfirmQueue}>
+                <button
+                  type="button"
+                  onClick={handleConfirmQueue}
+                  disabled={isPending}
+                >
                   Confirm
                 </button>
                 <button

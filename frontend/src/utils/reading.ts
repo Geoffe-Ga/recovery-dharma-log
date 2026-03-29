@@ -2,7 +2,12 @@
 
 import type { BookChapter } from "../types/index";
 
-export const DEFAULT_TARGET_PAGES = 5;
+/**
+ * Default page target per reading assignment. Set to 7 so Shares finish
+ * after the reading while still completing the full book within a single
+ * six-month secretary term.
+ */
+export const DEFAULT_TARGET_PAGES = 7;
 
 /**
  * Return how many sequential chapters (from the start of `unassigned`)
