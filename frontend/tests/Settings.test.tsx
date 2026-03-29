@@ -687,6 +687,91 @@ describe("Settings", () => {
     });
   });
 
+  it("skips advanceBook when finalize already advanced position", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 15,
+      assigned_pages: 5,
+      unassigned_chapters: [
+        {
+          id: 2,
+          order: 2,
+          start_page: "6",
+          end_page: "10",
+          title: "Chapter 2",
+          page_count: 5,
+        },
+      ],
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "5",
+              title: "Chapter 1",
+              page_count: 5,
+            },
+          ],
+          total_pages: 5,
+          meeting_date: null,
+        },
+      ],
+    };
+    const positionData: BookPosition = {
+      ...mockPosition,
+      total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planWithData.completed_assignments[0],
+    };
+    // After finalize, getBookPosition returns an already-advanced position
+    // (simulates chapter marker auto-advance in the backend)
+    const advancedPos: BookPosition = {
+      ...positionData,
+      total_assignments: 2,
+      current_assignment_index: 1,
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.getBookPosition as jest.Mock)
+      .mockResolvedValueOnce(positionData)
+      .mockResolvedValue(advancedPos);
+    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.finalizePlan as jest.Mock).mockResolvedValue({});
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(api.finalizePlan).toHaveBeenCalled();
+      expect(api.getBookPosition).toHaveBeenCalledTimes(2);
+    });
+
+    // advanceBook should NOT have been called — finalize already advanced
+    expect(api.advanceBook).not.toHaveBeenCalled();
+  });
+
   it("shows toast on queue confirm failure", async () => {
     const user = userEvent.setup();
     const planWithData: ReadingPlanStatus = {

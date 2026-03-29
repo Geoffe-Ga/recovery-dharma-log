@@ -574,6 +574,10 @@ def finalize_current_assignment(db: Session, group: Group) -> dict | None:
                 if a.id == draft.id:
                     group.current_book_assignment_index = i
                     break
+            # Clear the marker — it was a one-time bridge from chapter-marker
+            # tracking to assignment-based tracking and must not fire again
+            # (otherwise the next queue-confirm cycle double-advances).
+            group.current_chapter_marker = None
             db.flush()
 
     return {
