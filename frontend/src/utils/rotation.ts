@@ -16,5 +16,7 @@ const ORDINALS = ["1st", "2nd", "3rd", "4th", "5th"] as const;
 
 /** Return e.g. "1st Sunday" for index=0 and meetingDay=6. */
 export function ordinalDayLabel(index: number, meetingDay: number): string {
-  return `${ORDINALS[index]} ${DAYS_OF_WEEK[meetingDay]}`;
+  const ordinal = ORDINALS[index] ?? `${index + 1}th`;
+  const day = DAYS_OF_WEEK[meetingDay] ?? "day";
+  return `${ordinal} ${day}`;
 }

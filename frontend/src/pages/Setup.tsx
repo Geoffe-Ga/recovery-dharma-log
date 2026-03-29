@@ -11,6 +11,7 @@ import {
   setupTopics,
 } from "../api/index";
 import type { BookChapter } from "../types/index";
+import { MAX_ROTATION_SLOTS } from "../utils/rotation";
 import { StepBasics } from "./setup/StepBasics";
 import { StepBookPosition } from "./setup/StepBookPosition";
 import { StepRotation } from "./setup/StepRotation";
@@ -145,7 +146,7 @@ export function Setup({ onComplete }: SetupProps): React.ReactElement {
   };
 
   const handleAddSlot = (): void => {
-    if (rotation.length >= 5) return;
+    if (rotation.length >= MAX_ROTATION_SLOTS) return;
     setRotation((prev) => [...prev, "Topic"]);
   };
 
