@@ -782,10 +782,10 @@ describe("Settings", () => {
     });
 
     // Default mock has 3-item rotation: ["Speaker", "Topic", "Book Study"]
-    // 4 % 3 = 1, so position 2, format = "Topic"
+    // 4 % 3 = 1, so 2nd Sunday, format = "Topic"
     expect(
       screen.getByText(
-        /Months with a 5th Sunday will use the Topic format \(position 2\)/,
+        /Months with a 5th Sunday will use the Topic format \(2nd Sunday\)/,
       ),
     ).toBeInTheDocument();
   });
@@ -1416,6 +1416,89 @@ describe("Settings", () => {
       await waitFor(() => {
         expect(api.revokeInviteCode).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe("rotation cap and labels (#81, #82)", () => {
+    it("hides Add button when rotation has 5 positions", async () => {
+      (api.getSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        format_rotation: ["Speaker", "Topic", "Book Study", "Topic", "Speaker"],
+      });
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.queryByRole("button", { name: /^\+ Add/ }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows Add button when rotation has fewer than 5 positions", async () => {
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      // mockSettings has 3 positions
+      expect(
+        screen.getByRole("button", { name: /^\+ Add/ }),
+      ).toBeInTheDocument();
+    });
+
+    it("labels rotation slots with ordinal day names", async () => {
+      // meeting_day=6 is Sunday
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByText("1st Sunday")).toBeInTheDocument();
+      expect(screen.getByText("2nd Sunday")).toBeInTheDocument();
+      expect(screen.getByText("3rd Sunday")).toBeInTheDocument();
+    });
+
+    it("uses correct day name for different meeting days", async () => {
+      (api.getSettings as jest.Mock).mockResolvedValue({
+        ...mockSettings,
+        meeting_day: 2, // Wednesday
+        format_rotation: ["Speaker", "Topic"],
+      });
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByText("1st Wednesday")).toBeInTheDocument();
+      expect(screen.getByText("2nd Wednesday")).toBeInTheDocument();
+    });
+
+    it("shows next ordinal in Add button text", async () => {
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      // 3 positions, meeting_day=6 (Sunday), next would be 4th
+      expect(
+        screen.getByRole("button", { name: "+ Add 4th Sunday" }),
+      ).toBeInTheDocument();
+    });
+
+    it("updates 5th-week note with ordinal day language", async () => {
+      renderSettings();
+      await waitFor(() => {
+        expect(
+          screen.getByRole("heading", { name: "Format Rotation" }),
+        ).toBeInTheDocument();
+      });
+      expect(screen.getByText(/5th Sunday/)).toBeInTheDocument();
     });
   });
 });

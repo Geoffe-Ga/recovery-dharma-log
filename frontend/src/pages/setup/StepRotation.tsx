@@ -1,11 +1,13 @@
 /** Setup wizard Step 2: Format Rotation. */
 
 import React from "react";
+import { MAX_ROTATION_SLOTS, ordinalDayLabel } from "../../utils/rotation";
 
 const FORMAT_OPTIONS = ["Speaker", "Topic", "Book Study"];
 
 interface StepRotationProps {
   rotation: string[];
+  meetingDay: number;
   onRotationChange: (index: number, value: string) => void;
   onAddSlot: () => void;
   onRemoveSlot: (index: number) => void;
@@ -13,6 +15,7 @@ interface StepRotationProps {
 
 export function StepRotation({
   rotation,
+  meetingDay,
   onRotationChange,
   onAddSlot,
   onRemoveSlot,
@@ -27,7 +30,7 @@ export function StepRotation({
           style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}
         >
           <label style={{ flex: 1 }}>
-            Week {i + 1}
+            {ordinalDayLabel(i, meetingDay)}
             <select
               value={fmt}
               onChange={(e) => onRotationChange(i, e.target.value)}
@@ -44,16 +47,18 @@ export function StepRotation({
               type="button"
               className="outline"
               onClick={() => onRemoveSlot(i)}
-              aria-label={`Remove week ${i + 1}`}
+              aria-label={`Remove ${ordinalDayLabel(i, meetingDay)}`}
             >
               Remove
             </button>
           )}
         </div>
       ))}
-      <button type="button" className="outline" onClick={onAddSlot}>
-        Add Week
-      </button>
+      {rotation.length < MAX_ROTATION_SLOTS && (
+        <button type="button" className="outline" onClick={onAddSlot}>
+          + Add {ordinalDayLabel(rotation.length, meetingDay)}
+        </button>
+      )}
     </section>
   );
 }

@@ -181,9 +181,12 @@ describe("Setup wizard", () => {
         screen.getByRole("heading", { name: "Format Rotation" }),
       ).toBeInTheDocument();
     });
-    await user.click(screen.getByRole("button", { name: "Add Week" }));
-    expect(screen.getAllByRole("combobox").length).toBe(6);
-    await user.click(screen.getByRole("button", { name: "Remove week 6" }));
+    // Default rotation has 5 slots (the max), so remove one first
+    expect(screen.getAllByRole("combobox").length).toBe(5);
+    await user.click(screen.getByRole("button", { name: "Remove 5th Sunday" }));
+    expect(screen.getAllByRole("combobox").length).toBe(4);
+    // Now add button should appear; click it to go back to 5
+    await user.click(screen.getByRole("button", { name: /^\+ Add/ }));
     expect(screen.getAllByRole("combobox").length).toBe(5);
   });
 
