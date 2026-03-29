@@ -32,16 +32,11 @@ import type {
   Topic,
 } from "../types/index";
 import { formatLogDate, formatShortDate } from "../utils/dates";
-
-const DAYS_OF_WEEK = [
-  "Monday",
-  "Tuesday",
-  "Wednesday",
-  "Thursday",
-  "Friday",
-  "Saturday",
-  "Sunday",
-] as const;
+import {
+  DAYS_OF_WEEK,
+  MAX_ROTATION_SLOTS,
+  ordinalDayLabel,
+} from "../utils/rotation";
 
 export function Settings(): React.ReactElement {
   const [settings, setSettings] = useState<GroupSettings | null>(null);
@@ -146,7 +141,8 @@ export function Settings(): React.ReactElement {
   );
 
   const handleAddRotationSlot = useCallback(() => {
-    if (!settings) return;
+    if (!settings || settings.format_rotation.length >= MAX_ROTATION_SLOTS)
+      return;
     setSettings({
       ...settings,
       format_rotation: [...settings.format_rotation, "Topic"],
@@ -375,7 +371,9 @@ export function Settings(): React.ReactElement {
         <div className="rd-rotation-list">
           {settings.format_rotation.map((format, i) => (
             <div key={i} className="rd-rotation-slot">
-              <span className="rd-rotation-slot__label">{i + 1}.</span>
+              <span className="rd-rotation-slot__label">
+                {ordinalDayLabel(i, settings.meeting_day)}
+              </span>
               <select
                 value={format}
                 onChange={(e) => handleRotationChange(i, e.target.value)}
@@ -398,24 +396,35 @@ export function Settings(): React.ReactElement {
             </div>
           ))}
         </div>
-        <button
-          type="button"
-          className="outline"
-          onClick={handleAddRotationSlot}
-        >
-          + Add Position
-        </button>
+        {settings.format_rotation.length < MAX_ROTATION_SLOTS && (
+          <button
+            type="button"
+            className="outline"
+            onClick={handleAddRotationSlot}
+          >
+            + Add{" "}
+            {ordinalDayLabel(
+              settings.format_rotation.length,
+              settings.meeting_day,
+            )}
+          </button>
+        )}
         <RotationCalendar
           meetingDay={settings.meeting_day}
           startDate={settings.start_date}
           formatRotation={settings.format_rotation}
         />
-        {settings.format_rotation.length < 5 && (
+        {settings.format_rotation.length < MAX_ROTATION_SLOTS && (
           <p className="rd-meta">
             Note: Months with a 5th {DAYS_OF_WEEK[settings.meeting_day]} will
             use the{" "}
             {settings.format_rotation[4 % settings.format_rotation.length]}{" "}
-            format (position {(4 % settings.format_rotation.length) + 1}).
+            format (
+            {ordinalDayLabel(
+              4 % settings.format_rotation.length,
+              settings.meeting_day,
+            )}
+            ).
           </p>
         )}
       </section>
