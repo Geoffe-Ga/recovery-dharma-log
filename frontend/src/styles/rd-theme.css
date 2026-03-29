@@ -1007,7 +1007,13 @@ p[role="alert"] {
 }
 
 button.rd-reading-history__row {
-  all: unset;
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
   display: flex;
   align-items: center;
   gap: var(--rd-space-sm);
