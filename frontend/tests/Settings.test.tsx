@@ -603,6 +603,51 @@ describe("Settings", () => {
     });
   });
 
+  it("shows toast on queue confirm failure", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockRejectedValue(
+      new Error("Network error"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+    });
+  });
+
   it("cancels queue mode", async () => {
     const user = userEvent.setup();
     const planWithData: ReadingPlanStatus = {
