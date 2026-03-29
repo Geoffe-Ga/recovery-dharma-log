@@ -23,6 +23,7 @@ from app.services import (
     delete_assignment,
     draw_random_topic,
     finalize_current_assignment,
+    get_current_draft_assignment,
     generate_csv_export,
     generate_printable_export,
     get_book_position,
@@ -1429,6 +1430,99 @@ class TestBookPositionTracking:
 
         # Index should have been set to point to this assignment (index 1)
         assert group.current_book_assignment_index == 1
+
+    def test_chapter_marker_cleared_after_auto_advance(
+        self,
+        db_session: Session,
+    ) -> None:
+        """Marker is cleared after auto-advance so subsequent finalizes don't repeat."""
+        group = _create_group(db_session)
+        ch1 = BookChapter(
+            group_id=group.id, order=1, start_page="1", end_page="10", title="Ch 1"
+        )
+        ch2 = BookChapter(
+            group_id=group.id, order=2, start_page="11", end_page="20", title="Ch 2"
+        )
+        db_session.add_all([ch1, ch2])
+        db_session.flush()
+
+        group.current_chapter_marker = 1
+        db_session.flush()
+
+        ra1 = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=1,
+            chapters_json=json.dumps([ch1.id]),
+            meeting_date=date(2025, 2, 1),
+        )
+        draft = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=2,
+            chapters_json=json.dumps([ch2.id]),
+        )
+        db_session.add_all([ra1, draft])
+        db_session.flush()
+
+        finalize_current_assignment(db_session, group)
+
+        assert group.current_chapter_marker is None
+
+    def test_second_finalize_does_not_auto_advance_after_marker_cleared(
+        self,
+        db_session: Session,
+    ) -> None:
+        """After marker is cleared, a second finalize does not auto-advance."""
+        group = _create_group(db_session)
+        ch1 = BookChapter(
+            group_id=group.id, order=1, start_page="1", end_page="10", title="Ch 1"
+        )
+        ch2 = BookChapter(
+            group_id=group.id, order=2, start_page="11", end_page="20", title="Ch 2"
+        )
+        ch3 = BookChapter(
+            group_id=group.id, order=3, start_page="21", end_page="30", title="Ch 3"
+        )
+        db_session.add_all([ch1, ch2, ch3])
+        db_session.flush()
+
+        group.current_chapter_marker = 1
+        db_session.flush()
+
+        # One finalized assignment + a draft with ch2
+        ra1 = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=1,
+            chapters_json=json.dumps([ch1.id]),
+            meeting_date=date(2025, 2, 1),
+        )
+        draft = ReadingAssignment(
+            group_id=group.id,
+            assignment_order=2,
+            chapters_json=json.dumps([ch2.id]),
+        )
+        db_session.add_all([ra1, draft])
+        db_session.flush()
+
+        # First finalize — auto-advance fires and clears marker
+        finalize_current_assignment(db_session, group)
+        assert group.current_chapter_marker is None
+        assert group.current_book_assignment_index == 1
+
+        # Simulate explicit advance (as handleConfirmQueue does)
+        advance_book_position(db_session, group)
+
+        # Now add ch3 to the new draft and finalize again
+        new_draft = get_current_draft_assignment(db_session, group)
+        assert new_draft is not None
+        new_draft.chapters_json = json.dumps([ch3.id])
+        db_session.flush()
+
+        # Record position before second finalize
+        idx_before = group.current_book_assignment_index
+        finalize_current_assignment(db_session, group)
+
+        # Position should NOT have changed — marker was already cleared
+        assert group.current_book_assignment_index == idx_before
 
     def test_chapter_summary_shows_marker_when_no_assignments(
         self,

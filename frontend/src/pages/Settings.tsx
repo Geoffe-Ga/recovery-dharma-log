@@ -263,11 +263,17 @@ export function Settings(): React.ReactElement {
         showToast("error", "Chapters added but finalize failed — try again");
         return;
       }
-      if (position && position.total_assignments > 0) {
+      // Finalize may have auto-advanced the position (via chapter marker).
+      // Fetch fresh position and only advance explicitly if it didn't move.
+      const freshPos = await getBookPosition();
+      if (
+        freshPos.current_assignment_index === position?.current_assignment_index &&
+        freshPos.total_assignments > 0
+      ) {
         const updated = await advanceBook();
         setPosition(updated);
       } else {
-        setPosition(await getBookPosition());
+        setPosition(freshPos);
       }
       setPlan(await getReadingPlan());
       setQueueMode(false);
