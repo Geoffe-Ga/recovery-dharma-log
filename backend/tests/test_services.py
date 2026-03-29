@@ -1466,6 +1466,7 @@ class TestBookPositionTracking:
         finalize_current_assignment(db_session, group)
 
         assert group.current_chapter_marker is None
+        assert group.current_book_assignment_index == 1
 
     def test_second_finalize_does_not_auto_advance_after_marker_cleared(
         self,
