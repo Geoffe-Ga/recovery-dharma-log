@@ -280,6 +280,57 @@ describe("Setup wizard", () => {
     });
   });
 
+  it("sends default chapter order 1 when user does not change dropdown", async () => {
+    const user = renderSetup();
+    await fillStartDate(user);
+    // Step 1 → 2
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(api.setupBasics).toHaveBeenCalled();
+    });
+    // Step 2 → 3
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(api.setupRotation).toHaveBeenCalled();
+    });
+    // Step 3 → 4
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(api.setupTopics).toHaveBeenCalled();
+    });
+    // Finish without changing dropdown
+    await user.click(screen.getByRole("button", { name: "Finish Setup" }));
+    await waitFor(() => {
+      expect(api.setupBookPosition).toHaveBeenCalledWith(1);
+    });
+  });
+
+  it("sends selected chapter order when user picks a different chapter", async () => {
+    const user = renderSetup();
+    await fillStartDate(user);
+    // Navigate to step 4
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(api.setupBasics).toHaveBeenCalled();
+    });
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(api.setupRotation).toHaveBeenCalled();
+    });
+    await user.click(screen.getByRole("button", { name: "Next" }));
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Book Position" }),
+      ).toBeInTheDocument();
+    });
+    // Change dropdown to chapter 3: "Where to Begin"
+    await user.selectOptions(screen.getByLabelText("Current Chapter"), "3");
+    await user.click(screen.getByRole("button", { name: "Finish Setup" }));
+    await waitFor(() => {
+      expect(api.setupBookPosition).toHaveBeenCalledWith(3);
+    });
+  });
+
   it("shows error when API call fails", async () => {
     (api.setupBasics as jest.Mock).mockRejectedValue(
       new Error("Network error"),
