@@ -831,6 +831,75 @@ describe("Settings", () => {
     });
   });
 
+  it("shows error toast when Mark Done advanceBook fails", async () => {
+    const user = userEvent.setup();
+    const planWithAssignments: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 2,
+      total_pages: 20,
+      assigned_pages: 18,
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "10",
+              title: "Chapter 1",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+        {
+          id: 2,
+          assignment_order: 2,
+          chapters: [
+            {
+              id: 2,
+              order: 2,
+              start_page: "11",
+              end_page: "20",
+              title: "Chapter 2",
+              page_count: 9,
+            },
+          ],
+          total_pages: 9,
+          meeting_date: null,
+        },
+      ],
+    };
+    const positionAtFirst: BookPosition = {
+      ...mockPosition,
+      total_assignments: 2,
+      current_assignment_index: 0,
+      current_assignment: planWithAssignments.completed_assignments[0],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignments);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(positionAtFirst);
+    (api.advanceBook as jest.Mock).mockRejectedValue(
+      new Error("advance failed"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("advance failed")).toBeInTheDocument();
+    });
+  });
+
   it("displays meeting date in reading history", async () => {
     const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
