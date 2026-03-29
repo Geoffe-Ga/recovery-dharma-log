@@ -2,6 +2,7 @@
 
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { MemoryRouter } from "react-router-dom";
 import * as api from "../src/api/index";
 import { ToastProvider } from "../src/contexts/ToastContext";
 import { Landing } from "../src/pages/Landing";
@@ -27,9 +28,11 @@ jest.mock("../src/api/index", () => ({
 
 function renderLanding(): void {
   render(
-    <ToastProvider>
-      <Landing />
-    </ToastProvider>,
+    <MemoryRouter>
+      <ToastProvider>
+        <Landing />
+      </ToastProvider>
+    </MemoryRouter>,
   );
 }
 
@@ -1173,23 +1176,21 @@ describe("Landing", () => {
           screen.getByText("Chapter 5 (pp. 41\u201350, 9 pages)"),
         ).toBeInTheDocument();
       });
-      expect(
-        screen.getByText(/Cycle 1 — Assignment 3 of 5/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/Cycle 1 — Reading 3 of 5/)).toBeInTheDocument();
     });
 
-    it("shows Next Assignment button", async () => {
+    it("shows Next Reading button", async () => {
       getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
       renderLanding();
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Next Assignment" }),
+          screen.getByRole("button", { name: "Next Reading" }),
         ).toBeInTheDocument();
       });
     });
 
-    it("calls advanceBook when Next Assignment is clicked", async () => {
+    it("calls advanceBook when Next Reading is clicked", async () => {
       const user = userEvent.setup();
       getUpcomingMeeting.mockResolvedValue(bookStudyMeeting);
       advanceBook.mockResolvedValue({
@@ -1200,11 +1201,11 @@ describe("Landing", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Next Assignment" }),
+          screen.getByRole("button", { name: "Next Reading" }),
         ).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole("button", { name: "Next Assignment" }));
+      await user.click(screen.getByRole("button", { name: "Next Reading" }));
 
       await waitFor(() => {
         expect(advanceBook).toHaveBeenCalled();
@@ -1219,15 +1220,38 @@ describe("Landing", () => {
 
       await waitFor(() => {
         expect(
-          screen.getByRole("button", { name: "Next Assignment" }),
+          screen.getByRole("button", { name: "Next Reading" }),
         ).toBeInTheDocument();
       });
 
-      await user.click(screen.getByRole("button", { name: "Next Assignment" }));
+      await user.click(screen.getByRole("button", { name: "Next Reading" }));
 
       await waitFor(() => {
         expect(screen.getByText("Advance failed")).toBeInTheDocument();
       });
+    });
+
+    it("shows nudge when no reading is queued", async () => {
+      const noBookMeeting: UpcomingMeeting = {
+        ...bookStudyMeeting,
+        book_chapter: null,
+      };
+      getUpcomingMeeting.mockResolvedValue(noBookMeeting);
+      getBookPosition.mockResolvedValue({
+        ...bookPositionData,
+        total_assignments: 0,
+        current_assignment: null,
+      });
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(/No reading queued for next time/),
+        ).toBeInTheDocument();
+      });
+      expect(
+        screen.getByRole("link", { name: /set one up in Settings/ }),
+      ).toHaveAttribute("href", "/settings#reading-plan");
     });
 
     it("hides position info when no assignments", async () => {
@@ -1246,7 +1270,7 @@ describe("Landing", () => {
       });
       expect(screen.queryByText(/Cycle/)).not.toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Next Assignment" }),
+        screen.queryByRole("button", { name: "Next Reading" }),
       ).not.toBeInTheDocument();
     });
   });

@@ -23,6 +23,7 @@ jest.mock("../src/api/index", () => ({
   deleteTopic: jest.fn(),
   reshuffleTopics: jest.fn(),
   addChaptersToPlan: jest.fn(),
+  advanceBook: jest.fn(),
   finalizePlan: jest.fn(),
   updateAssignment: jest.fn(),
   deleteAssignment: jest.fn(),
@@ -68,6 +69,90 @@ const mockPosition: BookPosition = {
   total_assignments: 0,
   current_assignment: null,
   chapter_marker: null,
+};
+
+/** Single-assignment plan used by history delete/cancel/confirmation tests. */
+const historyPlanSingle: ReadingPlanStatus = {
+  ...mockPlan,
+  total_chapters: 3,
+  assigned_chapters: 1,
+  total_pages: 6,
+  assigned_pages: 1,
+  completed_assignments: [
+    {
+      id: 10,
+      assignment_order: 1,
+      chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "10",
+          title: "Preface",
+          page_count: 9,
+        },
+      ],
+      total_pages: 9,
+      meeting_date: null,
+    },
+  ],
+};
+
+const historyPositionSingle: BookPosition = {
+  ...mockPosition,
+  total_assignments: 1,
+  current_assignment_index: 0,
+  current_assignment: historyPlanSingle.completed_assignments[0],
+};
+
+/** Two-assignment plan used by Mark Done, Set as Current, and cycle tests. */
+const twoAssignmentPlan: ReadingPlanStatus = {
+  ...mockPlan,
+  total_chapters: 3,
+  assigned_chapters: 2,
+  total_pages: 20,
+  assigned_pages: 18,
+  completed_assignments: [
+    {
+      id: 1,
+      assignment_order: 1,
+      chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "10",
+          title: "Chapter 1",
+          page_count: 9,
+        },
+      ],
+      total_pages: 9,
+      meeting_date: null,
+    },
+    {
+      id: 2,
+      assignment_order: 2,
+      chapters: [
+        {
+          id: 2,
+          order: 2,
+          start_page: "11",
+          end_page: "20",
+          title: "Chapter 2",
+          page_count: 9,
+        },
+      ],
+      total_pages: 9,
+      meeting_date: null,
+    },
+  ],
+};
+
+const twoAssignmentPositionFirst: BookPosition = {
+  ...mockPosition,
+  total_assignments: 2,
+  current_assignment_index: 0,
+  current_assignment: twoAssignmentPlan.completed_assignments[0],
 };
 
 function renderSettings(): void {
@@ -247,7 +332,7 @@ describe("Settings", () => {
     );
   });
 
-  it("renders progress bar with correct chapter count text", async () => {
+  it("renders progress bar with page count and weeks remaining", async () => {
     const planWithProgress: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 39,
@@ -259,20 +344,17 @@ describe("Settings", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/12 of 39 chapters assigned/),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/245 of 400 pages/)).toBeInTheDocument();
     });
 
-    expect(screen.getByText(/245 of 400 pages assigned/)).toBeInTheDocument();
-    expect(screen.getByText(/~27 weeks remaining/)).toBeInTheDocument();
+    expect(screen.getByText(/~27 weeks left/)).toBeInTheDocument();
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuenow",
-      "12",
+      "245",
     );
     expect(screen.getByRole("progressbar")).toHaveAttribute(
       "aria-valuemax",
-      "39",
+      "400",
     );
   });
 
@@ -317,7 +399,7 @@ describe("Settings", () => {
     expect(screen.getByText(/Feb 8, 2025/)).toBeInTheDocument();
   });
 
-  it("renders chapter picker with unassigned chapters", async () => {
+  it("shows 'Start Reading' when no assignments exist and chapters available", async () => {
     const planWithChapters: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 3,
@@ -345,95 +427,547 @@ describe("Settings", () => {
 
     await waitFor(() => {
       expect(
-        screen.getByRole("heading", { name: "Unassigned Chapters" }),
+        screen.getByRole("heading", { name: "Start Reading" }),
       ).toBeInTheDocument();
     });
 
-    expect(screen.getByLabelText(/Preface/)).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/What is Recovery Dharma\?/),
+      screen.getByRole("button", { name: "Queue First Reading" }),
     ).toBeInTheDocument();
   });
 
-  it("enables Add to This Week button only when chapters are checked", async () => {
-    const user = userEvent.setup();
-    const planWithChapters: ReadingPlanStatus = {
+  it("shows This Week's Reading card with current assignment", async () => {
+    const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
-      total_chapters: 2,
-      unassigned_chapters: [
+      total_chapters: 3,
+      assigned_chapters: 1,
+      total_pages: 6,
+      assigned_pages: 3,
+      completed_assignments: [
         {
           id: 1,
-          order: 1,
-          start_page: "IX",
-          end_page: "X",
-          title: "Preface",
-          page_count: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "3",
+              title: "Preface",
+              page_count: 3,
+            },
+          ],
+          total_pages: 3,
+          meeting_date: null,
         },
       ],
     };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    const positionWithAssignment: BookPosition = {
+      ...mockPosition,
+      total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planWithAssignment.completed_assignments[0],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      positionWithAssignment,
+    );
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Add to This Week/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: /This Week/ }),
+      ).toBeInTheDocument();
     });
 
-    // Button should be disabled when no chapters selected
-    expect(screen.getByText(/Add to This Week/)).toBeDisabled();
-
-    // Check a chapter
-    await user.click(screen.getByLabelText(/Preface/));
-
-    // Button should now be enabled
-    expect(screen.getByText(/Add to This Week \(1\)/)).toBeEnabled();
+    // The card shows the formatted chapter range
+    expect(screen.getByText(/Preface \u2014 pp/)).toBeInTheDocument();
+    expect(screen.getByText("3 pages")).toBeInTheDocument();
   });
 
-  it("calls addChaptersToPlan with selected chapter IDs", async () => {
+  it("enters queue mode and auto-suggests chapters", async () => {
     const user = userEvent.setup();
-    const planWithChapters: ReadingPlanStatus = {
+    const planWithData: ReadingPlanStatus = {
       ...mockPlan,
-      total_chapters: 2,
+      total_chapters: 5,
+      assigned_chapters: 1,
+      total_pages: 20,
+      assigned_pages: 3,
       unassigned_chapters: [
-        {
-          id: 1,
-          order: 1,
-          start_page: "IX",
-          end_page: "X",
-          title: "Preface",
-          page_count: 1,
-        },
         {
           id: 2,
           order: 2,
-          start_page: "X",
-          end_page: "XIII",
+          start_page: "4",
+          end_page: "6",
           title: "Introduction",
           page_count: 3,
         },
+        {
+          id: 3,
+          order: 3,
+          start_page: "7",
+          end_page: "10",
+          title: "Chapter 1",
+          page_count: 4,
+        },
+      ],
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "3",
+              title: "Preface",
+              page_count: 3,
+            },
+          ],
+          total_pages: 3,
+          meeting_date: null,
+        },
       ],
     };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithChapters);
-    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(planWithChapters);
+    const positionData: BookPosition = {
+      ...mockPosition,
+      total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planWithData.completed_assignments[0],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(positionData);
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Preface/)).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+      ).toBeInTheDocument();
     });
 
-    // Select both chapters
-    await user.click(screen.getByLabelText(/Preface/));
-    await user.click(screen.getByLabelText(/Introduction/));
-
-    await user.click(screen.getByText(/Add to This Week \(2\)/));
+    await user.click(
+      screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+    );
 
     await waitFor(() => {
-      expect(api.addChaptersToPlan).toHaveBeenCalledWith([1, 2]);
+      expect(
+        screen.getByRole("heading", { name: "Next Up" }),
+      ).toBeInTheDocument();
     });
 
-    expect(api.getReadingPlan).toHaveBeenCalledTimes(2); // initial + after add
+    // Auto-suggest should pick chapters totaling >= 5 pages
+    expect(screen.getByText(/Introduction/)).toBeInTheDocument();
+    expect(screen.getByText(/Chapter 1/)).toBeInTheDocument();
+    expect(screen.getByText(/7 pages/)).toBeInTheDocument();
+    expect(screen.getByText(/2 chapters/)).toBeInTheDocument();
   });
 
-  it("displays meeting date next to finalized assignment", async () => {
+  it("adjusts suggestion with +/- stepper", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 5,
+      assigned_chapters: 1,
+      total_pages: 20,
+      assigned_pages: 3,
+      unassigned_chapters: [
+        {
+          id: 2,
+          order: 2,
+          start_page: "4",
+          end_page: "6",
+          title: "Introduction",
+          page_count: 3,
+        },
+        {
+          id: 3,
+          order: 3,
+          start_page: "7",
+          end_page: "10",
+          title: "Chapter 1",
+          page_count: 4,
+        },
+      ],
+      completed_assignments: [
+        {
+          id: 1,
+          assignment_order: 1,
+          chapters: [
+            {
+              id: 1,
+              order: 1,
+              start_page: "1",
+              end_page: "3",
+              title: "Preface",
+              page_count: 3,
+            },
+          ],
+          total_pages: 3,
+          meeting_date: null,
+        },
+      ],
+    };
+    const positionData: BookPosition = {
+      ...mockPosition,
+      total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planWithData.completed_assignments[0],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(positionData);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Mark Done & Queue Next" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText(/2 chapters/)).toBeInTheDocument();
+    });
+
+    // Remove one chapter
+    await user.click(screen.getByRole("button", { name: "Remove chapter" }));
+    expect(screen.getByText(/1 chapter$/)).toBeInTheDocument();
+    expect(screen.getByText(/3 pages/)).toBeInTheDocument();
+  });
+
+  it("confirms queue and calls addChaptersToPlan + finalizePlan", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      assigned_chapters: 0,
+      total_pages: 10,
+      assigned_pages: 0,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.finalizePlan as jest.Mock).mockResolvedValue({});
+    (api.getBookPosition as jest.Mock).mockResolvedValue(mockPosition);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(api.addChaptersToPlan).toHaveBeenCalledWith([1]);
+      expect(api.finalizePlan).toHaveBeenCalled();
+    });
+  });
+
+  it("shows toast on queue confirm failure", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockRejectedValue(
+      new Error("Network error"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Network error")).toBeInTheDocument();
+    });
+  });
+
+  it("shows stage-specific toast when finalize fails after chapters added", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockResolvedValue(undefined);
+    (api.finalizePlan as jest.Mock).mockRejectedValue(
+      new Error("finalize failed"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Confirm" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("Chapters added but finalize failed — try again"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  it("disables Confirm button while queue confirm is in flight", async () => {
+    const user = userEvent.setup();
+    let resolveAdd!: () => void;
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    (api.addChaptersToPlan as jest.Mock).mockReturnValue(
+      new Promise<void>((r) => {
+        resolveAdd = r;
+      }),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirm" })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Confirm" })).toBeDisabled();
+    });
+
+    resolveAdd();
+  });
+
+  it("cancels queue mode", async () => {
+    const user = userEvent.setup();
+    const planWithData: ReadingPlanStatus = {
+      ...mockPlan,
+      total_chapters: 3,
+      unassigned_chapters: [
+        {
+          id: 1,
+          order: 1,
+          start_page: "1",
+          end_page: "5",
+          title: "Preface",
+          page_count: 5,
+        },
+      ],
+    };
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithData);
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(
+      screen.getByRole("button", { name: "Queue First Reading" }),
+    );
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("heading", { name: "Next Up" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Queue First Reading" }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("heading", { name: "Next Up" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows Mark Done (not Queue Next) when more assignments exist ahead", async () => {
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      twoAssignmentPositionFirst,
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done" }),
+      ).toBeInTheDocument();
+    });
+
+    expect(
+      screen.queryByRole("button", { name: "Mark Done & Queue Next" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("calls advanceBook when Mark Done is clicked with assignments ahead", async () => {
+    const user = userEvent.setup();
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      twoAssignmentPositionFirst,
+    );
+    (api.advanceBook as jest.Mock).mockResolvedValue({
+      ...twoAssignmentPositionFirst,
+      current_assignment_index: 1,
+      current_assignment: twoAssignmentPlan.completed_assignments[1],
+    });
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Done" }));
+
+    await waitFor(() => {
+      expect(api.advanceBook).toHaveBeenCalled();
+    });
+  });
+
+  it("shows error toast when Mark Done advanceBook fails", async () => {
+    const user = userEvent.setup();
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      twoAssignmentPositionFirst,
+    );
+    (api.advanceBook as jest.Mock).mockRejectedValue(
+      new Error("advance failed"),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Mark Done" }),
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("advance failed")).toBeInTheDocument();
+    });
+  });
+
+  it("disables Mark Done button while advance is in flight", async () => {
+    const user = userEvent.setup();
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(
+      twoAssignmentPositionFirst,
+    );
+    (api.advanceBook as jest.Mock).mockReturnValue(
+      new Promise<BookPosition>(() => {
+        /* never resolves — keeps button disabled */
+      }),
+    );
+    renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Mark Done" })).toBeEnabled();
+    });
+
+    await user.click(screen.getByRole("button", { name: "Mark Done" }));
+
+    await waitFor(() => {
+      expect(screen.getByRole("button", { name: "Mark Done" })).toBeDisabled();
+    });
+  });
+
+  it("displays meeting date in reading history", async () => {
     const planWithAssignment: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 3,
@@ -462,45 +996,14 @@ describe("Settings", () => {
     (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
     renderSettings();
 
+    // History is collapsed — open it
     await waitFor(() => {
-      expect(screen.getByText(/Mar 15/)).toBeInTheDocument();
-    });
-  });
-
-  it("does not show date when assignment has no meeting_date", async () => {
-    const planWithAssignment: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 1,
-      total_pages: 6,
-      assigned_pages: 1,
-      completed_assignments: [
-        {
-          id: 1,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Preface",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
-    renderSettings();
-
-    await waitFor(() => {
-      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
     });
 
-    expect(screen.queryByText(/\u2014\s+\w{3}\s+\d/)).not.toBeInTheDocument();
+    await userEvent.setup().click(screen.getByText(/^Reading History/));
+
+    expect(screen.getByText(/Mar 15/)).toBeInTheDocument();
   });
 
   it("does not display last-used text for topics without a date", async () => {
@@ -689,38 +1192,25 @@ describe("Settings", () => {
     });
   });
 
-  it("shows inline confirmation when deleting an assignment", async () => {
+  it("shows delete confirmation in expanded history item", async () => {
     const user = userEvent.setup();
-    const planWithAssignment: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 1,
-      total_pages: 6,
-      assigned_pages: 1,
-      completed_assignments: [
-        {
-          id: 10,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Preface",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(historyPlanSingle);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(historyPositionSingle);
     renderSettings();
 
+    // Open history
     await waitFor(() => {
-      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/^Reading History/));
+
+    // Expand item to show actions
+    await user.click(screen.getByRole("button", { name: /Preface/ }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Delete" }),
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -728,41 +1218,25 @@ describe("Settings", () => {
     expect(
       screen.getByRole("button", { name: "Confirm Delete" }),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toBeInTheDocument();
   });
 
-  it("cancels assignment deletion on cancel click", async () => {
+  it("cancels assignment deletion on cancel click in history", async () => {
     const user = userEvent.setup();
-    const planWithAssignment: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 1,
-      total_pages: 6,
-      assigned_pages: 1,
-      completed_assignments: [
-        {
-          id: 10,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Preface",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignment);
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(historyPlanSingle);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(historyPositionSingle);
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/^Reading History/));
+
+    await user.click(screen.getByRole("button", { name: /Preface/ }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Delete" }),
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -774,41 +1248,26 @@ describe("Settings", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("executes assignment deletion on confirm", async () => {
+  it("executes assignment deletion on confirm in history", async () => {
     const user = userEvent.setup();
-    const planWithAssignment: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 1,
-      total_pages: 6,
-      assigned_pages: 1,
-      completed_assignments: [
-        {
-          id: 10,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Preface",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
     (api.getReadingPlan as jest.Mock)
-      .mockResolvedValueOnce(planWithAssignment)
+      .mockResolvedValueOnce(historyPlanSingle)
       .mockResolvedValue({ ...mockPlan, completed_assignments: [] });
     (api.deleteAssignment as jest.Mock).mockResolvedValue(undefined);
+    (api.getBookPosition as jest.Mock).mockResolvedValue(historyPositionSingle);
     renderSettings();
 
     await waitFor(() => {
-      expect(screen.getByText(/Preface/)).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/^Reading History/));
+
+    await user.click(screen.getByRole("button", { name: /Preface/ }));
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: "Delete" }),
+      ).toBeInTheDocument();
     });
 
     await user.click(screen.getByRole("button", { name: "Delete" }));
@@ -819,184 +1278,41 @@ describe("Settings", () => {
     });
   });
 
-  it("shows current indicator on the active assignment", async () => {
-    const planWithAssignments: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 2,
-      total_pages: 20,
-      assigned_pages: 18,
-      completed_assignments: [
-        {
-          id: 1,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Chapter 1",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-        {
-          id: 2,
-          assignment_order: 2,
-          chapters: [
-            {
-              id: 2,
-              order: 2,
-              start_page: "11",
-              end_page: "20",
-              title: "Chapter 2",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    const positionWithAssignments: BookPosition = {
-      ...mockPosition,
-      total_assignments: 2,
-      current_assignment_index: 0,
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignments);
+  it("shows current marker in reading history", async () => {
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
     (api.getBookPosition as jest.Mock).mockResolvedValue(
-      positionWithAssignments,
+      twoAssignmentPositionFirst,
     );
     renderSettings();
 
+    // Open history
     await waitFor(() => {
-      expect(screen.getByText(/Current:/)).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
     });
+    await userEvent.setup().click(screen.getByText(/^Reading History/));
 
-    // Only the first assignment should be marked as current
     expect(screen.getByText(/Current:/)).toBeInTheDocument();
   });
 
-  it("shows Set as Current button for non-current assignments", async () => {
-    const planWithAssignments: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 2,
-      total_pages: 20,
-      assigned_pages: 18,
-      completed_assignments: [
-        {
-          id: 1,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Chapter 1",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-        {
-          id: 2,
-          assignment_order: 2,
-          chapters: [
-            {
-              id: 2,
-              order: 2,
-              start_page: "11",
-              end_page: "20",
-              title: "Chapter 2",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    const positionWithAssignments: BookPosition = {
-      ...mockPosition,
-      total_assignments: 2,
-      current_assignment_index: 0,
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignments);
-    (api.getBookPosition as jest.Mock).mockResolvedValue(
-      positionWithAssignments,
-    );
-    renderSettings();
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Set as Current" }),
-      ).toBeInTheDocument();
-    });
-  });
-
-  it("calls setBookPosition when Set as Current is clicked", async () => {
+  it("shows Set as Current in expanded non-current history item", async () => {
     const user = userEvent.setup();
-    const planWithAssignments: ReadingPlanStatus = {
-      ...mockPlan,
-      total_chapters: 3,
-      assigned_chapters: 2,
-      total_pages: 20,
-      assigned_pages: 18,
-      completed_assignments: [
-        {
-          id: 1,
-          assignment_order: 1,
-          chapters: [
-            {
-              id: 1,
-              order: 1,
-              start_page: "1",
-              end_page: "10",
-              title: "Chapter 1",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-        {
-          id: 2,
-          assignment_order: 2,
-          chapters: [
-            {
-              id: 2,
-              order: 2,
-              start_page: "11",
-              end_page: "20",
-              title: "Chapter 2",
-              page_count: 9,
-            },
-          ],
-          total_pages: 9,
-          meeting_date: null,
-        },
-      ],
-    };
-    const positionWithAssignments: BookPosition = {
-      ...mockPosition,
-      total_assignments: 2,
-      current_assignment_index: 0,
-    };
-    (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignments);
+    (api.getReadingPlan as jest.Mock).mockResolvedValue(twoAssignmentPlan);
     (api.getBookPosition as jest.Mock).mockResolvedValue(
-      positionWithAssignments,
+      twoAssignmentPositionFirst,
     );
     (api.setBookPosition as jest.Mock).mockResolvedValue({
-      ...positionWithAssignments,
+      ...twoAssignmentPositionFirst,
       current_assignment_index: 1,
     });
     renderSettings();
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
+    });
+    await user.click(screen.getByText(/^Reading History/));
+
+    // Expand the second (non-current) item
+    await user.click(screen.getByText(/Chapter 2/));
 
     await waitFor(() => {
       expect(
@@ -1011,7 +1327,7 @@ describe("Settings", () => {
     });
   });
 
-  it("shows cycle number for completed assignments", async () => {
+  it("shows cycle number in reading history summary", async () => {
     const planWithAssignments: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 1,
@@ -1041,6 +1357,8 @@ describe("Settings", () => {
       ...mockPosition,
       total_assignments: 1,
       book_cycle: 3,
+      current_assignment_index: 0,
+      current_assignment: planWithAssignments.completed_assignments[0],
     };
     (api.getReadingPlan as jest.Mock).mockResolvedValue(planWithAssignments);
     (api.getBookPosition as jest.Mock).mockResolvedValue(positionWithCycle);
@@ -1051,7 +1369,7 @@ describe("Settings", () => {
     });
   });
 
-  it("shows Restart Book button when all chapters assigned", async () => {
+  it("shows Restart Book when all chapters assigned", async () => {
     const planAllAssigned: ReadingPlanStatus = {
       ...mockPlan,
       total_chapters: 1,
@@ -1082,14 +1400,20 @@ describe("Settings", () => {
     (api.getBookPosition as jest.Mock).mockResolvedValue({
       ...mockPosition,
       total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planAllAssigned.completed_assignments[0],
     });
     renderSettings();
 
+    // History is visible because there are completed assignments
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Restart Book" }),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
     });
+    await userEvent.setup().click(screen.getByText(/^Reading History/));
+
+    expect(
+      screen.getByRole("button", { name: "Restart Book" }),
+    ).toBeInTheDocument();
   });
 
   it("calls restartBook on Restart Book confirm", async () => {
@@ -1124,6 +1448,8 @@ describe("Settings", () => {
     (api.getBookPosition as jest.Mock).mockResolvedValue({
       ...mockPosition,
       total_assignments: 1,
+      current_assignment_index: 0,
+      current_assignment: planAllAssigned.completed_assignments[0],
     });
     (api.restartBook as jest.Mock).mockResolvedValue({
       ...mockPosition,
@@ -1132,10 +1458,9 @@ describe("Settings", () => {
     renderSettings();
 
     await waitFor(() => {
-      expect(
-        screen.getByRole("button", { name: "Restart Book" }),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/^Reading History/)).toBeInTheDocument();
     });
+    await user.click(screen.getByText(/^Reading History/));
 
     await user.click(screen.getByRole("button", { name: "Restart Book" }));
 
