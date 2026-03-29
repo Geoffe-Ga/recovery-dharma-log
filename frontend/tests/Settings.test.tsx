@@ -1719,6 +1719,28 @@ describe("Settings", () => {
       ).toBe("2");
     });
 
+    it("defaults to chapter_marker when no current assignment", async () => {
+      const posWithMarker: BookPosition = {
+        ...mockPosition,
+        chapter_marker: 2,
+        current_assignment: null,
+      };
+      (api.getChapters as jest.Mock).mockResolvedValue(threeChapters);
+      (api.getBookPosition as jest.Mock).mockResolvedValue(posWithMarker);
+      (api.getReadingPlan as jest.Mock).mockResolvedValue({
+        ...mockPlan,
+        total_chapters: 3,
+      });
+      renderSettings();
+
+      await waitFor(() => {
+        expect(screen.getByLabelText("Jump to Chapter")).toBeInTheDocument();
+      });
+      expect(
+        (screen.getByLabelText("Jump to Chapter") as HTMLSelectElement).value,
+      ).toBe("2");
+    });
+
     it("calls setBookPosition when chapter is in a completed assignment", async () => {
       const planWithAssignment: ReadingPlanStatus = {
         ...mockPlan,
