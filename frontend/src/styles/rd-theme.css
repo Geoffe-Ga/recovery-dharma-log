@@ -1006,11 +1006,15 @@ p[role="alert"] {
   background: var(--rd-teal-pale);
 }
 
-.rd-reading-history__row {
+button.rd-reading-history__row {
+  all: unset;
   display: flex;
   align-items: center;
   gap: var(--rd-space-sm);
   cursor: pointer;
+  width: 100%;
+  box-sizing: border-box;
+  text-align: left;
 }
 
 .rd-reading-history__content {

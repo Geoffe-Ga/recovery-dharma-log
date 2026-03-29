@@ -722,23 +722,15 @@ export function Settings(): React.ReactElement {
                       </div>
                     ) : (
                       <div>
-                        <div
+                        <button
+                          type="button"
                           className="rd-reading-history__row"
-                          role="button"
-                          tabIndex={0}
+                          aria-expanded={expandedHistoryId === a.id}
                           onClick={() =>
                             setExpandedHistoryId(
                               expandedHistoryId === a.id ? null : a.id,
                             )
                           }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              setExpandedHistoryId(
-                                expandedHistoryId === a.id ? null : a.id,
-                              );
-                            }
-                          }}
                         >
                           <span className="rd-reading-history__content">
                             {position &&
@@ -756,7 +748,7 @@ export function Settings(): React.ReactElement {
                               )}
                             </span>
                           </span>
-                        </div>
+                        </button>
                         {expandedHistoryId === a.id && (
                           <div className="rd-reading-history__actions">
                             {position &&
