@@ -905,8 +905,14 @@ def get_speaker_banners(db: Session, group: Group) -> list[str]:
 
 
 def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
-    """Build the full upcoming meeting response."""
-    meeting_date = get_next_meeting_date(group)
+    """Build the full upcoming meeting response.
+
+    Uses a 1-day grace period so the meeting remains visible on the landing
+    page until the day after it is held.
+    """
+    meeting_date = get_next_meeting_date(
+        group, after=date.today() - timedelta(days=1)
+    )
     format_type = get_format_for_date(db, group, meeting_date)
 
     log_entry = (
@@ -961,9 +967,15 @@ def get_upcoming_meetings(
     group: Group,
     weeks: int = 4,
 ) -> list[dict]:
-    """Get the next N upcoming meetings with their formats."""
+    """Get the next N upcoming meetings with their formats.
+
+    Uses a 1-day grace period so the most recent meeting stays in the list
+    until the day after it is held.
+    """
     results: list[dict] = []
-    current = get_next_meeting_date(group)
+    current = get_next_meeting_date(
+        group, after=date.today() - timedelta(days=1)
+    )
 
     for _ in range(weeks):
         fmt = get_format_for_date(db, group, current)
