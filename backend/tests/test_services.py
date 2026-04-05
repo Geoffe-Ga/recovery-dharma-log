@@ -846,6 +846,51 @@ class TestUpcomingMeeting:
         assert name is None
         assert total == 3
 
+    def test_grace_period_shows_meeting_day_after(self, db_session: Session) -> None:
+        """On the day after a meeting, the landing page still shows it."""
+        from unittest.mock import patch
+
+        # Meeting day is Sunday (6), start_date is Sun Jan 5 2025
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=5)
+
+        # On Monday Jan 6 (day after the Jan 5 meeting), should still show Jan 5
+        with patch("app.services.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 6)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            data = get_upcoming_meeting_data(db_session, group)
+        assert data["meeting_date"] == date(2025, 1, 5)
+
+    def test_grace_period_advances_two_days_after(self, db_session: Session) -> None:
+        """Two days after a meeting, the landing page shows the next one."""
+        from unittest.mock import patch
+
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=5)
+
+        # On Tuesday Jan 7 (two days after), should show next Sunday Jan 12
+        with patch("app.services.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 7)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            data = get_upcoming_meeting_data(db_session, group)
+        assert data["meeting_date"] == date(2025, 1, 12)
+
+    def test_grace_period_shows_meeting_on_meeting_day(
+        self, db_session: Session
+    ) -> None:
+        """On meeting day itself, the landing page shows today's meeting."""
+        from unittest.mock import patch
+
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=5)
+
+        # On Sunday Jan 5 (meeting day), should show Jan 5
+        with patch("app.services.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 5)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            data = get_upcoming_meeting_data(db_session, group)
+        assert data["meeting_date"] == date(2025, 1, 5)
+
 
 class TestSpeakerBanners:
     """Tests for speaker banner warnings."""
@@ -932,6 +977,36 @@ class TestUpcomingMeetings:
         db_session.flush()
         result = get_upcoming_meetings(db_session, group, weeks=1)
         assert result[0]["is_cancelled"] is True
+
+    def test_grace_period_includes_meeting_day_after(self, db_session: Session) -> None:
+        """On the day after a meeting, the lookahead still starts with it."""
+        from unittest.mock import patch
+
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+
+        # Monday Jan 6 (day after Sunday Jan 5 meeting)
+        with patch("app.services.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 6)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            result = get_upcoming_meetings(db_session, group, weeks=2)
+        assert result[0]["meeting_date"] == date(2025, 1, 5)
+        assert result[1]["meeting_date"] == date(2025, 1, 12)
+
+    def test_grace_period_advances_two_days_after(self, db_session: Session) -> None:
+        """Two days after a meeting, the lookahead starts with next meeting."""
+        from unittest.mock import patch
+
+        group = _create_group(db_session, start=date(2025, 1, 5))
+        _create_topics(db_session, group, count=3)
+
+        # Tuesday Jan 7 (two days after)
+        with patch("app.services.date") as mock_date:
+            mock_date.today.return_value = date(2025, 1, 7)
+            mock_date.side_effect = lambda *a, **kw: date(*a, **kw)
+            result = get_upcoming_meetings(db_session, group, weeks=2)
+        assert result[0]["meeting_date"] == date(2025, 1, 12)
+        assert result[1]["meeting_date"] == date(2025, 1, 19)
 
 
 class TestExport:
