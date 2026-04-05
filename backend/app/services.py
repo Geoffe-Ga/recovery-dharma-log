@@ -910,9 +910,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
     Uses a 1-day grace period so the meeting remains visible on the landing
     page until the day after it is held.
     """
-    meeting_date = get_next_meeting_date(
-        group, after=date.today() - timedelta(days=1)
-    )
+    meeting_date = get_next_meeting_date(group, after=date.today() - timedelta(days=1))
     format_type = get_format_for_date(db, group, meeting_date)
 
     log_entry = (
@@ -973,9 +971,7 @@ def get_upcoming_meetings(
     until the day after it is held.
     """
     results: list[dict] = []
-    current = get_next_meeting_date(
-        group, after=date.today() - timedelta(days=1)
-    )
+    current = get_next_meeting_date(group, after=date.today() - timedelta(days=1))
 
     for _ in range(weeks):
         fmt = get_format_for_date(db, group, current)

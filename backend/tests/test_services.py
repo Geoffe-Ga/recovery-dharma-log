@@ -846,9 +846,7 @@ class TestUpcomingMeeting:
         assert name is None
         assert total == 3
 
-    def test_grace_period_shows_meeting_day_after(
-        self, db_session: Session
-    ) -> None:
+    def test_grace_period_shows_meeting_day_after(self, db_session: Session) -> None:
         """On the day after a meeting, the landing page still shows it."""
         from unittest.mock import patch
 
@@ -863,9 +861,7 @@ class TestUpcomingMeeting:
             data = get_upcoming_meeting_data(db_session, group)
         assert data["meeting_date"] == date(2025, 1, 5)
 
-    def test_grace_period_advances_two_days_after(
-        self, db_session: Session
-    ) -> None:
+    def test_grace_period_advances_two_days_after(self, db_session: Session) -> None:
         """Two days after a meeting, the landing page shows the next one."""
         from unittest.mock import patch
 
@@ -982,9 +978,7 @@ class TestUpcomingMeetings:
         result = get_upcoming_meetings(db_session, group, weeks=1)
         assert result[0]["is_cancelled"] is True
 
-    def test_grace_period_includes_meeting_day_after(
-        self, db_session: Session
-    ) -> None:
+    def test_grace_period_includes_meeting_day_after(self, db_session: Session) -> None:
         """On the day after a meeting, the lookahead still starts with it."""
         from unittest.mock import patch
 
@@ -999,9 +993,7 @@ class TestUpcomingMeetings:
         assert result[0]["meeting_date"] == date(2025, 1, 5)
         assert result[1]["meeting_date"] == date(2025, 1, 12)
 
-    def test_grace_period_advances_two_days_after(
-        self, db_session: Session
-    ) -> None:
+    def test_grace_period_advances_two_days_after(self, db_session: Session) -> None:
         """Two days after a meeting, the lookahead starts with next meeting."""
         from unittest.mock import patch
 
