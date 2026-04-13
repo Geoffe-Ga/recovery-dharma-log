@@ -101,6 +101,18 @@ def get_next_meeting_date(group: Group, after: date | None = None) -> date:
     return after + timedelta(days=days_ahead)
 
 
+def get_active_meeting_date(group: Group) -> date:
+    """Return the meeting date shown on the landing page.
+
+    Applies a 1-day grace period so the current-week meeting remains the
+    "active" meeting until the day after it is held. This must match the
+    date used by :func:`get_upcoming_meeting_data` so mutations from the
+    landing page (e.g. drawing a topic) target the same meeting that is
+    displayed.
+    """
+    return get_next_meeting_date(group, after=date.today() - timedelta(days=1))
+
+
 def count_meetings_since_start(
     db: Session,
     group: Group,
@@ -910,7 +922,7 @@ def get_upcoming_meeting_data(db: Session, group: Group) -> dict:
     Uses a 1-day grace period so the meeting remains visible on the landing
     page until the day after it is held.
     """
-    meeting_date = get_next_meeting_date(group, after=date.today() - timedelta(days=1))
+    meeting_date = get_active_meeting_date(group)
     format_type = get_format_for_date(db, group, meeting_date)
 
     log_entry = (
@@ -971,7 +983,7 @@ def get_upcoming_meetings(
     until the day after it is held.
     """
     results: list[dict] = []
-    current = get_next_meeting_date(group, after=date.today() - timedelta(days=1))
+    current = get_active_meeting_date(group)
 
     for _ in range(weeks):
         fmt = get_format_for_date(db, group, current)

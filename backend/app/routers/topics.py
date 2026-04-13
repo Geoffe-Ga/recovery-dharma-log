@@ -9,9 +9,9 @@ from app.models import MeetingLog, Topic, TopicDeckState, User
 from app.schemas import TopicCreate, TopicDrawResponse, TopicResponse
 from app.services import (
     draw_random_topic,
+    get_active_meeting_date,
     get_deck_stats,
     get_format_for_date,
-    get_next_meeting_date,
     log_activity,
     reshuffle_deck,
     undo_topic_draw,
@@ -115,8 +115,8 @@ def draw_topic(
     group = current_user.group
     topic = draw_random_topic(db, group)
 
-    # Store topic_id in meeting log
-    meeting_date = get_next_meeting_date(group)
+    # Store topic_id in meeting log (must match the date shown on the landing page)
+    meeting_date = get_active_meeting_date(group)
     log_entry = (
         db.query(MeetingLog)
         .filter(
@@ -173,7 +173,7 @@ def undo_draw(
 ) -> dict:
     """Undo the last topic draw for the next meeting."""
     group = current_user.group
-    meeting_date = get_next_meeting_date(group)
+    meeting_date = get_active_meeting_date(group)
     try:
         undo_topic_draw(db, group, meeting_date)
     except ValueError as e:

@@ -385,6 +385,48 @@ class TestTopicsEndpoints:
         drawn = next(t for t in topics if t["id"] == drawn_topic_id)
         assert drawn["last_used"] is not None
 
+    def test_drawn_topic_shown_on_upcoming_meeting(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Drawing a topic makes it appear on the landing (upcoming) endpoint.
+
+        Regression: the draw endpoint and /meetings/upcoming must agree on
+        which meeting_date is "current" — otherwise the drawn topic is
+        written to one row while the landing page reads another, and the
+        topic silently fails to display.
+        """
+        # Only meaningful when the upcoming meeting's format is Topic; skip
+        # otherwise so the test is robust across calendar positions.
+        upcoming = client.get("/meetings/upcoming", headers=auth_headers).json()
+        if upcoming["format_type"] != "Topic":
+            return
+
+        draw_response = client.post("/topics/draw", headers=auth_headers)
+        assert draw_response.status_code == 200
+        drawn_name = draw_response.json()["topic"]["name"]
+
+        refreshed = client.get("/meetings/upcoming", headers=auth_headers).json()
+        assert refreshed["topic_name"] == drawn_name
+
+    def test_undo_clears_topic_on_upcoming_meeting(
+        self,
+        client: TestClient,
+        auth_headers: dict[str, str],
+    ) -> None:
+        """Undoing a draw removes the topic from the landing endpoint."""
+        upcoming = client.get("/meetings/upcoming", headers=auth_headers).json()
+        if upcoming["format_type"] != "Topic":
+            return
+
+        client.post("/topics/draw", headers=auth_headers)
+        undo = client.post("/topics/undo", headers=auth_headers)
+        assert undo.status_code == 200
+
+        refreshed = client.get("/meetings/upcoming", headers=auth_headers).json()
+        assert refreshed["topic_name"] is None
+
 
 class TestBookEndpoints:
     """Tests for book/reading plan endpoints."""

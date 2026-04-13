@@ -25,6 +25,7 @@ from app.services import (
     finalize_current_assignment,
     generate_csv_export,
     generate_printable_export,
+    get_active_meeting_date,
     get_book_position,
     get_current_draft_assignment,
     get_deck_stats,
@@ -739,7 +740,7 @@ class TestUpcomingMeeting:
     ) -> None:
         group = _create_group(db_session, start=date(2025, 1, 5))
         _create_topics(db_session, group, count=3)
-        next_date = get_next_meeting_date(group)
+        next_date = get_active_meeting_date(group)
         db_session.add(
             MeetingLog(
                 group_id=group.id,
@@ -965,7 +966,7 @@ class TestUpcomingMeetings:
     def test_cancelled_meeting_shown(self, db_session: Session) -> None:
         group = _create_group(db_session)
         _create_topics(db_session, group, count=3)
-        next_date = get_next_meeting_date(group)
+        next_date = get_active_meeting_date(group)
         db_session.add(
             MeetingLog(
                 group_id=group.id,
