@@ -939,6 +939,24 @@ describe("Landing", () => {
       });
       expect(screen.queryByText("Speaker Schedule")).not.toBeInTheDocument();
     });
+
+    it("renders assignment form with mobile-friendly flex class", async () => {
+      const user = userEvent.setup();
+      getUpcomingMeeting.mockResolvedValue(baseMeeting);
+      renderLanding();
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Assign Speaker" }),
+        ).toBeInTheDocument();
+      });
+
+      await user.click(screen.getByRole("button", { name: "Assign Speaker" }));
+
+      const input = screen.getByPlaceholderText("Speaker name");
+      const form = input.closest("form");
+      expect(form).toHaveClass("rd-speaker-schedule__form");
+    });
   });
 
   describe("format overrides", () => {

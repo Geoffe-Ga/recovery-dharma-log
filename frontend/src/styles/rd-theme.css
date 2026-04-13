@@ -1167,14 +1167,17 @@ button.rd-reading-history__row {
   display: flex;
   gap: var(--rd-space-xs);
   align-items: flex-end;
+  flex-wrap: wrap;
 }
 
 .rd-speaker-schedule__form input {
+  flex: 1 1 160px;
+  min-width: 0;
   margin-bottom: 0;
-  max-width: 160px;
 }
 
 .rd-speaker-schedule__form button {
+  flex: none;
   margin-bottom: 0;
   white-space: nowrap;
 }
