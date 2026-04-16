@@ -1,18 +1,59 @@
+# --- Python --------------------------------------------------------------- #
 __pycache__
 *.pyc
+*.pyo
+*.pyd
 .venv
+venv
+.mypy_cache
+.ruff_cache
+.pytest_cache
+.coverage
+coverage.xml
+htmlcov
+
+# --- Node ----------------------------------------------------------------- #
 node_modules
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- VCS ------------------------------------------------------------------ #
 .git
+.gitignore
 .github
+
+# --- Project non-runtime assets ------------------------------------------- #
 tests/
 scripts/
 plans/
 plan/
 docs/
+
+# --- Databases (never ship local data into an image) ---------------------- #
 *.db
+*.sqlite
 *.sqlite3
+*.sqlite3-journal
+
+# --- Secrets -------------------------------------------------------------- #
 .env
-.env.local
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+secrets/
+credentials.json
+
+# --- Editor / OS cruft ---------------------------------------------------- #
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# --- Docs (keep requirements.txt so pip can install them) ----------------- #
 CLAUDE.md
 *.md
 !requirements.txt

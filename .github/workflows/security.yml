@@ -1,0 +1,88 @@
+name: Security
+
+# Addresses security review Issue #15 (container hardening) and #14
+# (dependency scanning). Runs Trivy against the source tree and the built
+# container image. Fails the job on HIGH/CRITICAL findings so that a broken
+# container can never reach the Railway deploy step.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly re-scan so newly-published CVEs against already-merged code are
+    # surfaced without requiring a new commit.
+    - cron: "23 5 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  trivy-fs:
+    name: Trivy filesystem scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run Trivy filesystem scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+  trivy-image:
+    name: Trivy image scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image (local tag, no push)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: false
+          load: true
+          tags: rd-log:security-scan
+
+      - name: Run Trivy image scan
+        uses: aquasecurity/trivy-action@0.24.0
+        with:
+          image-ref: rd-log:security-scan
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+          format: table
+
+      - name: Verify container hardening (non-root, no pip)
+        run: |
+          set -euo pipefail
+          echo "::group::Assert runtime runs as uid 1001"
+          uid=$(docker run --rm --entrypoint id rd-log:security-scan -u)
+          test "$uid" = "1001" || { echo "Runtime UID is $uid, expected 1001"; exit 1; }
+          echo "::endgroup::"
+
+          echo "::group::Assert pip is not present in runtime image"
+          if docker run --rm --entrypoint sh rd-log:security-scan -c 'command -v pip'; then
+            echo "pip is present in runtime image — remove it or use an isolated virtualenv"
+            exit 1
+          fi
+          echo "::endgroup::"
+
+          echo "::group::Assert HEALTHCHECK is defined"
+          hc=$(docker inspect --format '{{json .Config.Healthcheck}}' rd-log:security-scan)
+          case "$hc" in
+            null|"") echo "Image has no HEALTHCHECK"; exit 1 ;;
+            *)       echo "HEALTHCHECK: $hc" ;;
+          esac
+          echo "::endgroup::"
