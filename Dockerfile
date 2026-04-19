@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1.7
 #
 # Hardened multi-stage build for the Recovery Dharma Log application.
 #
@@ -8,7 +7,6 @@
 #     so that `pip` is NOT present in the final runtime image.
 #   - Uses exec-form CMD so SIGTERM propagates directly to uvicorn.
 #   - Declares a HEALTHCHECK for local docker/compose usage.
-#   - Pins base images to specific minor/patch versions.
 #
 # NOTE on image digest pinning: CIS Docker Benchmark recommends pinning to an
 # immutable `@sha256:<digest>` as well. We leave this to the release workflow
@@ -16,7 +14,9 @@
 # against the registry. See `.github/workflows/security.yml`.
 
 # ---- Stage 1: frontend build --------------------------------------------- #
-FROM node:20.18.1-alpine AS frontend-build
+# Pinned to major LTS track. The frontend stage is discarded after build, so
+# only the compiled dist/ artifacts carry into the runtime image.
+FROM node:20-alpine AS frontend-build
 WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci --no-audit --no-fund
