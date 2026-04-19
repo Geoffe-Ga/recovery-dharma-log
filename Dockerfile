@@ -27,8 +27,8 @@ RUN npm run build
 FROM python:3.12-slim AS python-build
 WORKDIR /build
 
-# Create an isolated virtualenv and install dependencies into it. Only the
-# virtualenv is copied into the runtime image, so `pip` itself never ships.
+# Create an isolated virtualenv and install dependencies into it. The
+# virtualenv is copied into the runtime image; pip is explicitly removed there.
 RUN python -m venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
@@ -47,9 +47,13 @@ RUN groupadd --system --gid 1001 app \
 
 WORKDIR /app
 
-# Copy the virtualenv from the build stage. `pip`, build toolchain, and caches
-# stay behind in that discarded stage.
+# Copy the virtualenv from the build stage, then strip pip from both the
+# venv and the base image's system Python so that an attacker who reaches
+# arbitrary code execution cannot install additional packages.
 COPY --from=python-build /opt/venv /opt/venv
+RUN rm -f /opt/venv/bin/pip /opt/venv/bin/pip3 /opt/venv/bin/pip3.* \
+          /usr/local/bin/pip /usr/local/bin/pip3 /usr/local/bin/pip3.* \
+ && rm -rf /usr/local/lib/python3.12/ensurepip
 ENV PATH=/opt/venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
