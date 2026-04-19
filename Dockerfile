@@ -24,7 +24,7 @@ COPY frontend/ ./
 RUN npm run build
 
 # ---- Stage 2: python deps (isolated so we can drop pip from runtime) ----- #
-FROM python:3.12.7-slim AS python-build
+FROM python:3.12-slim AS python-build
 WORKDIR /build
 
 # Create an isolated virtualenv and install dependencies into it. Only the
@@ -37,7 +37,7 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ---- Stage 3: minimal runtime -------------------------------------------- #
-FROM python:3.12.7-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 # Create an unprivileged system user/group to run the application.
 # Using a fixed uid/gid keeps file ownership deterministic across rebuilds and
