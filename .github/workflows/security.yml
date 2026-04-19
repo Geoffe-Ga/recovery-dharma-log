@@ -54,19 +54,18 @@ jobs:
           load: true
           tags: rd-log:security-scan
 
+      # Advisory only: OS-level CVEs in the Debian base image are outside our
+      # control, so exit-code is "0" (report but don't fail). The FS scan job
+      # is the hard gate for our code and pip deps. The weekly scheduled run
+      # ensures base-image CVEs are still tracked over time.
       - name: Run Trivy image scan (advisory)
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
         with:
           image-ref: rd-log:security-scan
           severity: HIGH,CRITICAL
           ignore-unfixed: true
-          exit-code: "1"
+          exit-code: "0"
           format: table
-        # OS-level CVEs in the Debian base image are outside our control.
-        # The FS scan (above) is the hard gate for our code and deps; the
-        # image scan surfaces base-image findings as annotations without
-        # blocking PRs on Debian's patch cadence.
-        continue-on-error: true
 
       - name: Verify container hardening (non-root, no pip)
         run: |
