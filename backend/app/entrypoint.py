@@ -27,7 +27,7 @@ def _parse_port(raw: str | None, default: int = 8000) -> int:
         return default
     try:
         port = int(raw)
-    except ValueError as exc:  # pragma: no cover - defensive
+    except ValueError as exc:
         raise ValueError(f"PORT must be an integer, got {raw!r}") from exc
     if not 1 <= port <= 65535:
         raise ValueError(f"PORT must be in 1-65535, got {port}")
