@@ -8,6 +8,11 @@ permissions:
   contents: read
   pull-requests: write
   issues: read
+  # Required by anthropics/claude-code-action: the action fetches an OIDC
+  # token to authenticate against Anthropic's service even when
+  # `claude_code_oauth_token` is supplied. Removing this permission causes
+  # startup to fail with "Could not fetch an OIDC token".
+  id-token: write
 
 jobs:
   claude-review:
