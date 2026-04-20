@@ -71,11 +71,18 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Assert runtime runs as uid 1001"
-          uid=$(docker run --rm --entrypoint id rd-log:security-scan -u)
+          # Run `id -u` *through* the image's ENTRYPOINT (no --entrypoint
+          # override) so we observe the uid the main process sees after
+          # docker-entrypoint.sh drops privileges from root to `app`.
+          # That is the uid the real Python server runs with in production.
+          uid=$(docker run --rm rd-log:security-scan id -u)
           test "$uid" = "1001" || { echo "Runtime UID is $uid, expected 1001"; exit 1; }
           echo "::endgroup::"
 
           echo "::group::Assert pip is not present in runtime image"
+          # Bypass the entrypoint here: we want to test the image's
+          # filesystem for pip regardless of which user the entrypoint
+          # would drop to.
           if docker run --rm --entrypoint sh rd-log:security-scan -c 'command -v pip'; then
             echo "pip is present in runtime image — remove it or use an isolated virtualenv"
             exit 1
