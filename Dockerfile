@@ -45,6 +45,16 @@ FROM python:3.12-slim AS runtime
 RUN groupadd --system --gid 1001 app \
  && useradd  --system --uid 1001 --gid app --home-dir /app --shell /sbin/nologin app
 
+# `gosu` is a tiny (<2MB) setuid-aware wrapper that drops privileges from
+# root to the target user before exec'ing the command. The init script
+# (`docker-entrypoint.sh`) uses it so that the container can briefly run as
+# root to chown Railway's root-owned bind-mounted volume, then hand off to
+# the hardened `app` user for the actual application process.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gosu \
+ && rm -rf /var/lib/apt/lists/* \
+ && gosu nobody true
+
 WORKDIR /app
 
 # Copy the virtualenv from the build stage, then strip pip from both the
@@ -64,10 +74,23 @@ ENV PATH=/opt/venv/bin:$PATH \
 COPY --chown=app:app backend/app/ ./app/
 COPY --from=frontend-build --chown=app:app /app/frontend/dist ./static/dist
 
-# Drop privileges.
-USER app:app
+# Init script: when launched as root (the Railway/default case) it chowns
+# the SQLite database directory so the unprivileged app user can write to
+# it, then drops to `app:app` via gosu and exec's CMD. When the container
+# is run with a non-root uid enforced by the orchestrator, the script
+# skips the chown step and exec's CMD directly, so the image remains
+# usable in environments that pin the uid themselves.
+COPY --chmod=0755 backend/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 8000
+
+# Start as root so the entrypoint can adjust volume ownership. The
+# entrypoint immediately drops to uid 1001 via `gosu` before exec'ing the
+# CMD, so the long-running Python process still satisfies the hardening
+# requirement from Issue #15 (verified by the security workflow, which
+# runs `id -u` *through* the entrypoint to observe the effective main-
+# process uid).
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
 
 # Exec form so the Python process is PID 1 and receives SIGTERM directly from
 # the container runtime (Railway, docker, kubelet). ``app.entrypoint`` reads
