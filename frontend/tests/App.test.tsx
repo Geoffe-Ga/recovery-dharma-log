@@ -108,9 +108,10 @@ describe("App", () => {
       </MemoryRouter>,
     );
     // Pico's .container has no vertical sizing, so it top-anchored the form.
-    const wrapper = container.querySelector(".rd-login")?.parentElement;
-    expect(wrapper).toHaveClass("rd-login-shell");
-    expect(wrapper).not.toHaveClass("container");
+    const shell = container.querySelector(".rd-login-shell");
+    expect(shell).toBeInTheDocument();
+    expect(shell).not.toHaveClass("container");
+    expect(shell?.querySelector(".rd-login")).toBeInTheDocument();
   });
 
   it("shows username input field", () => {
