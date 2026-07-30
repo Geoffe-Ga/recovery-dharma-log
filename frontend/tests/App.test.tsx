@@ -107,10 +107,10 @@ describe("App", () => {
         <App />
       </MemoryRouter>,
     );
-    // .rd-login-shell is the full-viewport flex wrapper that centres the
-    // form. Pico's .container has no vertical sizing and top-anchors it.
-    expect(container.querySelector(".rd-login-shell")).toBeInTheDocument();
-    expect(container.querySelector(".container")).not.toBeInTheDocument();
+    // Pico's .container has no vertical sizing, so it top-anchored the form.
+    const wrapper = container.querySelector(".rd-login")?.parentElement;
+    expect(wrapper).toHaveClass("rd-login-shell");
+    expect(wrapper).not.toHaveClass("container");
   });
 
   it("shows username input field", () => {
