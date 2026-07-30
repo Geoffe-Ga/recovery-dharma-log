@@ -129,6 +129,10 @@
 
 html {
   scroll-behavior: smooth;
+  /* Pico paints its own background on <html>. When <body> is shorter than
+     the viewport that colour shows through above and below it, so claim the
+     canvas here to keep the page a single colour. */
+  background-color: var(--rd-bg);
 }
 
 body {
@@ -693,9 +697,20 @@ p[role="alert"] {
    14. Login page
    =================================================================== */
 
+/* Full-viewport shell so the form sits in the optical centre of the page.
+   `margin: auto` on the child centres both axes without clipping the top
+   when the register form grows taller than the viewport. */
+.rd-login-shell {
+  display: flex;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: var(--rd-space-xl) var(--rd-space-md);
+}
+
 .rd-login {
+  width: 100%;
   max-width: 400px;
-  margin: var(--rd-space-2xl) auto;
+  margin: auto;
   text-align: center;
 }
 
