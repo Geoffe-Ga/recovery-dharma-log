@@ -8,6 +8,10 @@ permissions:
   contents: read
   pull-requests: write
   issues: read
+  # claude-code-action mints its GitHub token by exchanging an OIDC token.
+  # Without this the job fails before the review runs: "Could not fetch an
+  # OIDC token."
+  id-token: write
 
 jobs:
   claude-review:
