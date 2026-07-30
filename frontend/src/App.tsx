@@ -124,7 +124,7 @@ export function App(): React.ReactElement {
         {isAuthenticated ? (
           <AuthenticatedApp onLogout={logout} />
         ) : (
-          <div className="container">
+          <div className="rd-login-shell">
             <Login
               onLogin={login}
               onRegister={register}
